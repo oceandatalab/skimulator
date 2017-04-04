@@ -1,0 +1,88 @@
+================================
+SKIM Simulator for Ocean Current
+================================
+
+Description
+-----------
+This software simulates SKIM sea surface current observations that can be applied to an ocean general circulation model (OGCM). 
+
+
+Licence
+-------
+
+Installation
+------------
+The code runs with python and uses the following libraries: 
+
+* Numpy 
+
+* Scipy
+
+* NetCDF4 if you need to read netcdf4 model files (not included in Canopy)
+
+If you don't have python and the needed python libraries on your machine 
+you can download the enthought python distribution canopy at
+<https://store.enthought.com/> and follow the installation instructions.
+
+To install skimsimulator: 
+
+-> If you have installed canopy:
+
+Open a canopy terminal (``Tools - Canopy Terminal``) 
+
+.. code-block:: python
+
+   > cd [yourpath]/skimsimulator/
+   > python setup.py install 
+
+->If you have your own python and libraries:
+
+- global installation (requires root privilege):
+
+.. code-block:: python
+
+   > sudo python setup.py install 
+
+- local installation:
+
+.. code-block:: python
+
+   > python setup.py install --home=your/local/path 
+
+- Uninstall: 
+
+.. code-block:: python
+
+   > sudo python setup.py install --record record_files.txt
+   > cat record_files.txt | xargs sudo rm -rf
+
+Running
+--------
+Run the SKIM simulator:
+
+.. code-block:: python
+
+   > python run.py [your params file]
+
+Run the nadir alone:
+
+.. code-block:: python
+
+   > python run_nadiralone.py [your params file]
+
+
+Documentation
+-------------
+- To build the documentation, in the ``doc`` directory:
+  
+    * Build html: ``make html``
+
+    * Build pdf: ``make latexpdf``
+
+  The build documentation files are located in ``doc/build/html`` and in ``doc/build/latex/`` 
+
+- for a complete description:
+  see the ``doc`` directory or just run ``pydoc PyDom``
+
+  .. doc: doc/html/index.html
+
