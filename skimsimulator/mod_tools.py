@@ -125,6 +125,13 @@ def cart2spher(x, y, z):
     lon = lon * 180/math.pi
     return lon % 360, lat
 
+def proj_radial(u, v, time, pos, p):
+    inclination = p.inclination
+    omega = p.rotation_speed * numpy.pi * 2. / 60.
+    ualong = (v * numpy.sin(inclination) + u * numpy.cos(inclination))
+    uacross = (-v * numpy.cos(inclination)  + u * numpy.sin(inclination))
+    ur = (uacross * numpy.cos(omega * time + pos)  + ualong * numpy.sin(omega * time + pos))
+    return ur
 
 def update_progress(progress, arg1, arg2):
     '''Creation of a progress bar: print on screen the progress of the run'''

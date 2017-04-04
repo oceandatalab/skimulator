@@ -8,6 +8,8 @@ from math import pi, sqrt
 from scipy.io import netcdf as nc
 import sys
 from scipy.ndimage.filters import gaussian_filter
+import skimsimulator.mod_tools as mod_tools
+import skimsimulator.rw_data as rw_data
 
 
 class error():
@@ -19,13 +21,11 @@ class error():
     load_coeff.  The corresponding errors on a swath can be computed using
     make_error. '''
     def __init__(self, p,
-                 instr = None, 
-                 swh=None,
-                 stoke=None,
+                 instr=None,
+                 uss=None,
                  ):
         self.instr = instr
-        self.swh = swh
-        self.stoke = stoke
+        self.uss = uss
 
     def init_error(self, p):
         '''Initialization of errors: Random realisation of errors are
@@ -42,7 +42,7 @@ class error():
         pass
 
 
-    def make_error(self, u_true, p):
+    def make_error(self, u_true, time, pos, p, uss=(None, None)):
         ''' Build errors corresponding to each selected noise
         among the effect of the wet_tropo, the phase between the two signals,
         the timing error, the roll of the satellite, the sea surface bias,
@@ -53,10 +53,10 @@ class error():
         # ind_al=numpy.arange(0,nal)
         if p.instr is True:
             self.instr = numpy.random.normal(0.0, p.rms_instr, nal)
-        if p.swh is True:
-            self.swh = numpy.zeros((nal)) 
-        if p.stoke is True:
-            self.stoke = numpy.zeros((nal))
+        if p.uss is True and uss[0] is not None and uss[1] is not None:
+            self.ur_uss = mod_tools.proj_radial(uss[0], uss[1],
+                                                time, pos, p)
+            self.ur_uss *= p.G
         return None
 
     def make_vel_error(self, ur_true, p):
@@ -66,8 +66,8 @@ class error():
         self.ur_obs = ur_true
         if p.instr:
             self.ur_obs = self.ur_obs + self.instr
-        if p.swh:
-            self.ur_obs = self.ur_obs + self.swh
+        if p.uss:
+            self.ur_obs = self.ur_obs + self.ur_uss
         if p.file_input:
             self.ur_obs[numpy.where(ur_true == p.model_nan)] = p.model_nan
 
