@@ -10,15 +10,15 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data_b/model/ww3_oregon'
+indatadir = '/mnt/data_b/model/ww3_gs'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
-filesat = os.path.join(dir_setup,'orbs1a.txt')
-#filesat = os.path.join(dir_setup,'orbits1_ifremer')
+#filesat = os.path.join(dir_setup,'orbs1a.txt')
+filesat = os.path.join(dir_setup,'orbits1_ifremer')
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Name of the configuration (to build output files names) 
-config="WW3_OR"
+config="WW3_GS"
 
 # -----------------------# 
 # SKIM swath parameters 
@@ -27,13 +27,13 @@ config="WW3_OR"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = False
+makesgrid = True
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [230.144,234.598,42.27,47.8283] 
+modelbox =  [280.144,290.598,32.27,40.8283] 
 #------- Rotation speed of the antenna (in rad/min)
-rotation_speed = 3*180
+rotation_speed = -3 # * 180
 #------- List of position of 12degree beams:
 list_pos_12 = [0, math.pi/2, math.pi, math.pi * 3 / 2.]
 #------- List of position of 6 degree beams:
@@ -79,13 +79,15 @@ lonv = 'longitude'
 # ------ Specify latitude variable:
 latu = 'latitude'
 latv = 'latitude'
+# ------ Specify number of time in file:
+dim_time = 228
 # ------ Time step between two model outputs (in days):
 timestep = 0.125
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
 nstep = 200.
 # ------ Not a number value:
-model_nan = 0.
+model_nan = -32767.
 
 # -----------------------# 
 # SKIM output files  
@@ -116,7 +118,7 @@ instr = True
 # ------- Instrument white noise rms
 rms_instr = 10 * 10**(-2)
 # ------- Stoke drift velocity
-uss=True
+uss = True
 input_uss=os.path.join(indatadir, 'list_file_uss.txt')
 G=40
 

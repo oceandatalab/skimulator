@@ -217,6 +217,7 @@ def run_simulator():
                 model_data = []
             ur_true_all = []
             err_instr = []
+            err_uss = []
             ur_obs = []
             for i in range(len(p.list_pos_12) + len(p.list_pos_6) + 1):
                 sgrid_tmp.lon = sgrid.lon[i]
@@ -230,9 +231,11 @@ def run_simulator():
                     ur_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_obs = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.instr = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                 else:
                     ur_true, vindice, time, progress = create_SKIMlikedata(cycle, numpy.shape(listsgridfile)[0]*rcycle, list_file, list_file_uss, modelbox, sgrid_tmp, model_data, modeltime, err, pos, p, progress_bar=True)
                 err_instr.append(err.instr)
+                err_uss.append(err.ur_uss)
                 ur_true_all.append(ur_true)
                 ### Make error here
                 ur_obs.append(err.ur_obs)
@@ -240,7 +243,7 @@ def run_simulator():
             if (~numpy.isnan(vindice)).any() or not p.file_input:
                 save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice,
                           ur_model=ur_true_all, ur_obs=ur_obs,
-                          err_instr=err_instr)
+                          err_instr=err_instr, err_uss=err_uss)
             del time
             # if p.file_input: del index
         if p.file_input:
@@ -309,11 +312,10 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
     #inclination = p.inclination #* math.pi / 180
     #omega = p.rotation_speed * numpy.pi * 2. / 60.
     err.instr = numpy.zeros((numpy.shape(sgrid.lon)[0]))
-    err.swh = numpy.zeros((numpy.shape(sgrid.lon)[0]))
+    err.ur_uss = numpy.zeros((numpy.shape(sgrid.lon)[0]))
     err.wet_tropo1nadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
     err.wet_tropo2nadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
     err.wtnadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
-    err.stoke = numpy.zeros((numpy.shape(sgrid.lon)[0]))
     err.nadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
     date1 = cycle * sgrid.cycle
     u_true = (numpy.zeros((numpy.shape(sgrid.lon)[0])))
@@ -328,10 +330,10 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
     lat = sgrid.lat
     sgrid.timeshift /= 86400
     # Look for satellite data that are beween step-p.timesetp/2 end setp+p.step/2
-    #import pdb ; pdb.set_trace()
     if p.file_input is not None:
         index_filemodel = numpy.where(((time[-1]-sgrid.timeshift) >= (modeltime-p.timestep/2.))
                                       & ((time[0]-sgrid.timeshift) < (modeltime+p.timestep/2.)))  # [0]
+        nfile=0
         # At each step, look for the corresponding time in the satellite data
         for ifile in index_filemodel[0]:
             progress = mod_tools.update_progress(float(istep)/float(ntot
@@ -347,8 +349,11 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                 # Select part of the track that corresponds to the time of the model (+-timestep/2)
                 ind_time = numpy.where(((time-sgrid.timeshift) >= (modeltime[ifile]-p.timestep/2.)) & ((time-sgrid.timeshift) < (modeltime[ifile]+p.timestep/2.)) )
             # Load data from this model file
+            #import pdb ; pdb.set_trace()
             if model_data.model == 'WW3':
-                filetime = ifile
+                filetime = ifile - p.dim_time * nfile
+                if filetime >= (p.dim_time * (nfile + 1)):
+                    nfile += 1
                 model_step = rw_data.WW3(file=p.indatadir+os.sep+list_file[0], varu=p.varu, varv=p.varv, time=filetime)
                 if p.uss is True:
                     uss_step =  rw_data.WW3(file=p.indatadir+os.sep+list_file_uss[0], varu='uuss', varv='vuss', time=filetime)
@@ -392,6 +397,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                 u_true = u_true_ind_time[ind_time[0]]
                 if p.uss is True:
                     u_uss_mod_mask = + u_uss_mod
+                    u_uss_mod_mask[numpy.isnan(u_uss_mod_mask)] = 0.
                     u_uss_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_uss_mod_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
                     u_uss_ind_time[Teval > 0] = numpy.nan
                     u_uss = u_uss_ind_time[ind_time[0]]
@@ -403,6 +409,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                 v_true = v_true_ind_time[ind_time[0]]
                 if p.uss is True:
                     v_uss_mod_mask = + v_uss_mod
+                    v_uss_mod_mask[numpy.isnan(v_uss_mod_mask)] = 0.
                     v_uss_ind_time = interpolate.RectBivariateSpline(model_data.vlatv, model_data.vlonv, v_uss_mod_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
                     v_uss_ind_time[Teval > 0] = numpy.nan
                     v_uss = v_uss_ind_time[ind_time[0]]
@@ -499,7 +506,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
 
 
 def save_SKIM(cycle, sgrid, err, p, time=[], vindice=[], ur_model=[],
-              ur_obs=[], err_instr=[]):
+              ur_obs=[], err_instr=[], err_uss=[]):
     file_output = (p.file_output + '_c' + str(cycle+1).zfill(2) + '_p'
                    + str(sgrid.ipass).zfill(3) + '.nc')
     OutputSKIM = rw_data.Sat_SKIM(file=file_output, lon=sgrid.lon,
@@ -507,8 +514,7 @@ def save_SKIM(cycle, sgrid, err, p, time=[], vindice=[], ur_model=[],
                                   x_al=sgrid.x_al, cycle=sgrid.cycle)
     OutputSKIM.gridfile = sgrid.gridfile
     OutputSKIM.write_data(p, ur_model=ur_model, index=[vindice,],
-                          swh_err=[err.swh,],
-                          stoke_err=[err.stoke, ],
+                          uss_err=err_uss,
                           nadir_err=[err.nadir, ], ur_obs=ur_obs,
                           instr=err_instr)
     return None

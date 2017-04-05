@@ -25,7 +25,7 @@ class error():
                  uss=None,
                  ):
         self.instr = instr
-        self.uss = uss
+        self.ur_uss = uss
 
     def init_error(self, p):
         '''Initialization of errors: Random realisation of errors are
@@ -64,11 +64,11 @@ class error():
         '''
         numpy.seterr(invalid='ignore')
         self.ur_obs = ur_true
-        if p.instr:
+        if p.instr is True:
             self.ur_obs = self.ur_obs + self.instr
-        if p.uss:
+        if p.uss is True:
             self.ur_obs = self.ur_obs + self.ur_uss
-        if p.file_input:
+        if p.file_input is not None:
             self.ur_obs[numpy.where(ur_true == p.model_nan)] = p.model_nan
 
 

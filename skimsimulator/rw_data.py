@@ -122,7 +122,10 @@ def read_var(file, var, index=None, time=0, depth=0, model_nan=None):
             if time is None:
                 T = numpy.array(fid.variables[var][:, :, :]).squeeze()
             else:
-                T = numpy.array(fid.variables[var][time, :, :]).squeeze()
+                try:
+                    T = numpy.array(fid.variables[var][time, :, :]).squeeze()
+                except:
+                    import pdb ; pdb.set_trace()
         elif len(vartmp.shape) == 4 :
             if time is None:
                 if depth is None:
@@ -389,9 +392,9 @@ class Sat_SKIM():
                   "ur_model":"Radial velocity interpolated from model",
                   "ur_obs":"Observed radial velocity (Ur_model+errors)",
                   "index":"Equivalent model output number in list of file",
-                  "swh_err":"", "nadir_err":"Nadir error", "stoke_err": ""}
+                  "uss_err": "Stokes drift error", "nadir_err":"Nadir error", }
         unit = {"instr":"m/s", "ur_model":"m/s", "ur_obs":"m/s", "index":" ",
-                "swh_err":"m/s", "nadir_err":"m/s", "stoke_err":"m/s",
+                "uss_err":"m/s", "nadir_err":"m/s",
                 }
         for key, value in kwargs.items():
             #if not value is None:
