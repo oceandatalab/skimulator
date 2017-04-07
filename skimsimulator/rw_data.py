@@ -122,10 +122,7 @@ def read_var(file, var, index=None, time=0, depth=0, model_nan=None):
             if time is None:
                 T = numpy.array(fid.variables[var][:, :, :]).squeeze()
             else:
-                try:
-                    T = numpy.array(fid.variables[var][time, :, :]).squeeze()
-                except:
-                    import pdb ; pdb.set_trace()
+                T = numpy.array(fid.variables[var][time, :, :]).squeeze()
         elif len(vartmp.shape) == 4 :
             if time is None:
                 if depth is None:

@@ -33,7 +33,7 @@ makesgrid = True
 # 	 (If modelbox is None, the whole domain of the model is considered)
 modelbox =  [280.144,290.598,32.27,40.8283] 
 #------- Rotation speed of the antenna (in rad/min)
-rotation_speed = -3 # * 180
+rotation_speed = 3 # * 180
 #------- List of position of 12degree beams:
 list_pos_12 = [0, math.pi/2, math.pi, math.pi * 3 / 2.]
 #------- List of position of 6 degree beams:
@@ -43,7 +43,7 @@ list_shift_12 = [0.0368, 0.0368 * 2, 0.0368 * 3, 0.0368 * 4]
 #------- List of timeshift as regard to nadir for 6 degree beams:
 list_shift_6 = [0.0368 * 5]
 #------- Inclination of orbit, to be moved to const
-inclination = 88.18 * math.pi / 180.
+#inclination = 88.18 * math.pi / 180.
 inclination = 98.18 * math.pi / 180.
 # ------ Shift longitude of the orbit file if no pass is in the domain 
 #        (in degree): Default value is None (no shift)

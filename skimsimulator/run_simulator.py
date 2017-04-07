@@ -394,25 +394,25 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                 u_model_mask[numpy.isnan(u_model_mask)] = 0.
                 u_true_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_model_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
                 u_true_ind_time[Teval > 0] = numpy.nan
-                u_true = u_true_ind_time[ind_time[0]]
+                u_true[ind_time[0]] = u_true_ind_time #[ind_time[0]]
                 if p.uss is True:
                     u_uss_mod_mask = + u_uss_mod
                     u_uss_mod_mask[numpy.isnan(u_uss_mod_mask)] = 0.
                     u_uss_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_uss_mod_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
                     u_uss_ind_time[Teval > 0] = numpy.nan
-                    u_uss = u_uss_ind_time[ind_time[0]]
+                    u_uss[ind_time[0]] = u_uss_ind_time #[ind_time[0]]
                 Teval = interpolate.RectBivariateSpline(model_data.vlatv, model_data.vlonv, numpy.isnan(v_model), kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
                 v_model_mask = + v_model
                 v_model_mask[numpy.isnan(v_model_mask)] = 0.
                 v_true_ind_time = interpolate.RectBivariateSpline(model_data.vlatv, model_data.vlonv, v_model_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
                 v_true_ind_time[Teval > 0] = numpy.nan
-                v_true = v_true_ind_time[ind_time[0]]
+                v_true[ind_time[0]] = v_true_ind_time #[ind_time[0]]
                 if p.uss is True:
                     v_uss_mod_mask = + v_uss_mod
                     v_uss_mod_mask[numpy.isnan(v_uss_mod_mask)] = 0.
                     v_uss_ind_time = interpolate.RectBivariateSpline(model_data.vlatv, model_data.vlonv, v_uss_mod_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
                     v_uss_ind_time[Teval > 0] = numpy.nan
-                    v_uss = v_uss_ind_time[ind_time[0]]
+                    v_uss[ind_time[0]] = v_uss_ind_time #[ind_time[0]]
             else:
                 # Grid is irregular, interpolation can be done using
                 # pyresample module if it is installed or griddata
@@ -486,9 +486,10 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
             #           + u_true * numpy.sin(inclination))
             #ur_true = (uacross * numpy.cos(omega * time + pos)
             #           + ualong * numpy.sin(omega * time + pos))
-            ur_true = mod_tools.proj_radial(u_true, v_true, time, pos, p)
+            try: ur_true[ind_time[0]] = mod_tools.proj_radial(u_true, v_true, time, pos, p)
+            except: import pdb; pdb.set_trace()
             vindice[ind_time[0]] = ifile
-            del ind_time, u_true, v_true, model_step
+            # del u_true, v_true, model_step
         istep += 1
     else:
         istep += 1

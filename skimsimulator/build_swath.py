@@ -253,6 +253,7 @@ def orbit2swath(modelbox, p, orb):
     strpass = []
     # Compute rotating beams
     omega = p.rotation_speed * 2 * math.pi  / 60.
+    #omega = p.rotation_speed / 60.
     rc_12 = 140
     rc_6 = 70
     #list_pos_12 = [0, math.pi / 2., math.pi, math.pi * 3. / 2.)
@@ -287,11 +288,12 @@ def orbit2swath(modelbox, p, orb):
             lat_beam = [latnad]
             time_beam = [stime[ind]]
             x_al_tmp = sgrid.x_al - sgrid.x_al[0]
-            sgrid.angle = lonnad * 0 
+            sgrid.angle = lonnad * 0
             sgrid.angle[1:] = numpy.arctan((lonnad[1:] - lonnad[:-1])
                                         /(latnad[1:] - latnad[:-1]))
             sgrid.angle[0] = sgrid.angle[1]
-            inclination = p.inclination #sgrid.angle + math.pi/2
+            inclination = p.inclination
+            # inclination = sgrid.angle + math.pi/2
             x_nad, y_nad, z_nad = mod_tools.spher2cart(lonnad, latnad)
             #import pdb ; pdb.set_trace()
             for angle_12, shift_12 in zip(p.list_pos_12, p.list_shift_12):
@@ -300,17 +302,21 @@ def orbit2swath(modelbox, p, orb):
                 #            + angle_12))/const.deg2km/numpy.cos(lat[ind] * math.pi / 180.))
                 #lat_tmp = (latnad + (rc_12 * numpy.sin(omega * timebeamshift
                 #           + angle_12))/const.deg2km)
-                xal = ( rc_12 * numpy.cos(omega * timebeamshift
-                      + angle_12))  /const.deg2km
-                xac = (rc_12 * numpy.sin(omega * timebeamshift
-                       + angle_12))  / const.deg2km       
                 if (ipass % 2 ==0):
+                    xal = ( rc_12 * numpy.cos(omega * timebeamshift
+                          + angle_12))  /const.deg2km
+                    xac = (rc_12 * numpy.sin(omega * timebeamshift
+                           + angle_12))  / const.deg2km
                     lon_tmp = (lonnad - (xal * numpy.cos(inclination)
                                     + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
                     lat_tmp = (latnad + (xal * numpy.sin(inclination)
                                     - xac * numpy.cos(inclination)))
                 else:
+                    xal = ( rc_12 * numpy.sin(omega * timebeamshift
+                          + angle_12))  /const.deg2km
+                    xac = (rc_12 * numpy.cos(omega * timebeamshift
+                           + angle_12))  / const.deg2km
                     lon_tmp = (lonnad - (xal * numpy.cos(inclination)
                                     + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
@@ -327,22 +333,26 @@ def orbit2swath(modelbox, p, orb):
                     #+ angle_6))
                 # y = (y_nad + rc_6 * numpy.sin(omega * timebeamshift
                     #+ angle_6))
-                xal = ( rc_6 * numpy.cos(omega * timebeamshift
-                      + angle_6)) /const.deg2km
-                xac = (rc_6 * numpy.sin(omega * timebeamshift
-                       + angle_6)) / const.deg2km       
                 if (ipass % 2 ==0):
-                    lon_tmp = (lonnad - (xal * numpy.cos(p.inclination)
-                                    + xac * numpy.sin(p.inclination))
+                    xal = ( rc_6 * numpy.cos(omega * timebeamshift
+                          + angle_6)) /const.deg2km
+                    xac = (rc_6 * numpy.sin(omega * timebeamshift
+                           + angle_6)) / const.deg2km
+                    lon_tmp = (lonnad - (xal * numpy.cos(inclination)
+                                    + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
-                    lat_tmp = (latnad + (xal * numpy.sin(p.inclination)
-                                    - xac * numpy.cos(p.inclination)))
+                    lat_tmp = (latnad + (xal * numpy.sin(inclination)
+                                    - xac * numpy.cos(inclination)))
                 else:
-                    lon_tmp = (lonnad - (xal * numpy.cos(p.inclination)
-                                    + xac * numpy.sin(p.inclination))
+                    xal = ( rc_6 * numpy.sin(omega * timebeamshift
+                          + angle_6)) /const.deg2km
+                    xac = (rc_6 * numpy.cos(omega * timebeamshift
+                           + angle_6)) / const.deg2km
+                    lon_tmp = (lonnad - (xal * numpy.cos(inclination)
+                                    + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
-                    lat_tmp = (latnad - (xal * numpy.sin(p.inclination)
-                                    - xac * numpy.cos(p.inclination)))
+                    lat_tmp = (latnad - (xal * numpy.sin(inclination)
+                                    - xac * numpy.cos(inclination)))
                 # lon_tmp, lat_tmp = mod_tools.cart2sphervect(x, y, z_nad)
                 lon_tmp = (lon_tmp + 360) % 360
                 lon_beam.append(lon_tmp)
