@@ -37,7 +37,7 @@ rotation_speed = 3 # * 180
 #------- List of position of 12degree beams:
 list_pos_12 = [0, math.pi/2, math.pi, math.pi * 3 / 2.]
 #------- List of position of 6 degree beams:
-list_pos_6 = [math.pi/4.]
+list_pos_6 = [0]
 #------- List of timeshift as regard to nadir for 12 degree beams:
 list_shift_12 = [0.0368, 0.0368 * 2, 0.0368 * 3, 0.0368 * 4]
 #------- List of timeshift as regard to nadir for 6 degree beams:
