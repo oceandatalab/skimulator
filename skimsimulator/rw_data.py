@@ -221,9 +221,9 @@ class Sat_SKIM():
         fid.creator_name = "Lucile Gaultier and Clement Ubelmann"
         fid.creator_email = "lucile.gaultier@gmail.com"
         fid.publisher_url = ""
-        fid.time_coverage_start = self.time[0]
+        fid.time_coverage_start = self.time[0][0]
         # p.date0+"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
-        fid.time_coverage_end = self.time[-1]
+        fid.time_coverage_end = self.time[-1][-1]
         # p.date0 +"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
         fid.geospatial_lat_min = "{:.2f}".format(numpy.min(self.lat[0]))
         fid.geospatial_lat_max = "{:.2f}".format(numpy.max(self.lat[0]))
@@ -283,6 +283,7 @@ class Sat_SKIM():
         valcycle = fid.createVariable('al_cycle', 'f4', ('cycle',))
         vtimeshift = fid.createVariable('timeshift', 'f4', ('cycle',))
         vx_al = fid.createVariable('x_al', 'f4', ('time',))
+        vincl = fid.createVariable('inclination', 'f4', ('time',))
         vcycle[:] = self.cycle
         vcycle.units = "days during a cycle"
         vcycle.long_name = "Cycle"
@@ -295,6 +296,9 @@ class Sat_SKIM():
         vx_al[:] = self.x_al
         vx_al.units = "km"
         vx_al.long_name = "Along track distance from the beginning of the pass"
+        vincl[:] = self.angle
+        vincl.units = "rad"
+        vincl.long_name = "Along track inclination in radian"
         fid.close()
         return None
 
@@ -387,6 +391,8 @@ class Sat_SKIM():
             vlat.units = "degrees_north"
         longname = {"instr": "Instrumental error",
                   "ur_model":"Radial velocity interpolated from model",
+                  "u_model":"Zonal velocity interpolated from model",
+                  "v_model":"Meridional velocity interpolated from model",
                   "ur_obs":"Observed radial velocity (Ur_model+errors)",
                   "index":"Equivalent model output number in list of file",
                   "uss_err": "Stokes drift error", "nadir_err":"Nadir error", }
@@ -442,7 +448,7 @@ class Sat_SKIM():
             sys.exit()
         #fid = Dataset(self.file, 'r')
         time = []; lon = []; lat = []; cycle = []; x_al = []
-        listvar={'time':time, 'lon': lon, 'lat': lat}
+        listvar={'time':time, 'lon': lon, 'lat': lat,}
         self.lon = []
         self.lat = []
         self.time = []
@@ -457,7 +463,6 @@ class Sat_SKIM():
                 var = fid.variables['{}{}'.format(stringvar, suf)]
                 listvar[stringvar].append(numpy.array(var[:]).squeeze())
             exec('self.'+stringvar+' = listvar[stringvar]')
-
 ## - Read variables in arguments
         for key, value in kwargs.items():
             var = fid.variables[key]
@@ -468,6 +473,10 @@ class Sat_SKIM():
             self.corresponding_grid=fid.corresponding_grid
         except:
             pass
+        try:
+            self.incl=numpy.array(fid.variables['inclination'][:]).squeeze()
+        except:
+            print('inclination variable not found')
         fid.close()
         return None
 

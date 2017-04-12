@@ -42,7 +42,7 @@ class error():
         pass
 
 
-    def make_error(self, u_true, time, pos, p, uss=(None, None)):
+    def make_error(self, u_true, time, pos, p, incl, uss=(None, None)):
         ''' Build errors corresponding to each selected noise
         among the effect of the wet_tropo, the phase between the two signals,
         the timing error, the roll of the satellite, the sea surface bias,
@@ -55,7 +55,7 @@ class error():
             self.instr = numpy.random.normal(0.0, p.rms_instr, nal)
         if p.uss is True and uss[0] is not None and uss[1] is not None:
             self.ur_uss = mod_tools.proj_radial(uss[0], uss[1],
-                                                time, pos, p)
+                                                time, pos, incl, p)
             self.ur_uss *= p.G
         return None
 

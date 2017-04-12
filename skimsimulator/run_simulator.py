@@ -467,27 +467,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                                     | (lat < modelbox[2])
                                     | (lat > modelbox[3]))] = numpy.nan
 
-            '''         if ipass %2 ==0:
-                lon_tmp = (lonnad - (xal * numpy.cos(p.inclination)
-                       + xac * numpy.sin(p.inclination))
-                       / numpy.cos(latnad * math.pi / 180.))
-                lat_tmp = (latnad + (xal * numpy.sin(p.inclination)
-                       - xac * numpy.cos(p.inclination)))
-            else:
-                lon_tmp = (lonnad - (xal * numpy.cos(p.inclination)
-                           + xac * numpy.sin(p.inclination))
-                                    / numpy.cos(latnad * math.pi / 180.))
-                lat_tmp = (latnad - (xal * numpy.sin(p.inclination)
-                           - xac * numpy.cos(p.inclination)))
-            '''
-            #ualong = (v_true * numpy.sin(inclination)
-            #          + u_true * numpy.cos(inclination))
-            #uacross = (-v_true * numpy.cos(inclination)
-            #           + u_true * numpy.sin(inclination))
-            #ur_true = (uacross * numpy.cos(omega * time + pos)
-            #           + ualong * numpy.sin(omega * time + pos))
-            try: ur_true[ind_time[0]] = mod_tools.proj_radial(u_true, v_true, time, pos, p)
-            except: import pdb; pdb.set_trace()
             vindice[ind_time[0]] = ifile
             # del u_true, v_true, model_step
         istep += 1
@@ -497,10 +476,15 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                                              'pass: ' + str(sgrid.ipass),
                                              'no model file provided'
                                              + ', cycle:' + str(cycle+1))
+    try:
+       ur_true = mod_tools.proj_radial(u_true, v_true, time, pos,
+                                       sgrid.incl, p)
+    except: import pdb; pdb.set_trace()
     if p.uss is not True:
         u_uss = None
         v_uss = None
-    err.make_error(ur_true, time, pos, p, uss=(u_uss, v_uss))
+    err.make_error(ur_true, time, pos, p, sgrid.incl,
+                   uss=(u_uss, v_uss))
     err.make_vel_error(ur_true, p)
     # if p.file_input: del ind_time, SSH_model, model_step
     return ur_true, vindice, time, progress
