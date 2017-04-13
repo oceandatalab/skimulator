@@ -227,8 +227,12 @@ def run_simulator():
                 sgrid_tmp.time = sgrid.time[i]
                 if (i > 0) and i < len(p.list_pos_12):
                     pos = p.list_pos_12[i - 1]
+                    Gvar = p.G[0]
+                    rms_instr = p.rms_instr[0]
                 elif i >= len(p.list_pos_12):
                     pos = p.list_pos_6[i - 1 - len(p.list_pos_12)]
+                    Gvar = p.G[1]
+                    rms_instr = p.rms_instr[1]
                 if i == 0:
                     ur_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     u_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
@@ -242,7 +246,8 @@ def run_simulator():
                                         numpy.shape(listsgridfile)[0]*rcycle,
                                         list_file, list_file_uss, modelbox,
                                         sgrid_tmp, model_data, modeltime, err,
-                                        pos, p, progress_bar=True)
+                                        pos, Gvar, rms_instr, p,
+                                        progress_bar=True)
                 err_instr.append(err.instr)
                 err_uss.append(err.ur_uss)
                 ur_true_all.append(ur_true)
@@ -312,7 +317,7 @@ def load_sgrid(sgridfile, p):
 
 
 def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgrid,
-                        model_data, modeltime, err, pos, p,
+                        model_data, modeltime, err, pos, Gvar, rms_instr, p,
                         progress_bar=True):
     '''Create SKIM and nadir errors err and errnad, interpolate model SSH model_data on swath and nadir track,
     compute SKIM-like and nadir-like data for cycle, SKIM grid sgrid and ngrid. '''
@@ -495,7 +500,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
     if p.uss is not True:
         u_uss = None
         v_uss = None
-    err.make_error(ur_true, time, pos, p, sgrid.incl,
+    err.make_error(ur_true, time, pos, p, sgrid.incl, Gvar, rms_instr,
                    uss=(u_uss, v_uss))
     err.make_vel_error(ur_true, p)
     # if p.file_input: del ind_time, SSH_model, model_step

@@ -31,7 +31,7 @@ makesgrid = True
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [280.144,290.598,32.27,40.8283] 
+modelbox =  [280.144,290.598,33.07,40.0283] 
 #------- Rotation speed of the antenna (in rad/min)
 rotation_speed = 3 # * 180
 #------- List of position of 12degree beams:
@@ -115,12 +115,12 @@ ncomp1d = 3000
 ncomp2d = 2000
 # ------- Instrument white noise error
 instr = True
-# ------- Instrument white noise rms
-rms_instr = 10 * 10**(-2)
-# ------- Stoke drift velocity
+# ------- Instrument white noise rms [beam 12, beam 6]
+rms_instr = [10 * 10**(-2), 20 * 10 ** (-2)]
+# ------- Stoke drift velocity [beam 12, beam 6]
 uss = True
 input_uss=os.path.join(indatadir, 'list_file_uss.txt')
-G=40
+G=[40, 40]
 
 ## -- Geophysical error
 ## ----------------------
