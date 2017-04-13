@@ -464,25 +464,25 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                     if p.uss is True:
                         u_uss[ind_time[0]] = interpolate.griddata((model_data.vlonu.ravel(), model_data.vlatu.ravel()), u_uss_mod.ravel(), (lon[ind_time[0]], lat[ind_time[0]]), method=p.interpolation)
                         v_uss[ind_time[0]] = interpolate.griddata((model_data.vlonv.ravel(), model_data.vlatv.ravel()), v_uss_mod.ravel(), (lon[ind_time[0]], lat[ind_time[0]]), method=p.interpolation)
-                    if p.interpolation == 'nearest':
-                        if modelbox[0] > modelbox[1]:
-                            u_true[numpy.where(((lon < modelbox[0])
-                                     & (lon > modelbox[1]))
-                                     | (lat < modelbox[2])
-                                     | (lat > modelbox[3]))] = numpy.nan
-                            v_true[numpy.where(((lon < modelbox[0])
-                                     & (lon > modelbox[1]))
-                                     | (lat < modelbox[2])
-                                     | (lat > modelbox[3]))] = numpy.nan
-                        else:
-                            u_true[numpy.where((lon < modelbox[0])
-                                    | (lon > modelbox[1])
-                                    | (lat < modelbox[2])
-                                    | (lat > modelbox[3]))] = numpy.nan
-                            v_true[numpy.where((lon < modelbox[0])
-                                    | (lon > modelbox[1])
-                                    | (lat < modelbox[2])
-                                    | (lat > modelbox[3]))] = numpy.nan
+            #if p.interpolation == 'nearest':
+            if modelbox[0] > modelbox[1]:
+                    u_true[numpy.where(((lon < modelbox[0])
+                             & (lon > modelbox[1]))
+                             | (lat < modelbox[2])
+                             | (lat > modelbox[3]))] = numpy.nan
+                    v_true[numpy.where(((lon < modelbox[0])
+                             & (lon > modelbox[1]))
+                             | (lat < modelbox[2])
+                             | (lat > modelbox[3]))] = numpy.nan
+            else:
+                    u_true[numpy.where((lon < modelbox[0])
+                            | (lon > modelbox[1])
+                            | (lat < modelbox[2])
+                            | (lat > modelbox[3]))] = numpy.nan
+                    v_true[numpy.where((lon < modelbox[0])
+                            | (lon > modelbox[1])
+                            | (lat < modelbox[2])
+                            | (lat > modelbox[3]))] = numpy.nan
 
             vindice[ind_time[0]] = ifile
             # del u_true, v_true, model_step

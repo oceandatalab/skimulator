@@ -27,11 +27,11 @@ config="WW3_GS"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = True
+makesgrid = False
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [280.144,290.598,33.07,40.0283] 
+modelbox =  [280.144,290.598,32.07,40.0283] 
 #------- Rotation speed of the antenna (in rad/min)
 rotation_speed = 3 # * 180
 #------- List of position of 12degree beams:
@@ -99,7 +99,7 @@ file_output = os.path.join(outdatadir, config)
 #         pyresample is not installed:
 #        (either 'linear' or 'nearest', use 'nearest' for large region
 #        as it is faster and use less memory.)
-interpolation = 'nearest'
+interpolation = 'linear'
 # -----------------------# 
 # SKIM error parameters 
 # -----------------------# 
