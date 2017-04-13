@@ -257,10 +257,14 @@ class Sat_SKIM():
                 ntime = 'time_12_{}'.format(i - 1)
                 nlon = 'lon_12_{}'.format(i - 1)
                 nlat = 'lat_12_{}'.format(i - 1)
+                nxal = 'x_al_12_{}'.format(i - 1)
+                nxac = 'x_ac_12_{}'.format(i - 1)
             else:
                 ntime = 'time_6_{}'.format(i - n12beam - 1)
                 nlon = 'lon_6_{}'.format(i - n12beam - 1)
                 nlat = 'lat_6_{}'.format(i - n12beam - 1)
+                nxal = 'x_al_6_{}'.format(i - n12beam - 1)
+                nxac = 'x_ac_6_{}'.format(i - n12beam - 1)
             vtime = fid.createVariable(ntime, 'f', (dimsample,))
             vtime[:] = self.time[i][:]
             vtime.axis = "T"
@@ -280,6 +284,15 @@ class Sat_SKIM():
             vlat.long_name = "Latitude"
             vlat.standard_name = "latitude"
             vlat.units = "degrees_north"
+            if i > 0:
+                vx_al = fid.createVariable(nxal, 'f4', (dimsample,))
+                vx_al[:] = self.x_al[i]
+                vx_al.units = "km"
+                vx_al.long_name = "Along track distance from the nadir"
+                vx_ac = fid.createVariable(nxac, 'f4', (dimsample,))
+                vx_ac[:] = self.x_ac[i]
+                vx_ac.units = "km"
+                vx_ac.long_name = "Across track distance from the nadir"
         vcycle = fid.createVariable('cycle', 'f4', (dimcycle,))
         valcycle = fid.createVariable('al_cycle', 'f4', (dimcycle,))
         vtimeshift = fid.createVariable('timeshift', 'f4', (dimcycle,))
@@ -294,12 +307,12 @@ class Sat_SKIM():
         vtimeshift[:] = self.timeshift
         vtimeshift.units = "day"
         vtimeshift.long_name = "Shift time to match model time"
-        vx_al[:] = self.x_al
+        vx_al[:] = self.x_al[0]
         vx_al.units = "km"
         vx_al.long_name = "Along track distance from the beginning of the pass"
         vincl[:] = self.angle
         vincl.units = "rad"
-        vincl.long_name = "Along track inclination in radian"
+        vincl.long_name = "Track inclination in radian"
         fid.close()
         return None
 

@@ -285,6 +285,7 @@ def orbit2swath(modelbox, p, orb):
             filesgrid = p.filesgrid + '_p' + str(ipass+1).zfill(3) + '.nc'
             sgrid = rw_data.Sat_SKIM(file=filesgrid)
             sgrid.x_al = x_al[ind]
+            x_al_nad = x_al[ind]
             sgrid.cycle = tcycle
             sgrid.al_cycle = al_cycle
 
@@ -294,7 +295,9 @@ def orbit2swath(modelbox, p, orb):
             lon_beam = [lonnad]
             lat_beam = [latnad]
             time_beam = [stime[ind]]
-            x_al_tmp = sgrid.x_al - sgrid.x_al[0]
+            xal_beam = [x_al_nad]
+            xac_beam = [x_al_nad * 0]
+            x_al_tmp = x_al_nad - x_al_nad[0]
             sgrid.angle = lonnad * 0
             sgrid.angle[1:] = numpy.arctan((latnad[1:] - latnad[:-1])
                                            / numpy.cos(latnad[1:] * math.pi / 180.)
@@ -333,6 +336,8 @@ def orbit2swath(modelbox, p, orb):
                 lon_tmp = (lon_tmp + 360) % 360
                 lon_beam.append(lon_tmp)
                 lat_beam.append(lat_tmp)
+                xal_beam.append(xal * const.deg2km)
+                xac_beam.append(xac * const.deg2km)
                 time_beam.append(timebeamshift)
             for angle_6, shift_6 in zip(p.list_pos_6, p.list_shift_6):
                 timebeamshift = stime[ind] + shift_6
@@ -365,11 +370,15 @@ def orbit2swath(modelbox, p, orb):
                 lon_tmp = (lon_tmp + 360) % 360
                 lon_beam.append(lon_tmp)
                 lat_beam.append(lat_tmp)
+                xal_beam.append(xal * const.deg2km)
+                xac_beam.append(xac * const.deg2km)
                 time_beam.append(timebeamshift)
             sgrid.timeshift = orb.timeshift
             sgrid.lon = lon_beam
             sgrid.lat = lat_beam
             sgrid.time = time_beam
+            sgrid.x_al = xal_beam
+            sgrid.x_ac = xac_beam
             if os.path.exists(filesgrid):
                 os.remove(filesgrid)
             sgrid.write_swath(p)
