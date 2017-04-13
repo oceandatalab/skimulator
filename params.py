@@ -34,14 +34,13 @@ makesgrid = True
 modelbox =  [280.144,290.598,32.07,40.0283]
 #------- Rotation speed of the antenna (in rad/min)
 rotation_speed = 3 # * 180
-#------- List of position of 12degree beams:
-list_pos_12 = [0, math.pi/2, math.pi, math.pi * 3 / 2.]
-#------- List of position of 6 degree beams:
-list_pos_6 = [0]
+#------- List of position of beams:
+list_pos = (0, math.pi/2, math.pi, math.pi * 3 / 2., 0)
+#------- List of angle of beams in degrees:
+list_angle = (12, 12, 12, 12, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
-list_shift_12 = [0.0368, 0.0368 * 2, 0.0368 * 3, 0.0368 * 4]
-#------- List of timeshift as regard to nadir for 6 degree beams:
-list_shift_6 = [0.0368 * 5]
+beam_period = 0.0368
+list_shift = (beam_period, beam_period * 2, beam_period * 3, beam_period * 4, beam_period * 5)
 #------- Inclination of orbit, to be moved to const
 #inclination = 88.18 * math.pi / 180.
 inclination = 98.18 * math.pi / 180.
@@ -115,12 +114,12 @@ ncomp1d = 3000
 ncomp2d = 2000
 # ------- Instrument white noise error
 instr = True
-# ------- Instrument white noise rms [beam 12, beam 6]
-rms_instr = [10 * 10**(-2), 20 * 10 ** (-2)]
+# ------- Instrument white noise rms 
+rms_instr = [10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 20 * 10 ** (-2)]
 # ------- Stoke drift velocity [beam 12, beam 6]
 uss = True
 input_uss=os.path.join(indatadir, 'list_file_uss.txt')
-G=[40, 40]
+G=[40, 40, 40, 40, 40]
 
 ## -- Geophysical error
 ## ----------------------

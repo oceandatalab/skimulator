@@ -112,8 +112,10 @@ def run_simulator():
     # data is taken as a modelbox
     # coordinates from the region defined by modelbox are selected
     if p.file_input:
-        model_data = eval('rw_data.' + model
-                          + '(file=p.indatadir+os.sep+list_file[0])')
+        #model_data = eval('rw_data.' + model
+        #                  + '(p, file=p.indatadir+os.sep+list_file[0])')
+        model_data_ctor = getattr(rw_data, model)
+        model_data = model_data_ctor(p, file=p.indatadir+os.sep+list_file[0])
     if p.modelbox:
         modelbox = numpy.array(p.modelbox, dtype='float')
         # Use convert to 360 data
@@ -221,18 +223,10 @@ def run_simulator():
             err_instr = []
             err_uss = []
             ur_obs = []
-            for i in range(len(p.list_pos_12) + len(p.list_pos_6) + 1):
+            for i in range(len(p.list_pos) + 1):
                 sgrid_tmp.lon = sgrid.lon[i]
                 sgrid_tmp.lat = sgrid.lat[i]
                 sgrid_tmp.time = sgrid.time[i]
-                if (i > 0) and i < len(p.list_pos_12):
-                    pos = p.list_pos_12[i - 1]
-                    Gvar = p.G[0]
-                    rms_instr = p.rms_instr[0]
-                elif i >= len(p.list_pos_12):
-                    pos = p.list_pos_6[i - 1 - len(p.list_pos_12)]
-                    Gvar = p.G[1]
-                    rms_instr = p.rms_instr[1]
                 if i == 0:
                     ur_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     u_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
@@ -241,6 +235,9 @@ def run_simulator():
                     err.instr = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                 else:
+                    pos = p.list_pos[i - 1]
+                    Gvar = p.G[i - 1]
+                    rms_instr = p.rms_instr[i - 1]
                     ur_true, u_true, v_true, vindice, time, progress = \
                     create_SKIMlikedata(cycle,
                                         numpy.shape(listsgridfile)[0]*rcycle,
@@ -371,9 +368,9 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                 filetime = ifile - p.dim_time * nfile
                 if filetime >= (p.dim_time * (nfile + 1)):
                     nfile += 1
-                model_step = rw_data.WW3(file=p.indatadir+os.sep+list_file[0], varu=p.varu, varv=p.varv, time=filetime)
+                model_step = rw_data.WW3(p, file=p.indatadir+os.sep+list_file[0], varu=p.varu, varv=p.varv, time=filetime)
                 if p.uss is True:
-                    uss_step =  rw_data.WW3(file=p.indatadir+os.sep+list_file_uss[0], varu='uuss', varv='vuss', time=filetime)
+                    uss_step =  rw_data.WW3(p, file=p.indatadir+os.sep+list_file_uss[0], varu='uuss', varv='vuss', time=filetime)
             else:
                 model_step = eval('rw_data.' + model_data.model
                               + '(file=p.indatadir+os.sep+list_file[ifile], varu=p.varu, varv=p.varv)')

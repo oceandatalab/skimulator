@@ -254,19 +254,6 @@ def orbit2swath(modelbox, p, orb):
     # Compute rotating beams
     omega = p.rotation_speed * 2 * math.pi  / 60.
     #omega = p.rotation_speed / 60.
-    rc_12 = 140
-    rc_6 = 70
-    rc_12 = const.Rearth* (12 * math.pi / 180 - numpy.arcsin(const.Rearth
-                           *numpy.sin(math.pi- 12 * math.pi / 180)
-                           /(const.Rearth + const.sat_elev))) * 10**(-3)
-    rc_6 = const.Rearth* (6 * math.pi / 180 - numpy.arcsin(const.Rearth
-                           *numpy.sin(math.pi- 6 * math.pi / 180)
-                           /(const.Rearth + const.sat_elev))) * 10**(-3)
-    print(rc_12)
-    #list_pos_12 = [0, math.pi / 2., math.pi, math.pi * 3. / 2.)
-    #list_angle_6 = [math.pi / 4.]
-    #list_pos_12 = p.list_pos_12 # [0, math.pi / 2., math.pi, math.pi * 3. / 2.)
-    #list_pos_6 = p.list_pos_6 # [math.pi / 4.]
     # Loop on all passes after the first pass detected
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
         # Detect indices corresponding to the pass
@@ -310,23 +297,33 @@ def orbit2swath(modelbox, p, orb):
             #inclination = 0
             #x_nad, y_nad, z_nad = mod_tools.spher2cart(lonnad, latnad)
             #import pdb ; pdb.set_trace()
-            for angle_12, shift_12 in zip(p.list_pos_12, p.list_shift_12):
-                timebeamshift = stime[ind] + shift_12
+            if len(p.list_pos) != len(p.list_shift) or \
+                  len(p.list_pos) != len(p.list_angle) or \
+                  len(p.list_angle) != len(p.list_shift):
+                logger.error('Wrong length in list_pos, list_shift'\
+                             'or list_angle')
+                sys.exit(1)
+            for angle, shift, beam in zip(p.list_pos, p.list_shift,
+                                          p.list_angle):
+                rc = const.Rearth* (beam * math.pi / 180 - numpy.arcsin(const.Rearth
+                           *numpy.sin(math.pi- beam * math.pi / 180)
+                           /(const.Rearth + const.sat_elev))) * 10**(-3)
+                timebeamshift = stime[ind] + shift
                 if ((ipass + 1) % 2 ==0):
-                    xal = -( rc_12 * numpy.sin(omega * timebeamshift
-                          + angle_12))  /const.deg2km
-                    xac = (rc_12 * numpy.cos(omega * timebeamshift
-                           + angle_12))  / const.deg2km
+                    xal = -( rc * numpy.sin(omega * timebeamshift
+                          + angle))  /const.deg2km
+                    xac = (rc * numpy.cos(omega * timebeamshift
+                           + angle))  / const.deg2km
                     lon_tmp = (lonnad + (xal * numpy.cos(inclination)
                                     + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
                     lat_tmp = (latnad + (xal * numpy.sin(inclination)
                                     - xac * numpy.cos(inclination)))
                 else:
-                    xal = -( rc_12 * numpy.sin(omega * timebeamshift
-                          + angle_12))  /const.deg2km
-                    xac = (rc_12 * numpy.cos(omega * timebeamshift
-                           + angle_12))  / const.deg2km
+                    xal = -( rc * numpy.sin(omega * timebeamshift
+                          + angle))  /const.deg2km
+                    xac = (rc * numpy.cos(omega * timebeamshift
+                           + angle))  / const.deg2km
                     lon_tmp = (lonnad + (xal * numpy.cos(inclination)
                                     + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
@@ -339,46 +336,15 @@ def orbit2swath(modelbox, p, orb):
                 xal_beam.append(xal * const.deg2km)
                 xac_beam.append(xac * const.deg2km)
                 time_beam.append(timebeamshift)
-            for angle_6, shift_6 in zip(p.list_pos_6, p.list_shift_6):
-                timebeamshift = stime[ind] + shift_6
-                # x = (x_nad + rc_6 * numpy.cos(omega * timebeamshift
-                    #+ angle_6))
-                # y = (y_nad + rc_6 * numpy.sin(omega * timebeamshift
-                    #+ angle_6))
-                print(ipass)
-                if ((ipass +1) % 2 ==0):
-                    xal = -( rc_6 * numpy.sin(omega * timebeamshift
-                          + angle_6)) /const.deg2km
-                    xac = (rc_6 * numpy.cos(omega * timebeamshift
-                           + angle_6)) / const.deg2km
-                    lon_tmp = (lonnad + (xal * numpy.cos(inclination)
-                                    + xac * numpy.sin(inclination))
-                                    / numpy.cos(latnad * math.pi / 180.))
-                    lat_tmp = (latnad + (xal * numpy.sin(inclination)
-                                    - xac * numpy.cos(inclination)))
-                else:
-                    xal = -( rc_6 * numpy.sin(omega * timebeamshift
-                          + angle_6)) /const.deg2km
-                    xac = (rc_6 * numpy.cos(omega * timebeamshift
-                           + angle_6)) / const.deg2km
-                    lon_tmp = (lonnad + (xal * numpy.cos(inclination)
-                                    + xac * numpy.sin(inclination))
-                                    / numpy.cos(latnad * math.pi / 180.))
-                    lat_tmp = (latnad + (xal * numpy.sin(inclination)
-                                    - xac * numpy.cos(inclination)))
                 # lon_tmp, lat_tmp = mod_tools.cart2sphervect(x, y, z_nad)
-                lon_tmp = (lon_tmp + 360) % 360
-                lon_beam.append(lon_tmp)
-                lat_beam.append(lat_tmp)
-                xal_beam.append(xal * const.deg2km)
-                xac_beam.append(xac * const.deg2km)
-                time_beam.append(timebeamshift)
             sgrid.timeshift = orb.timeshift
             sgrid.lon = lon_beam
             sgrid.lat = lat_beam
             sgrid.time = time_beam
             sgrid.x_al = xal_beam
             sgrid.x_ac = xac_beam
+            sgrid.list_angle = p.list_angle
+            sgrid.list_pos = p.list_pos
             if os.path.exists(filesgrid):
                 os.remove(filesgrid)
             sgrid.write_swath(p)

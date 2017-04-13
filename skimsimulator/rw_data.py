@@ -22,12 +22,8 @@ import skimsimulator.const as const
 import numpy
 import sys, os
 import time as ti
-try: import params as p
-except:
-    print('params.py not found')
-    sys.exit()
-#from scipy.io import netcdf as nc
-#from scipy.io.netcdf import netcdf as nc
+import logging
+logger = logging.getLogger(__name__)
 
 def read_params(params_file):
     """ Read parameters from parameters file and store it in p.\n
@@ -239,64 +235,73 @@ class Sat_SKIM():
         fid.cycle = "{0:d}".format(int(self.al_cycle))
         ## - Create dimensions
         #if (not os.path.isfile(self.file)):
-        fid.createDimension('sample', numpy.shape(self.lon[0])[0])
         dimsample = 'sample'
+        fid.createDimension(dimsample, numpy.shape(self.lon[0])[0])
         #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
-        fid.createDimension('cycle', 1)
         dimcycle = 'cycle'
+        fid.createDimension(dimcycle, 1)
+        nbeam = len(self.list_pos)
+        dimnbeam = 'nbeam'
+        fid.createDimension(dimnbeam, nbeam)
 ## - Create and write Variables
-        n12beam = len(p.list_pos_12)
-        n6beam = len(p.list_pos_6)
-        for i in range(n12beam + 1 + n6beam):
+        vtime = fid.createVariable('time', 'f', (dimsample, dimnbeam))
+        vtime.axis = "T"
+        vtime.units = "seconds since the beginning of the sampling"
+        vtime.long_name = "Time"
+        vtime.standard_name = "time"
+        vtime.calendar = "gregorian"
+        vtime_nadir = fid.createVariable('time_nadir', 'f', (dimsample,))
+        vtime_nadir.axis = "T"
+        vtime_nadir.units = "seconds since the beginning of the sampling"
+        vtime_nadir.long_name = "Time"
+        vtime_nadir.standard_name = "time"
+        vtime_nadir.calendar = "gregorian"
+        vlon = fid.createVariable('lon', 'f4', (dimsample, dimnbeam))
+        vlon.axis = "X"
+        vlon.long_name = "Longitude"
+        vlon.standard_name = "longitude"
+        vlon.units = "degrees_east"
+        vlon_nadir = fid.createVariable('lon_nadir', 'f4', (dimsample,))
+        vlon_nadir.axis = "X"
+        vlon_nadir.long_name = "Longitude"
+        vlon_nadir.standard_name = "longitude"
+        vlon_nadir.units = "degrees_east"
+        vlat = fid.createVariable('lat', 'f4', (dimsample,dimnbeam))
+        vlat.axis = "Y"
+        vlat.long_name = "Latitude"
+        vlat.standard_name = "latitude"
+        vlat.units = "degrees_north"
+        vlat_nadir = fid.createVariable('lat_nadir', 'f4', (dimsample,))
+        vlat_nadir.axis = "Y"
+        vlat_nadir.long_name = "Latitude"
+        vlat_nadir.standard_name = "latitude"
+        vlat_nadir.units = "degrees_north"
+        vx_al = fid.createVariable('x_al', 'f4', (dimsample, dimnbeam))
+        vx_al.units = "km"
+        vx_al.long_name = "Along track distance from the nadir"
+        vx_ac = fid.createVariable('x_ac', 'f4', (dimsample,dimnbeam))
+        vx_ac.units = "km"
+        vx_ac.long_name = "Across track distance from the nadir"
+        vx_al_nadir = fid.createVariable('x_al_nadir', 'f4', (dimsample,))
+        vx_al_nadir.units = "km"
+        vx_al_nadir.long_name = "Along track distance from the beginning of"\
+                                "the pass"
+        for i in range(nbeam + 1):
             if i == 0:
-                ntime = 'time_nadir'
-                nlon = 'lon_nadir'
-                nlat = 'lat_nadir'
+                vtime_nadir[:] = self.time[i][:]
+                vlon_nadir[:] = self.lon[i][:]
+                vlat_nadir[:] = self.lat[i][:]
+                vx_al_nadir[:] = self.x_al[i][:]
 
-            elif i <= n12beam:
-                ntime = 'time_12_{}'.format(i - 1)
-                nlon = 'lon_12_{}'.format(i - 1)
-                nlat = 'lat_12_{}'.format(i - 1)
-                nxal = 'x_al_12_{}'.format(i - 1)
-                nxac = 'x_ac_12_{}'.format(i - 1)
             else:
-                ntime = 'time_6_{}'.format(i - n12beam - 1)
-                nlon = 'lon_6_{}'.format(i - n12beam - 1)
-                nlat = 'lat_6_{}'.format(i - n12beam - 1)
-                nxal = 'x_al_6_{}'.format(i - n12beam - 1)
-                nxac = 'x_ac_6_{}'.format(i - n12beam - 1)
-            vtime = fid.createVariable(ntime, 'f', (dimsample,))
-            vtime[:] = self.time[i][:]
-            vtime.axis = "T"
-            vtime.units = "seconds since the beginning of the sampling"
-            vtime.long_name = "Time"
-            vtime.standard_name = "time"
-            vtime.calendar = "gregorian"
-            vlon = fid.createVariable(nlon, 'f4', (dimsample,))
-            vlon[:] = self.lon[i][:]
-            vlon.axis = "X"
-            vlon.long_name = "Longitude"
-            vlon.standard_name = "longitude"
-            vlon.units = "degrees_east"
-            vlat = fid.createVariable(nlat, 'f4', (dimsample,))
-            vlat[:] = self.lat[i][:]
-            vlat.axis = "Y"
-            vlat.long_name = "Latitude"
-            vlat.standard_name = "latitude"
-            vlat.units = "degrees_north"
-            if i > 0:
-                vx_al = fid.createVariable(nxal, 'f4', (dimsample,))
-                vx_al[:] = self.x_al[i]
-                vx_al.units = "km"
-                vx_al.long_name = "Along track distance from the nadir"
-                vx_ac = fid.createVariable(nxac, 'f4', (dimsample,))
-                vx_ac[:] = self.x_ac[i]
-                vx_ac.units = "km"
-                vx_ac.long_name = "Across track distance from the nadir"
+                vtime[:, i - 1] = self.time[i][:]
+                vlon[:, i - 1] = self.lon[i][:]
+                vlat[:, i - 1] = self.lat[i][:]
+                vx_al[:, i - 1] = self.x_al[i][:]
+                vx_ac[:, i - 1] = self.x_ac[i][:]
         vcycle = fid.createVariable('cycle', 'f4', (dimcycle,))
         valcycle = fid.createVariable('al_cycle', 'f4', (dimcycle,))
         vtimeshift = fid.createVariable('timeshift', 'f4', (dimcycle,))
-        vx_al = fid.createVariable('x_al', 'f4', (dimsample,))
         vincl = fid.createVariable('inclination', 'f4', (dimsample,))
         vcycle[:] = self.cycle
         vcycle.units = "days during a cycle"
@@ -307,12 +312,18 @@ class Sat_SKIM():
         vtimeshift[:] = self.timeshift
         vtimeshift.units = "day"
         vtimeshift.long_name = "Shift time to match model time"
-        vx_al[:] = self.x_al[0]
-        vx_al.units = "km"
-        vx_al.long_name = "Along track distance from the beginning of the pass"
         vincl[:] = self.angle
         vincl.units = "rad"
         vincl.long_name = "Track inclination in radian"
+        vlistpos = fid.createVariable('beam_position', 'f4', (dimnbeam,))
+        vlistpos[:] = self.list_pos
+        vlistpos.units = ""
+        vlistpos.long_name = "Beam position"
+        vlistangle = fid.createVariable('beam_angle', 'f4', (dimnbeam,))
+        vlistangle[:] = self.list_angle
+        vlistangle.units = ""
+        vlistangle.long_name = "Beam angle"
+
         fid.close()
         return None
 
@@ -362,48 +373,58 @@ class Sat_SKIM():
         fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
         fid.keywords_vocabulary = "NASA"
         fid.references = ""
-        # fid.cycle = "{0:d}".format(int(self.al_cycle))
-        fid.createDimension('sample', numpy.shape(self.lon[0])[0])
         dimsample = 'sample'
+        fid.createDimension(dimsample, numpy.shape(self.lon[0])[0])
         #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
-        fid.createDimension('cycle', 1)
         dimcycle = 'cycle'
+        fid.createDimension(dimcycle, 1)
+        nbeam = len(p.list_pos)
+        dimnbeam = 'nbeam'
+        fid.createDimension(dimnbeam, nbeam)
 ## - Create and write Variables
-        n12beam = len(p.list_pos_12)
-        n6beam = len(p.list_pos_6)
-        for i in range(n12beam + 1 + n6beam):
+        vtime = fid.createVariable('time', 'f', (dimsample, dimnbeam))
+        vtime.axis = "T"
+        vtime.units = "seconds since the beginning of the sampling"
+        vtime.long_name = "Time"
+        vtime.standard_name = "time"
+        vtime.calendar = "gregorian"
+        vtime_nadir = fid.createVariable('time_nadir', 'f', (dimsample,))
+        vtime_nadir.axis = "T"
+        vtime_nadir.units = "seconds since the beginning of the sampling"
+        vtime_nadir.long_name = "Time"
+        vtime_nadir.standard_name = "time"
+        vtime_nadir.calendar = "gregorian"
+        vlon = fid.createVariable('lon', 'f4', (dimsample, dimnbeam))
+        vlon.axis = "X"
+        vlon.long_name = "Longitude"
+        vlon.standard_name = "longitude"
+        vlon.units = "degrees_east"
+        vlon_nadir = fid.createVariable('lon_nadir', 'f4', (dimsample,))
+        vlon_nadir.axis = "X"
+        vlon_nadir.long_name = "Longitude"
+        vlon_nadir.standard_name = "longitude"
+        vlon_nadir.units = "degrees_east"
+        vlat = fid.createVariable('lat', 'f4', (dimsample,dimnbeam))
+        vlat.axis = "Y"
+        vlat.long_name = "Latitude"
+        vlat.standard_name = "latitude"
+        vlat.units = "degrees_north"
+        vlat_nadir = fid.createVariable('lat_nadir', 'f4', (dimsample,))
+        vlat_nadir.axis = "Y"
+        vlat_nadir.long_name = "Latitude"
+        vlat_nadir.standard_name = "latitude"
+        vlat_nadir.units = "degrees_north"
+        for i in range(nbeam + 1):
             if i == 0:
-                ntime = 'time_nadir'
-                nlon = 'lon_nadir'
-                nlat = 'lat_nadir'
+                vtime_nadir[:] = self.time[i][:]
+                vlon_nadir[:] = self.lon[i][:]
+                vlat_nadir[:] = self.lat[i][:]
 
-            elif i <= n12beam:
-                ntime = 'time_12_{}'.format(i - 1)
-                nlon = 'lon_12_{}'.format(i - 1)
-                nlat = 'lat_12_{}'.format(i - 1)
             else:
-                ntime = 'time_6_{}'.format(i - n12beam - 1)
-                nlon = 'lon_6_{}'.format(i - n12beam - 1)
-                nlat = 'lat_6_{}'.format(i - n12beam - 1)
-            vtime = fid.createVariable(ntime, 'f', (dimsample,))
-            vtime[:] = self.time[i][:]
-            vtime.axis = "T"
-            vtime.units = "seconds since the beginning of the sampling"
-            vtime.long_name = "Time"
-            vtime.standard_name = "time"
-            vtime.calendar = "gregorian"
-            vlon = fid.createVariable(nlon, 'f4', (dimsample,))
-            vlon[:] = self.lon[i][:]
-            vlon.axis = "X"
-            vlon.long_name = "Longitude"
-            vlon.standard_name = "longitude"
-            vlon.units = "degrees_east"
-            vlat = fid.createVariable(nlat, 'f4', (dimsample,))
-            vlat[:] = self.lat[i][:]
-            vlat.axis = "Y"
-            vlat.long_name = "Latitude"
-            vlat.standard_name = "latitude"
-            vlat.units = "degrees_north"
+                vtime[:, i - 1] = self.time[i][:]
+                vlon[:, i - 1] = self.lon[i][:]
+                vlat[:, i - 1] = self.lat[i][:]
+
         longname = {"instr": "Instrumental error",
                   "ur_model": "Radial velocity interpolated from model",
                   "u_model": "Zonal velocity interpolated from model",
@@ -418,38 +439,43 @@ class Sat_SKIM():
                 "v_model": "m/s"
                 }
         for key, value in kwargs.items():
-            #if not value is None:
             if value is not None:
-                #for i in range(n12beam + 1 + n6beam):
+                nvar_nadir = '{}_nadir'.format(key)
+                var_nadir = fid.createVariable(nvar_nadir, 'f4', (dimsample,),
+                                               fill_value=-1.36e9)
+                nvar = '{}'.format(key)
+                var = fid.createVariable(nvar, 'f4',
+                                         (dimsample,dimnbeam),
+                                         fill_value=-1.36e9)
+                try:
+                    var.units = unit[str(key)]
+                    var_nadir.units = unit[str(key)]
+                except:
+                    var.units=''
+                    var_nadir.units=''
+                try:
+                    var.long_name = longname[str(key)]
+                    var_nadir.long_name = longname[str(key)]
+                except:
+                    var.long_name=str(key)
+                    var_nadir.long_name=str(key)
                 for i in range(len(value)):
                     if value[i].any():
-                        if i == 0:
-                            nvar = '{}_nadir'.format(key)
-                        elif i <= n12beam:
-                            nvar = '{}_12_{}'.format(key, i - 1)
-                        else:
-                            nvar = '{}_6_{}'.format(key, i - n12beam - 1)
-                        var = fid.createVariable(nvar, 'f4', (dimsample,),
-                                                 fill_value=-1.36e9)
-
                         value_tmp = value[i][:]
-                        vmin=numpy.nanmin(value_tmp)
-                        vmax=numpy.nanmax(value_tmp)
-                        value_tmp[numpy.isnan(value_tmp)] = -1.36e9
-                        value_tmp[value_tmp==0] = -1.36e9
-                        var[:] = value_tmp
-                        try:
-                            var.units = unit[str(key)]
-                        except:
-                            var.units=''
-                        try:
-                            var.long_name = longname[str(key)]
-                        except:
-                            var.long_name=str(key)
+                        vmin = numpy.nanmin(value_tmp)
+                        vmax = numpy.nanmax(value_tmp)
+                        mask = numpy.isnan(value_tmp)
+                        value_tmp[numpy.where(mask)] = -1.36e9
+                        mask_ind = numpy.where(value_tmp == 0)
+                        value_tmp[mask_ind] = -1.36e9
+                        if i == 0:
+                            var_nadir[:] = value_tmp
+                        else:
+                            var[:, i - 1] = value_tmp
                 # try:    var.missing_value = p.model_nan
                 # except: var.missing_value = 0.
                 # fid.setncattr('missing_value','-9999.f')
-
+        ###############TODO set range values
         fid.close()
         return None
 
@@ -463,30 +489,36 @@ class Sat_SKIM():
             fid = Dataset(self.file, 'r')
         except IOError:
             print('There was an error opening the file '+self.file)
-            sys.exit()
+            sys.exit(1)
         #fid = Dataset(self.file, 'r')
         time = []; lon = []; lat = []; cycle = []; x_al = []
         listvar={'time':time, 'lon': lon, 'lat': lat,}
         self.lon = []
         self.lat = []
         self.time = []
-        suffixe = ['_nadir']
-        for i in range(len(p.list_pos_12)):
-           suffixe.append('_12_{}'.format(i))
-        for i in range(len(p.list_pos_6)):
-           suffixe.append('_6_{}'.format(i))
 ## - Read variables in listvar and return them
         for stringvar in listvar:
-            for suf in suffixe:
-                var = fid.variables['{}{}'.format(stringvar, suf)]
-                listvar[stringvar].append(numpy.array(var[:]).squeeze())
-            exec('self.'+stringvar+' = listvar[stringvar]')
+            var = fid.variables['{}{}'.format(stringvar, '_nadir')]
+            listvar[stringvar].append(numpy.array(var[:]).squeeze())
+            var = fid.variables[stringvar]
+            for i in range(len(p.list_pos)):
+                listvar[stringvar].append(numpy.array(var[:, i]).squeeze())
+            #exec('self.'+stringvar+' = listvar[stringvar]')
+            setattr(self, stringvar, listvar[stringvar])
 ## - Read variables in arguments
         for key, value in kwargs.items():
             var = fid.variables[key]
             value = numpy.array(fid.variables[key][:]).squeeze()
             #value[value == var.fill_value] = numpy.nan
-            exec('self.'+key+' = value')
+            setattr(self, key, value)
+        self.pos = numpy.array(fid.variables['beam_position'][:])
+        if numpy.all(numpy.abs(self.pos - numpy.array(p.list_pos, dtype = numpy.float32)) > 0.0001):
+            logger.error('List of beam positions has changed, reprocess the grids')
+            sys.exit(1)
+        self.angle = numpy.array(fid.variables['beam_angle'][:])
+        if numpy.all(numpy.abs(self.angle - numpy.array(p.list_angle, dtype = numpy.float32)) > 0.0001):
+            logger.error('List of beam angles has changed, reprocess the grids')
+            sys.exit(1)
         try:
             self.corresponding_grid=fid.corresponding_grid
         except:
@@ -753,7 +785,7 @@ class WW3():
     Argument file is mandatory, arguments var, lon, lat
     are specified in params file. \n
     '''
-    def __init__(self,
+    def __init__(self, p,
                 file=None,
                 varu='ucur',
                 lonu='longitude',
@@ -773,6 +805,7 @@ class WW3():
         self.nfile = file
         self.depth = depth
         self.time = time
+        self.p = p
         try:
             self.model_nan = p.model_nan
         except:
@@ -783,10 +816,10 @@ class WW3():
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
         try:
-            vel_factor = p.vel_factor
+            vel_factor = self.p.vel_factor
         except:
             vel_factor=1.
-            p.vel_factor=1.
+            self.p.vel_factor=1.
         self.vvarv = read_var(self.nfile, self.nvarv, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
@@ -799,7 +832,7 @@ class WW3():
     def read_coordinates(self, index=None):
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        if p.grid=='regular':
+        if self.p.grid=='regular':
             lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
                                           twoD=False)
             lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
