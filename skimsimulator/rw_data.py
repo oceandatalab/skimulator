@@ -239,10 +239,11 @@ class Sat_SKIM():
         fid.cycle = "{0:d}".format(int(self.al_cycle))
         ## - Create dimensions
         #if (not os.path.isfile(self.file)):
-        fid.createDimension('time', numpy.shape(self.lon[0])[0])
+        fid.createDimension('sample', numpy.shape(self.lon[0])[0])
+        dimsample = 'sample'
         #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
         fid.createDimension('cycle', 1)
-
+        dimcycle = 'cycle'
 ## - Create and write Variables
         n12beam = len(p.list_pos_12)
         n6beam = len(p.list_pos_6)
@@ -260,30 +261,30 @@ class Sat_SKIM():
                 ntime = 'time_6_{}'.format(i - n12beam - 1)
                 nlon = 'lon_6_{}'.format(i - n12beam - 1)
                 nlat = 'lat_6_{}'.format(i - n12beam - 1)
-            vtime = fid.createVariable(ntime, 'f', ('time',))
+            vtime = fid.createVariable(ntime, 'f', (dimsample,))
             vtime[:] = self.time[i][:]
             vtime.axis = "T"
-            vtime.units = "days since the beginning of the sampling"
+            vtime.units = "seconds since the beginning of the sampling"
             vtime.long_name = "Time"
             vtime.standard_name = "time"
             vtime.calendar = "gregorian"
-            vlon = fid.createVariable(nlon, 'f4', ('time',))
+            vlon = fid.createVariable(nlon, 'f4', (dimsample,))
             vlon[:] = self.lon[i][:]
             vlon.axis = "X"
             vlon.long_name = "Longitude"
             vlon.standard_name = "longitude"
             vlon.units = "degrees_east"
-            vlat = fid.createVariable(nlat, 'f4', ('time',))
+            vlat = fid.createVariable(nlat, 'f4', (dimsample,))
             vlat[:] = self.lat[i][:]
             vlat.axis = "Y"
             vlat.long_name = "Latitude"
             vlat.standard_name = "latitude"
             vlat.units = "degrees_north"
-        vcycle = fid.createVariable('cycle', 'f4', ('cycle',))
-        valcycle = fid.createVariable('al_cycle', 'f4', ('cycle',))
-        vtimeshift = fid.createVariable('timeshift', 'f4', ('cycle',))
-        vx_al = fid.createVariable('x_al', 'f4', ('time',))
-        vincl = fid.createVariable('inclination', 'f4', ('time',))
+        vcycle = fid.createVariable('cycle', 'f4', (dimcycle,))
+        valcycle = fid.createVariable('al_cycle', 'f4', (dimcycle,))
+        vtimeshift = fid.createVariable('timeshift', 'f4', (dimcycle,))
+        vx_al = fid.createVariable('x_al', 'f4', (dimsample,))
+        vincl = fid.createVariable('inclination', 'f4', (dimsample,))
         vcycle[:] = self.cycle
         vcycle.units = "days during a cycle"
         vcycle.long_name = "Cycle"
@@ -349,10 +350,11 @@ class Sat_SKIM():
         fid.keywords_vocabulary = "NASA"
         fid.references = ""
         # fid.cycle = "{0:d}".format(int(self.al_cycle))
-        fid.createDimension('time', numpy.shape(self.lon[0])[0])
+        fid.createDimension('sample', numpy.shape(self.lon[0])[0])
+        dimsample = 'sample'
         #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
         fid.createDimension('cycle', 1)
-
+        dimcycle = 'cycle'
 ## - Create and write Variables
         n12beam = len(p.list_pos_12)
         n6beam = len(p.list_pos_6)
@@ -370,34 +372,37 @@ class Sat_SKIM():
                 ntime = 'time_6_{}'.format(i - n12beam - 1)
                 nlon = 'lon_6_{}'.format(i - n12beam - 1)
                 nlat = 'lat_6_{}'.format(i - n12beam - 1)
-            vtime = fid.createVariable(ntime, 'f', ('time',))
+            vtime = fid.createVariable(ntime, 'f', (dimsample,))
             vtime[:] = self.time[i][:]
             vtime.axis = "T"
-            vtime.units = "days since the beginning of the sampling"
+            vtime.units = "seconds since the beginning of the sampling"
             vtime.long_name = "Time"
             vtime.standard_name = "time"
             vtime.calendar = "gregorian"
-            vlon = fid.createVariable(nlon, 'f4', ('time',))
+            vlon = fid.createVariable(nlon, 'f4', (dimsample,))
             vlon[:] = self.lon[i][:]
             vlon.axis = "X"
             vlon.long_name = "Longitude"
             vlon.standard_name = "longitude"
             vlon.units = "degrees_east"
-            vlat = fid.createVariable(nlat, 'f4', ('time',))
+            vlat = fid.createVariable(nlat, 'f4', (dimsample,))
             vlat[:] = self.lat[i][:]
             vlat.axis = "Y"
             vlat.long_name = "Latitude"
             vlat.standard_name = "latitude"
             vlat.units = "degrees_north"
         longname = {"instr": "Instrumental error",
-                  "ur_model":"Radial velocity interpolated from model",
-                  "u_model":"Zonal velocity interpolated from model",
-                  "v_model":"Meridional velocity interpolated from model",
-                  "ur_obs":"Observed radial velocity (Ur_model+errors)",
-                  "index":"Equivalent model output number in list of file",
-                  "uss_err": "Stokes drift error", "nadir_err":"Nadir error", }
-        unit = {"instr":"m/s", "ur_model":"m/s", "ur_obs":"m/s", "index":" ",
-                "uss_err":"m/s", "nadir_err":"m/s",
+                  "ur_model": "Radial velocity interpolated from model",
+                  "u_model": "Zonal velocity interpolated from model",
+                  "v_model": "Meridional velocity interpolated from model",
+                  "ur_obs": "Observed radial velocity (Ur_model+errors)",
+                  "index": "Equivalent model output number in list of file",
+                  "uss_err": "Stokes drift error",
+                  "nadir_err": "Nadir error", }
+        unit = {"instr": "m/s", "ur_model": "m/s", "ur_obs": "m/s",
+                "index": " ",
+                "uss_err": "m/s", "nadir_err": "m/s", "u_model": "m/s",
+                "v_model": "m/s"
                 }
         for key, value in kwargs.items():
             #if not value is None:
@@ -411,7 +416,7 @@ class Sat_SKIM():
                             nvar = '{}_12_{}'.format(key, i - 1)
                         else:
                             nvar = '{}_6_{}'.format(key, i - n12beam - 1)
-                        var = fid.createVariable(nvar, 'f4', ('time',),
+                        var = fid.createVariable(nvar, 'f4', (dimsample,),
                                                  fill_value=-1.36e9)
 
                         value_tmp = value[i][:]

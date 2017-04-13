@@ -216,6 +216,8 @@ def run_simulator():
             if p.file_input is None:
                 model_data = []
             ur_true_all = []
+            u_true_all = []
+            v_true_all = []
             err_instr = []
             err_uss = []
             ur_obs = []
@@ -229,21 +231,31 @@ def run_simulator():
                     pos = p.list_pos_6[i - 1 - len(p.list_pos_12)]
                 if i == 0:
                     ur_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    u_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    v_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_obs = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.instr = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                 else:
-                    ur_true, vindice, time, progress = create_SKIMlikedata(cycle, numpy.shape(listsgridfile)[0]*rcycle, list_file, list_file_uss, modelbox, sgrid_tmp, model_data, modeltime, err, pos, p, progress_bar=True)
+                    ur_true, u_true, v_true, vindice, time, progress = \
+                    create_SKIMlikedata(cycle,
+                                        numpy.shape(listsgridfile)[0]*rcycle,
+                                        list_file, list_file_uss, modelbox,
+                                        sgrid_tmp, model_data, modeltime, err,
+                                        pos, p, progress_bar=True)
                 err_instr.append(err.instr)
                 err_uss.append(err.ur_uss)
                 ur_true_all.append(ur_true)
+                u_true_all.append(u_true)
+                v_true_all.append(v_true)
                 ### Make error here
                 ur_obs.append(err.ur_obs)
             #   Save outputs in a netcdf file
             if (~numpy.isnan(vindice)).any() or not p.file_input:
                 save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice,
                           ur_model=ur_true_all, ur_obs=ur_obs,
-                          err_instr=err_instr, err_uss=err_uss)
+                          err_instr=err_instr, err_uss=err_uss,
+                          u_model=u_true_all, v_model=v_true_all)
             del time
             # if p.file_input: del index
         if p.file_input:
@@ -487,11 +499,11 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                    uss=(u_uss, v_uss))
     err.make_vel_error(ur_true, p)
     # if p.file_input: del ind_time, SSH_model, model_step
-    return ur_true, vindice, time, progress
+    return ur_true, u_true, v_true, vindice, time, progress
 
 
-def save_SKIM(cycle, sgrid, err, p, time=[], vindice=[], ur_model=[],
-              ur_obs=[], err_instr=[], err_uss=[]):
+def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
+              ur_obs=(), err_instr=(), err_uss=(), u_model=(), v_model=()):
     file_output = (p.file_output + '_c' + str(cycle+1).zfill(2) + '_p'
                    + str(sgrid.ipass).zfill(3) + '.nc')
     OutputSKIM = rw_data.Sat_SKIM(file=file_output, lon=sgrid.lon,
@@ -501,6 +513,6 @@ def save_SKIM(cycle, sgrid, err, p, time=[], vindice=[], ur_model=[],
     OutputSKIM.write_data(p, ur_model=ur_model, index=[vindice,],
                           uss_err=err_uss,
                           nadir_err=[err.nadir, ], ur_obs=ur_obs,
-                          instr=err_instr)
+                          instr=err_instr, u_model=u_model, v_model=v_model)
     return None
 
