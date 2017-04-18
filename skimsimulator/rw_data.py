@@ -286,6 +286,9 @@ class Sat_SKIM():
         vx_al_nadir.units = "km"
         vx_al_nadir.long_name = "Along track distance from the beginning of"\
                                 "the pass"
+        vangle = fid.createVariable('angle', 'f4', (dimsample, dimnbeam))
+        vx_al_nadir.units = "rad"
+        vx_al_nadir.long_name = "Angle of the beam refered to the track"
         for i in range(nbeam + 1):
             if i == 0:
                 vtime_nadir[:] = self.time[i][:]
@@ -299,6 +302,7 @@ class Sat_SKIM():
                 vlat[:, i - 1] = self.lat[i][:]
                 vx_al[:, i - 1] = self.x_al[i][:]
                 vx_ac[:, i - 1] = self.x_ac[i][:]
+                vangle[:, i - 1] = self.beam_angle[i][:]
         vcycle = fid.createVariable('cycle', 'f4', (dimcycle,))
         valcycle = fid.createVariable('al_cycle', 'f4', (dimcycle,))
         vtimeshift = fid.createVariable('timeshift', 'f4', (dimcycle,))

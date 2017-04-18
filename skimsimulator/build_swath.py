@@ -12,7 +12,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     The path of the satellite is given by the orbit file and the subdomain
     corresponds to the one in the model. Note that a subdomain can be manually
     added in the parameters file. \n
-    Inputs are satellite orbit (p.filesat), subdomain (modelbox), List of 
+    Inputs are satellite orbit (p.filesat), subdomain (modelbox), List of
     postion of six degree beams, list of position of twelve degree beams,
     rotation speed. \n
     Outputs are netcdf files containing SKIM position (lon, lat number of days
@@ -282,6 +282,7 @@ def orbit2swath(modelbox, p, orb):
             lon_beam = [lonnad]
             lat_beam = [latnad]
             time_beam = [stime[ind]]
+            angle_beam = [lonnad * 0]
             xal_beam = [x_al_nad]
             xac_beam = [x_al_nad * 0]
             x_al_tmp = x_al_nad - x_al_nad[0]
@@ -309,21 +310,18 @@ def orbit2swath(modelbox, p, orb):
                            *numpy.sin(math.pi- beam * math.pi / 180)
                            /(const.Rearth + const.sat_elev))) * 10**(-3)
                 timebeamshift = stime[ind] + shift
+                beam_angle = omega * timebeamshift + angle
                 if ((ipass + 1) % 2 ==0):
-                    xal = -( rc * numpy.sin(omega * timebeamshift
-                          + angle))  /const.deg2km
-                    xac = (rc * numpy.cos(omega * timebeamshift
-                           + angle))  / const.deg2km
+                    xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
+                    xac = (rc * numpy.cos(beam_angle))  / const.deg2km
                     lon_tmp = (lonnad + (xal * numpy.cos(inclination)
                                     + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
                     lat_tmp = (latnad + (xal * numpy.sin(inclination)
                                     - xac * numpy.cos(inclination)))
                 else:
-                    xal = -( rc * numpy.sin(omega * timebeamshift
-                          + angle))  /const.deg2km
-                    xac = (rc * numpy.cos(omega * timebeamshift
-                           + angle))  / const.deg2km
+                    xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
+                    xac = (rc * numpy.cos(beam_angle))  / const.deg2km
                     lon_tmp = (lonnad + (xal * numpy.cos(inclination)
                                     + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
@@ -336,6 +334,7 @@ def orbit2swath(modelbox, p, orb):
                 xal_beam.append(xal * const.deg2km)
                 xac_beam.append(xac * const.deg2km)
                 time_beam.append(timebeamshift)
+                angle_beam.append(beam_angle)
                 # lon_tmp, lat_tmp = mod_tools.cart2sphervect(x, y, z_nad)
             sgrid.timeshift = orb.timeshift
             sgrid.lon = lon_beam
@@ -345,6 +344,7 @@ def orbit2swath(modelbox, p, orb):
             sgrid.x_ac = xac_beam
             sgrid.list_angle = p.list_angle
             sgrid.list_pos = p.list_pos
+            sgrid.beam_angle = angle_beam
             if os.path.exists(filesgrid):
                 os.remove(filesgrid)
             sgrid.write_swath(p)
