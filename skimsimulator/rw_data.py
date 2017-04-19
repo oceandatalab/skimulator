@@ -236,7 +236,7 @@ class Sat_SKIM():
         ## - Create dimensions
         #if (not os.path.isfile(self.file)):
         dimsample = 'sample'
-        nsample = numpy.shape(self.lon[-1])
+        nsample = numpy.shape(self.lon[-1])[0]
         fid.createDimension(dimsample, nsample)
         #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
         dimcycle = 'cycle'
@@ -328,7 +328,10 @@ class Sat_SKIM():
         vlistangle[:] = self.list_angle
         vlistangle.units = ""
         vlistangle.long_name = "Beam angle"
-
+        vincl = fid.createVariable('inclination', 'f4', (dimsample, ))
+        vincl.units = "rad"
+        vincl.long_name = "Track inclination at nadir"
+        vincl[:] = self.angle[:nsample]
         fid.close()
         return None
 
