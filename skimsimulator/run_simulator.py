@@ -39,6 +39,7 @@ import numpy
 import glob
 import sys
 import logging
+'''
 try:
     import params as p
 except:
@@ -48,6 +49,7 @@ except:
     else:
         print("Error: No params.py module found")
         sys.exit()
+'''
 import skimsimulator
 import skimsimulator.build_swath as build_swath
 import skimsimulator.rw_data as rw_data
@@ -64,7 +66,7 @@ ntot = 1
 ifile = 0
 
 
-def run_simulator():
+def run_simulator(p):
 
     # - Initialize some parameters values
     try:

@@ -236,7 +236,8 @@ class Sat_SKIM():
         ## - Create dimensions
         #if (not os.path.isfile(self.file)):
         dimsample = 'sample'
-        fid.createDimension(dimsample, numpy.shape(self.lon[0])[0])
+        nsample = numpy.shape(self.lon[-1])
+        fid.createDimension(dimsample, nsample)
         #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
         dimcycle = 'cycle'
         fid.createDimension(dimcycle, 1)
@@ -287,26 +288,29 @@ class Sat_SKIM():
         vx_al_nadir.long_name = "Along track distance from the beginning of"\
                                 "the pass"
         vangle = fid.createVariable('angle', 'f4', (dimsample, dimnbeam))
-        vx_al_nadir.units = "rad"
-        vx_al_nadir.long_name = "Angle of the beam refered to the track"
+        vangle.units = "rad"
+        vangle.long_name = "Angle of the beam refered to the track"
+        vrangle = fid.createVariable('radial_angle', 'f4', (dimsample, dimnbeam))
+        vrangle.units = "rad"
+        vrangle.long_name = "Radial angle"
         for i in range(nbeam + 1):
             if i == 0:
-                vtime_nadir[:] = self.time[i][:]
-                vlon_nadir[:] = self.lon[i][:]
-                vlat_nadir[:] = self.lat[i][:]
-                vx_al_nadir[:] = self.x_al[i][:]
+                vtime_nadir[:] = self.time[i][:nsample]
+                vlon_nadir[:] = self.lon[i][:nsample]
+                vlat_nadir[:] = self.lat[i][:nsample]
+                vx_al_nadir[:] = self.x_al[i][:nsample]
 
             else:
-                vtime[:, i - 1] = self.time[i][:]
-                vlon[:, i - 1] = self.lon[i][:]
-                vlat[:, i - 1] = self.lat[i][:]
-                vx_al[:, i - 1] = self.x_al[i][:]
-                vx_ac[:, i - 1] = self.x_ac[i][:]
-                vangle[:, i - 1] = self.beam_angle[i][:]
+                vtime[:, i - 1] = self.time[i][:nsample]
+                vlon[:, i - 1] = self.lon[i][:nsample]
+                vlat[:, i - 1] = self.lat[i][:nsample]
+                vx_al[:, i - 1] = self.x_al[i][:nsample]
+                vx_ac[:, i - 1] = self.x_ac[i][:nsample]
+                vangle[:, i - 1] = self.beam_angle[i][:nsample]
+                vrangle[:, i - 1] = self.radial_angle[i][:nsample]
         vcycle = fid.createVariable('cycle', 'f4', (dimcycle,))
         valcycle = fid.createVariable('al_cycle', 'f4', (dimcycle,))
         vtimeshift = fid.createVariable('timeshift', 'f4', (dimcycle,))
-        vincl = fid.createVariable('inclination', 'f4', (dimsample,))
         vcycle[:] = self.cycle
         vcycle.units = "days during a cycle"
         vcycle.long_name = "Cycle"
@@ -316,9 +320,6 @@ class Sat_SKIM():
         vtimeshift[:] = self.timeshift
         vtimeshift.units = "day"
         vtimeshift.long_name = "Shift time to match model time"
-        vincl[:] = self.angle
-        vincl.units = "rad"
-        vincl.long_name = "Track inclination in radian"
         vlistpos = fid.createVariable('beam_position', 'f4', (dimnbeam,))
         vlistpos[:] = self.list_pos
         vlistpos.units = ""

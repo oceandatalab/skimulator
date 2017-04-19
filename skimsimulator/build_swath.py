@@ -34,9 +34,12 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     votime = votime * 86400
     ## macrocycle is fixed or depend on number of beam
     macrocycle = cycle * 6 #(len(p.list_pos_12) + len(p.list_pos_6) + 1)
-    if numpy.mean(votime[1:] - votime[:-1]) != macrocycle:
+    #macrocycle = cycle * 6 #(len(p.list_pos_12) + len(p.list_pos_6) + 1)
+    #if numpy.mean(votime[1:] - votime[:-1]) != macrocycle:
+    if numpy.mean(votime[1:] - votime[:-1]) != cycle:
         x, y, z = mod_tools.spher2cart(volon, volat)
-        time_hr = numpy.arange(0., votime[-1], macrocycle)
+        #time_hr = numpy.arange(0., votime[-1], macrocycle)
+        time_hr = numpy.arange(0., votime[-1], cycle)
         f = interpolate.interp1d(votime, x)
         x_hr = f(time_hr)
         f = interpolate.interp1d(votime, y)
@@ -253,6 +256,8 @@ def orbit2swath(modelbox, p, orb):
     strpass = []
     # Compute rotating beams
     omega = p.rotation_speed * 2 * math.pi  / 60.
+    # Number of beam to lighten:
+    nbeam = len(p.list_shift) + 1
     #omega = p.rotation_speed / 60.
     # Loop on all passes after the first pass detected
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
@@ -273,28 +278,30 @@ def orbit2swath(modelbox, p, orb):
             sgrid = rw_data.Sat_SKIM(file=filesgrid)
             sgrid.x_al = x_al[ind]
             x_al_nad = x_al[ind]
+            x_al_nad = x_al_nad[0::nbeam]
             sgrid.cycle = tcycle
             sgrid.al_cycle = al_cycle
 
             # Project in cartesian coordinates satellite ground location
             lonnad = (lon[ind] + 360) % 360
             latnad = lat[ind]
-            lon_beam = [lonnad]
-            lat_beam = [latnad]
-            time_beam = [stime[ind]]
-            angle_beam = [lonnad * 0]
+            timenad = stime[ind]
+            lon_beam = [lonnad[0::nbeam]]
+            lat_beam = [latnad[0::nbeam]]
+            time_beam = [timenad[0::nbeam]]
+            n_nad = numpy.shape(lon_beam[0])[0]
+            angle_beam = [numpy.zeros(numpy.shape(lon_beam[0]))]
+            radial_angle_tot = [numpy.zeros(numpy.shape(lon_beam[0]))]
             xal_beam = [x_al_nad]
             xac_beam = [x_al_nad * 0]
             x_al_tmp = x_al_nad - x_al_nad[0]
-            sgrid.angle = lonnad * 0
-            sgrid.angle[1:] = numpy.arctan((latnad[1:] - latnad[:-1])
+            inclination_angle = numpy.zeros(numpy.shape(lonnad))
+            inclination_angle[1:] = numpy.arctan((latnad[1:] - latnad[:-1])
                                            / numpy.cos(latnad[1:] * math.pi / 180.)
                                            /(lonnad[1:] - lonnad[:-1]))
-            sgrid.angle[0] = sgrid.angle[1]
-            print(sgrid.angle[0], sgrid.angle[-1])
+            inclination_angle[0] = inclination_angle[1]
             #inclination = p.inclination
             #import pdb ; pdb.set_trace()
-            inclination = sgrid.angle #+ math.pi/2
             #inclination = 0
             #x_nad, y_nad, z_nad = mod_tools.spher2cart(lonnad, latnad)
             #import pdb ; pdb.set_trace()
@@ -309,17 +316,26 @@ def orbit2swath(modelbox, p, orb):
                 rc = const.Rearth* (beam * math.pi / 180 - numpy.arcsin(const.Rearth
                            *numpy.sin(math.pi- beam * math.pi / 180)
                            /(const.Rearth + const.sat_elev))) * 10**(-3)
-                timebeamshift = stime[ind] + shift
+                timebeamshift = stime[shift::nbeam] # + shift
                 beam_angle = omega * timebeamshift + angle
+                # Even pass: descending 
                 if ((ipass + 1) % 2 ==0):
+                    inclination = inclination_angle[shift::nbeam]
+                    radial_angle = math.pi / 2 + beam_angle + inclination
                     xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
                     xac = (rc * numpy.cos(beam_angle))  / const.deg2km
-                    lon_tmp = (lonnad + (xal * numpy.cos(inclination)
+                    lon_tmp = (lonnad[shift::nbeam]
+                                    + (xal * numpy.cos(inclination)
                                     + xac * numpy.sin(inclination))
                                     / numpy.cos(latnad * math.pi / 180.))
-                    lat_tmp = (latnad + (xal * numpy.sin(inclination)
+                    lat_tmp = (latnad[shift::nbeam]
+                                    + (xal * numpy.sin(inclination)
                                     - xac * numpy.cos(inclination)))
+                # Odd pass: ascending 
                 else:
+                    inclination = math.pi - inclination_angle[shift::nbeam]
+                    inclination = inclination_angle[shift::nbeam]
+                    radial_angle = math.pi / 2 + beam_angle - inclination
                     xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
                     xac = (rc * numpy.cos(beam_angle))  / const.deg2km
                     lon_tmp = (lonnad + (xal * numpy.cos(inclination)
@@ -335,6 +351,7 @@ def orbit2swath(modelbox, p, orb):
                 xac_beam.append(xac * const.deg2km)
                 time_beam.append(timebeamshift)
                 angle_beam.append(beam_angle)
+                radial_angle_tot.append(radial_angle)
                 # lon_tmp, lat_tmp = mod_tools.cart2sphervect(x, y, z_nad)
             sgrid.timeshift = orb.timeshift
             sgrid.lon = lon_beam
@@ -345,6 +362,7 @@ def orbit2swath(modelbox, p, orb):
             sgrid.list_angle = p.list_angle
             sgrid.list_pos = p.list_pos
             sgrid.beam_angle = angle_beam
+            sgrid.radial_angle = radial_angle_tot
             if os.path.exists(filesgrid):
                 os.remove(filesgrid)
             sgrid.write_swath(p)

@@ -41,6 +41,7 @@ list_angle = (12, 12, 12, 12, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
 beam_period = 0.0368
 list_shift = (beam_period, beam_period * 2, beam_period * 3, beam_period * 4, beam_period * 5)
+list_shift = (1, 2, 3, 4, 5)
 #------- Inclination of orbit, to be moved to const
 #inclination = 88.18 * math.pi / 180.
 inclination = 98.18 * math.pi / 180.

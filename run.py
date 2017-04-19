@@ -14,6 +14,7 @@ import shutil
 #else:
 #    print("Error: No such file: '%s'" % file_param)
 #    sys.exit()
+import params as p
 
 import skimsimulator.run_simulator as run_simulator
-run_simulator.run_simulator()
+run_simulator.run_simulator(p)
