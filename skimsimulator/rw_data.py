@@ -527,6 +527,7 @@ class Sat_SKIM():
         if numpy.all(numpy.abs(self.angle - numpy.array(p.list_angle, dtype = numpy.float32)) > 0.0001):
             logger.error('List of beam angles has changed, reprocess the grids')
             sys.exit(1)
+        self.radial_angle = numpy.array(fid.variables['radial_angle'][:])
         try:
             self.corresponding_grid=fid.corresponding_grid
         except:

@@ -312,6 +312,7 @@ def orbit2swath(modelbox, p, orb):
                 logger.error('Wrong length in list_pos, list_shift'\
                              'or list_angle')
                 sys.exit(1)
+            #import pdb ; pdb.set_trace()
             for angle, shift, beam in zip(p.list_pos, p.list_shift,
                                           p.list_angle):
                 rc = const.Rearth* (beam * math.pi / 180 - numpy.arcsin(const.Rearth
@@ -321,8 +322,8 @@ def orbit2swath(modelbox, p, orb):
                 beam_angle = omega * timebeamshift + angle
                 # Even pass: descending 
                 if ((ipass + 1) % 2 ==0):
-                    inclination = inclination_angle[shift::nbeam]
-                    radial_angle = math.pi / 2 + beam_angle + inclination
+                    inclination = inclination_angle[shift::nbeam] + math.pi/2
+                    radial_angle = beam_angle + inclination
                     xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
                     xac = (rc * numpy.cos(beam_angle))  / const.deg2km
                     lon_tmp = (lonnad[shift::nbeam]
@@ -333,11 +334,13 @@ def orbit2swath(modelbox, p, orb):
                     lat_tmp = (latnad[shift::nbeam]
                                     + (xal * numpy.sin(inclination)
                                     - xac * numpy.cos(inclination)))
+                    inclination_save = inclination_angle[0::nbeam] + math.pi/2
+                    radial_angle = beam_angle + inclination + math.pi/2
                 # Odd pass: ascending 
                 else:
-                    inclination = math.pi - inclination_angle[shift::nbeam]
+                    inclination = math.pi + inclination_angle[shift::nbeam]
                     inclination = inclination_angle[shift::nbeam]
-                    radial_angle = math.pi / 2 + beam_angle - inclination
+                    #radial_angle = math.pi / 2 + beam_angle - inclination
                     xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
                     xac = (rc * numpy.cos(beam_angle))  / const.deg2km
                     lon_tmp = (lonnad[shift::nbeam] + (xal * numpy.cos(inclination)
@@ -346,6 +349,8 @@ def orbit2swath(modelbox, p, orb):
                                     * math.pi / 180.))
                     lat_tmp = (latnad[shift::nbeam] + (xal * numpy.sin(inclination)
                                     - xac * numpy.cos(inclination)))
+                    inclination_save = inclination_angle[0::nbeam]
+                    radial_angle = beam_angle + inclination
                 #lon_tmp, lat_tmp = mod_tools.cart2sphervect(x, y, z_nad)
                 lon_tmp = (lon_tmp + 360) % 360
                 lon_beam.append(lon_tmp)
@@ -366,7 +371,7 @@ def orbit2swath(modelbox, p, orb):
             sgrid.list_pos = p.list_pos
             sgrid.beam_angle = angle_beam
             sgrid.radial_angle = radial_angle_tot
-            sgrid.angle = inclination_angle[shift::nbeam]
+            sgrid.angle = inclination_save
             if os.path.exists(filesgrid):
                 os.remove(filesgrid)
             sgrid.write_swath(p)

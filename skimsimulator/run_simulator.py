@@ -240,12 +240,13 @@ def run_simulator(p):
                     pos = p.list_pos[i - 1]
                     Gvar = p.G[i - 1]
                     rms_instr = p.rms_instr[i - 1]
+                    radial_angle = sgrid.radial_angle[:, i - 1]
                     ur_true, u_true, v_true, vindice, time, progress = \
                     create_SKIMlikedata(cycle,
                                         numpy.shape(listsgridfile)[0]*rcycle,
                                         list_file, list_file_uss, modelbox,
                                         sgrid_tmp, model_data, modeltime, err,
-                                        pos, Gvar, rms_instr, p,
+                                        pos, Gvar, rms_instr, radial_angle, p,
                                         progress_bar=True)
                 err_instr.append(err.instr)
                 err_uss.append(err.ur_uss)
@@ -316,7 +317,8 @@ def load_sgrid(sgridfile, p):
 
 
 def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgrid,
-                        model_data, modeltime, err, pos, Gvar, rms_instr, p,
+                        model_data, modeltime, err, pos, Gvar, rms_instr,
+                        radial_angle, p,
                         progress_bar=True):
     '''Create SKIM and nadir errors err and errnad, interpolate model SSH model_data on swath and nadir track,
     compute SKIM-like and nadir-like data for cycle, SKIM grid sgrid and ngrid. '''
@@ -494,12 +496,12 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                                              + ', cycle:' + str(cycle+1))
     try:
        ur_true = mod_tools.proj_radial(u_true, v_true, time, pos,
-                                       sgrid.incl, p)
+                                       radial_angle, p)
     except: import pdb; pdb.set_trace()
     if p.uss is not True:
         u_uss = None
         v_uss = None
-    err.make_error(ur_true, time, pos, p, sgrid.incl, Gvar, rms_instr,
+    err.make_error(ur_true, time, pos, p, radial_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss))
     err.make_vel_error(ur_true, p)
     # if p.file_input: del ind_time, SSH_model, model_step

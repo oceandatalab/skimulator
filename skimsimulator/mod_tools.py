@@ -129,10 +129,13 @@ def proj_radial(u, v, time, pos, inclination, p):
     #inclination = p.inclination
     omega = p.rotation_speed * numpy.pi * 2. / 60.
     #omega = p.rotation_speed / 60.
+    '''
     ualong = (v * numpy.sin(inclination) + u * numpy.cos(inclination))
     uacross = (-v * numpy.cos(inclination)  + u * numpy.sin(inclination))
     ur = (uacross * numpy.cos(omega * time + pos)
           + ualong * numpy.sin(omega * time + pos))
+    '''
+    ur = u * numpy.cos(inclination) + v * numpy.sin(inclination)
     return ur
 
 def update_progress(progress, arg1, arg2):
