@@ -328,9 +328,10 @@ class Sat_SKIM():
         vlistangle[:] = self.list_angle
         vlistangle.units = ""
         vlistangle.long_name = "Beam angle"
-        vincl = fid.createVariable('inclination', 'f4', (dimsample, ))
+        vincl = fid.createVariable('inclination', 'f4', (dimsample,))
         vincl.units = "rad"
         vincl.long_name = "Track inclination at nadir"
+        #vincl[:] = numpy.array(self.angle)[0,:nsample]
         vincl[:] = self.angle[:nsample]
         fid.close()
         return None
