@@ -319,7 +319,8 @@ def orbit2swath(modelbox, p, orb):
                 beam_angle = omega * timebeamshift + angle
                 # Even pass: descending 
                 if ((ipass + 1) % 2 ==0):
-                    inclination = -inclination_angle[shift::nbeam] + math.pi
+                    #inclination = -inclination_angle[shift::nbeam] + math.pi
+                    inclination = inclination_angle[shift::nbeam]
                     xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
                     xac = (rc * numpy.cos(beam_angle))  / const.deg2km
                     lon_tmp = (lonnad[shift::nbeam]
@@ -330,8 +331,9 @@ def orbit2swath(modelbox, p, orb):
                     lat_tmp = (latnad[shift::nbeam]
                                     + (xal * numpy.sin(inclination)
                                     - xac * numpy.cos(inclination)))
-                    inclination_save = -inclination_angle[0::nbeam] + math.pi
-                    radial_angle = -beam_angle + inclination #+ math.pi/2.
+                    #inclination_save = -inclination_angle[0::nbeam] + math.pi
+                    inclination_save = inclination_angle[0::nbeam]# + math.pi
+                    radial_angle = -beam_angle + inclination - math.pi/2.
                 # Odd pass: ascending 
                 else:
                     inclination = math.pi + inclination_angle[shift::nbeam]

@@ -15,7 +15,7 @@ indatadir = '/mnt/data_b/model/ww3_gs'
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
 #filesat = os.path.join(dir_setup,'orbs1a.txt')
-filesat = os.path.join(dir_setup,'orbits1_ifremer_test')
+filesat = os.path.join(dir_setup,'orbits1_ifremer')
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Name of the configuration (to build output files names) 
 config="WW3_GS"
