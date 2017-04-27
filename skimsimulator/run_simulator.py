@@ -225,6 +225,7 @@ def run_simulator(p):
             ur_true_all = []
             u_true_all = []
             v_true_all = []
+            vindice_all = []
             err_instr = []
             err_uss = []
             ur_obs = []
@@ -236,6 +237,7 @@ def run_simulator(p):
                     ur_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     u_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     v_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    vindice = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_obs = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.instr = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
@@ -257,11 +259,13 @@ def run_simulator(p):
                 ur_true_all.append(ur_true)
                 u_true_all.append(u_true)
                 v_true_all.append(v_true)
+                vindice_all.append(vindice)
                 ### Make error here
                 ur_obs.append(err.ur_obs)
             #   Save outputs in a netcdf file
-            if (~numpy.isnan(vindice)).any() or not p.file_input:
-                save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice,
+            if ((~numpy.isnan(numpy.array(vindice_all))).any()
+                  or not p.file_input):
+                save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
                           ur_model=ur_true_all, ur_obs=ur_obs,
                           err_instr=err_instr, err_uss=err_uss,
                           u_model=u_true_all, v_model=v_true_all)
@@ -524,7 +528,7 @@ def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
                                   lat=sgrid.lat, time=sgrid.time,
                                   x_al=sgrid.x_al, cycle=sgrid.cycle)
     OutputSKIM.gridfile = sgrid.gridfile
-    OutputSKIM.write_data(p, ur_model=ur_model, index=[vindice,],
+    OutputSKIM.write_data(p, ur_model=ur_model, index=vindice,
                           uss_err=err_uss,
                           nadir_err=[err.nadir, ], ur_obs=ur_obs,
                           instr=err_instr, u_model=u_model, v_model=v_model)

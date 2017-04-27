@@ -312,8 +312,8 @@ class Sat_SKIM():
         valcycle = fid.createVariable('al_cycle', 'f4', (dimcycle,))
         vtimeshift = fid.createVariable('timeshift', 'f4', (dimcycle,))
         vcycle[:] = self.cycle
-        vcycle.units = "days during a cycle"
-        vcycle.long_name = "Cycle"
+        vcycle.units = "second"
+        vcycle.long_name = "seconds during a cycle"
         valcycle[:] = self.al_cycle
         valcycle.units = "km"
         valcycle.long_name = " Distance travelled during the pass"
