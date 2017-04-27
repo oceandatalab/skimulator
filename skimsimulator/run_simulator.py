@@ -246,7 +246,8 @@ def run_simulator(p):
                     radial_angle = sgrid.radial_angle[:, i - 1]
                     ur_true, u_true, v_true, vindice, time, progress = \
                     create_SKIMlikedata(cycle,
-                                        numpy.shape(listsgridfile)[0]*rcycle,
+                                        numpy.shape(listsgridfile)[0]*rcycle
+                                        * (len(p.list_pos) + 1),
                                         list_file, list_file_uss, modelbox,
                                         sgrid_tmp, model_data, modeltime, err,
                                         pos, Gvar, rms_instr, radial_angle, p,
@@ -366,7 +367,8 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                 # If there are satellite data, Get true SSH from model
             if numpy.shape(index_filemodel)[1] > 0:
                 # number of file to be processed used in the progress bar
-                ntot = ntot + numpy.shape(index_filemodel)[1]-1
+                # ntot = ntot + numpy.shape(index_filemodel)[1]-1
+                ntot = numpy.shape(index_filemodel)[1]
                 # if numpy.shape(index)[1]>1:
                 # Select part of the track that corresponds to the time of the model (+-timestep/2)
                 ind_time = numpy.where(((time-sgrid.timeshift) >= (modeltime[ifile]-p.timestep/2.)) & ((time-sgrid.timeshift) < (modeltime[ifile]+p.timestep/2.)) )
