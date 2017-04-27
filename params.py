@@ -27,13 +27,15 @@ config="WW3_GS"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = False
+makesgrid = True
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
 modelbox =  [280.144,290.598,32.07,40.0283]
 #------- Rotation speed of the antenna (in rad/min)
 rotation_speed = 3 # * 180
+rotation_speed = 3.774  # * 180
+
 #------- List of position of beams:
 list_pos = (0, math.pi/2, math.pi, math.pi * 3 / 2., 0)
 #------- List of angle of beams in degrees:

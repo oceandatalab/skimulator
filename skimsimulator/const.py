@@ -22,6 +22,10 @@ sat_elev = 693*10**3
 B = 10
 # (in Hz)
 Fka = 35.75 * 10**9
+# Cycle duration in seconds
+cycle = 0.0368
+# Satellite cycle (S1) in days
+satcycle = 12.
 
 # - Light speed (m/s)
 C = 2.998*10**8

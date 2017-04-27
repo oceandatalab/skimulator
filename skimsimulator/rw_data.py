@@ -233,6 +233,7 @@ class Sat_SKIM():
         fid.keywords_vocabulary = ""
         fid.references = ""
         fid.cycle = "{0:d}".format(int(self.al_cycle))
+        fid.track = "{} th pass".format(self.ipass)
         ## - Create dimensions
         #if (not os.path.isfile(self.file)):
         dimsample = 'sample'
@@ -254,7 +255,7 @@ class Sat_SKIM():
         vtime_nadir = fid.createVariable('time_nadir', 'f', (dimsample,))
         vtime_nadir.axis = "T"
         vtime_nadir.units = "seconds since the beginning of the sampling"
-        vtime_nadir.long_name = "Time"
+        vtime_nadir.long_name = "Time at nadir"
         vtime_nadir.standard_name = "time"
         vtime_nadir.calendar = "gregorian"
         vlon = fid.createVariable('lon', 'f4', (dimsample, dimnbeam))
@@ -264,7 +265,7 @@ class Sat_SKIM():
         vlon.units = "degrees_east"
         vlon_nadir = fid.createVariable('lon_nadir', 'f4', (dimsample,))
         vlon_nadir.axis = "X"
-        vlon_nadir.long_name = "Longitude"
+        vlon_nadir.long_name = "Longitude at nadir"
         vlon_nadir.standard_name = "longitude"
         vlon_nadir.units = "degrees_east"
         vlat = fid.createVariable('lat', 'f4', (dimsample,dimnbeam))
@@ -274,7 +275,7 @@ class Sat_SKIM():
         vlat.units = "degrees_north"
         vlat_nadir = fid.createVariable('lat_nadir', 'f4', (dimsample,))
         vlat_nadir.axis = "Y"
-        vlat_nadir.long_name = "Latitude"
+        vlat_nadir.long_name = "Latitude at nadir"
         vlat_nadir.standard_name = "latitude"
         vlat_nadir.units = "degrees_north"
         vx_al = fid.createVariable('x_al', 'f4', (dimsample, dimnbeam))
@@ -285,14 +286,16 @@ class Sat_SKIM():
         vx_ac.long_name = "Across track distance from the nadir"
         vx_al_nadir = fid.createVariable('x_al_nadir', 'f4', (dimsample,))
         vx_al_nadir.units = "km"
-        vx_al_nadir.long_name = "Along track distance from the beginning of"\
-                                "the pass"
+        vx_al_nadir.long_name = "Nadir along track distance from the"\
+                                "beginning of the pass"
         vangle = fid.createVariable('angle', 'f4', (dimsample, dimnbeam))
         vangle.units = "rad"
-        vangle.long_name = "Angle of the beam refered to the track"
+        vangle.long_name = "Angle of the beam refered to the across track"\
+                           " direction"
         vrangle = fid.createVariable('radial_angle', 'f4', (dimsample, dimnbeam))
         vrangle.units = "rad"
-        vrangle.long_name = "Radial angle"
+        vrangle.long_name = "Radial angle refered to (longitude towards east,"\
+                            " latitude toward north)"
         for i in range(nbeam + 1):
             if i == 0:
                 vtime_nadir[:] = self.time[i][:nsample]
@@ -380,8 +383,10 @@ class Sat_SKIM():
         fid.project = "SKIM"
         fid.date_created = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
         fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
-        fid.keywords_vocabulary = "NASA"
+        fid.keywords_vocabulary = ""
         fid.references = ""
+        fid.cycle = "{} th cycle".format(self.ncycle)
+        fid.track = "{} th pass".format(self.ipass)
         dimsample = 'sample'
         fid.createDimension(dimsample, numpy.shape(self.lon[0])[0])
         #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
@@ -400,7 +405,7 @@ class Sat_SKIM():
         vtime_nadir = fid.createVariable('time_nadir', 'f', (dimsample,))
         vtime_nadir.axis = "T"
         vtime_nadir.units = "seconds since the beginning of the sampling"
-        vtime_nadir.long_name = "Time"
+        vtime_nadir.long_name = "Time at nadir"
         vtime_nadir.standard_name = "time"
         vtime_nadir.calendar = "gregorian"
         vlon = fid.createVariable('lon', 'f4', (dimsample, dimnbeam))
@@ -410,7 +415,7 @@ class Sat_SKIM():
         vlon.units = "degrees_east"
         vlon_nadir = fid.createVariable('lon_nadir', 'f4', (dimsample,))
         vlon_nadir.axis = "X"
-        vlon_nadir.long_name = "Longitude"
+        vlon_nadir.long_name = "Longitude at nadir"
         vlon_nadir.standard_name = "longitude"
         vlon_nadir.units = "degrees_east"
         vlat = fid.createVariable('lat', 'f4', (dimsample,dimnbeam))
@@ -420,7 +425,7 @@ class Sat_SKIM():
         vlat.units = "degrees_north"
         vlat_nadir = fid.createVariable('lat_nadir', 'f4', (dimsample,))
         vlat_nadir.axis = "Y"
-        vlat_nadir.long_name = "Latitude"
+        vlat_nadir.long_name = "Latitude at nadir"
         vlat_nadir.standard_name = "latitude"
         vlat_nadir.units = "degrees_north"
         for i in range(nbeam + 1):
@@ -440,10 +445,11 @@ class Sat_SKIM():
                   "v_model": "Meridional velocity interpolated from model",
                   "ur_obs": "Observed radial velocity (Ur_model+errors)",
                   "index": "Equivalent model output number in list of file",
-                  "uss_err": "Stokes drift error",
+                  "ur_uss": "Stokes drift radial velocity bias",
+                  "uss_err": "Stokes drift radial velocity bias_corrected",
                   "nadir_err": "Nadir error", }
         unit = {"instr": "m/s", "ur_model": "m/s", "ur_obs": "m/s",
-                "index": " ",
+                "index": " ", "ur_uss": "m/s",
                 "uss_err": "m/s", "nadir_err": "m/s", "u_model": "m/s",
                 "v_model": "m/s"
                 }

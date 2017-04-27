@@ -31,15 +31,11 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(1, 2, 0),
                                          unpack=True)
     # - If orbit is at low resolution, interpolate at 0.5 s resolution
-    cycle = 0.0368
-    votime = votime * 86400
+    cycle = const.cycle #0.0368
+    votime = votime * const.secinday
     ## macrocycle is fixed or depend on number of beam
-    macrocycle = cycle * 6 #(len(p.list_pos_12) + len(p.list_pos_6) + 1)
-    #macrocycle = cycle * 6 #(len(p.list_pos_12) + len(p.list_pos_6) + 1)
-    #if numpy.mean(votime[1:] - votime[:-1]) != macrocycle:
     if numpy.mean(votime[1:] - votime[:-1]) != cycle:
         x, y, z = mod_tools.spher2cart(volon, volat)
-        #time_hr = numpy.arange(0., votime[-1], macrocycle)
         time_hr = numpy.arange(0., votime[-1], cycle)
         f = interpolate.interp1d(votime, x)
         x_hr = f(time_hr)
@@ -52,8 +48,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         for ii in range(len(x_hr)):
             lon_hr[ii], lat_hr[ii] = mod_tools.cart2spher(x_hr[ii], y_hr[ii],
                                                           z_hr[ii])
-#        time_hr = time_hr / 86400.
-        ind = numpy.where((time_hr < 12.*86400))
+        ind = numpy.where((time_hr < const.satcycle * const.secinday))
         volon = lon_hr[ind]
         volat = lat_hr[ind]
         votime = time_hr[ind]
@@ -282,6 +277,7 @@ def orbit2swath(modelbox, p, orb):
             x_al_nad = x_al_nad[0::nbeam]
             sgrid.cycle = tcycle
             sgrid.al_cycle = al_cycle
+            sgrid.ipass = ipass + 1
 
             # Project in cartesian coordinates satellite ground location
             lonnad = (lon[ind] + 360) % 360

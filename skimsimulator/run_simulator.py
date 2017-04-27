@@ -265,6 +265,7 @@ def run_simulator(p):
             #   Save outputs in a netcdf file
             if ((~numpy.isnan(numpy.array(vindice_all))).any()
                   or not p.file_input):
+                sgrid.ncycle = cycle
                 save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
                           ur_model=ur_true_all, ur_obs=ur_obs,
                           err_instr=err_instr, err_uss=err_uss,
@@ -528,6 +529,8 @@ def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
                                   lat=sgrid.lat, time=sgrid.time,
                                   x_al=sgrid.x_al, cycle=sgrid.cycle)
     OutputSKIM.gridfile = sgrid.gridfile
+    OutputSKIM.ipass = sgrid.ipass
+    OutputSKIM.ncycle = sgrid.ncycle
     OutputSKIM.write_data(p, ur_model=ur_model, index=vindice,
                           uss_err=err_uss,
                           nadir_err=[err.nadir, ], ur_obs=ur_obs,
