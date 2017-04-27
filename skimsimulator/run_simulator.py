@@ -206,6 +206,9 @@ def run_simulator(p):
         sgrid = load_sgrid(sgridfile, p)
         sgrid_tmp = load_sgrid(sgridfile, p)
         sgrid.gridfile = sgridfile
+        # Convert cycle in days
+        sgrid.cycle /= 86400.
+        sgrid_tmp.cycle /= 86400.
     #   Select model data around the swath to reduce interpolation cost in
     #   griddata
     # - Generate SKIM like
@@ -214,7 +217,7 @@ def run_simulator(p):
         ncycle = int(rcycle)
     #   Loop on all cycles
         for cycle in range(0, ncycle+1):
-            if ifile > (p.nstep/p.timestep + 1):
+            if ifile > (p.nstep*p.timestep + 1):
                 break
             #   Create SKIM-like
             if p.file_input is None:
@@ -347,11 +350,12 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
     lon = sgrid.lon
     lat = sgrid.lat
     sgrid.timeshift /= 86400
-    # Look for satellite data that are beween step-p.timesetp/2 end setp+p.step/2
+    # Look for satellite data that are beween step-p.timestep/2 and step+p.timestep/2
     if p.file_input is not None:
         index_filemodel = numpy.where(((time[-1]-sgrid.timeshift) >= (modeltime-p.timestep/2.))
                                       & ((time[0]-sgrid.timeshift) < (modeltime+p.timestep/2.)))  # [0]
         nfile=0
+        time_offset=0
         # At each step, look for the corresponding time in the satellite data
         for ifile in index_filemodel[0]:
             progress = mod_tools.update_progress(float(istep)/float(ntot
@@ -369,12 +373,14 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
             # Load data from this model file
             #import pdb ; pdb.set_trace()
             if model_data.model == 'WW3':
-                filetime = ifile - p.dim_time * nfile
-                if filetime >= (p.dim_time * (nfile + 1)):
+                filetime = ifile - time_offset
+                if filetime >= (time_offset + p.dim_time[nfile]):
+                    time_offset += p.dim_time[nfile]
                     nfile += 1
-                model_step = rw_data.WW3(p, file=p.indatadir+os.sep+list_file[0], varu=p.varu, varv=p.varv, time=filetime)
+                    filetime = ifile - time_offset
+                model_step = rw_data.WW3(p, file=p.indatadir+os.sep+list_file[nfile], varu=p.varu, varv=p.varv, time=filetime)
                 if p.uss is True:
-                    uss_step =  rw_data.WW3(p, file=p.indatadir+os.sep+list_file_uss[0], varu='uuss', varv='vuss', time=filetime)
+                    uss_step =  rw_data.WW3(p, file=p.indatadir+os.sep+list_file_uss[nfile], varu='uuss', varv='vuss', time=filetime)
             else:
                 model_step = eval('rw_data.' + model_data.model
                               + '(file=p.indatadir+os.sep+list_file[ifile], varu=p.varu, varv=p.varv)')
@@ -495,13 +501,13 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                                              'no model file provided'
                                              + ', cycle:' + str(cycle+1))
     try:
-       ur_true = mod_tools.proj_radial(u_true, v_true, time, pos,
-                                       radial_angle, p)
+       ur_true = mod_tools.proj_radial(u_true, v_true,
+                                       radial_angle)
     except: import pdb; pdb.set_trace()
     if p.uss is not True:
         u_uss = None
         v_uss = None
-    err.make_error(ur_true, time, pos, p, radial_angle, Gvar, rms_instr,
+    err.make_error(ur_true, p, radial_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss))
     err.make_vel_error(ur_true, p)
     # if p.file_input: del ind_time, SSH_model, model_step

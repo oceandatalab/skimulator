@@ -27,7 +27,7 @@ config="WW3_GS"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = True
+makesgrid = False
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
@@ -80,12 +80,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = 228
+dim_time = (444, 744)
 # ------ Time step between two model outputs (in days):
-timestep = 0.125
+timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 200.
+nstep = 1000.
 # ------ Not a number value:
 model_nan = -32767.
 
@@ -116,7 +116,12 @@ ncomp2d = 2000
 # ------- Instrument white noise error
 instr = True
 # ------- Instrument white noise rms 
-rms_instr = [10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 20 * 10 ** (-2)]
+#rms_instr = [10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 20 * 10 ** (-2)]
+rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
+             os.path.join(dir_setup, 'instrumentnoise_12.dat'),
+             os.path.join(dir_setup, 'instrumentnoise_12.dat'),
+             os.path.join(dir_setup, 'instrumentnoise_12.dat'),
+             os.path.join(dir_setup, 'instrumentnoise_06.dat')]
 # ------- Stoke drift velocity [beam 12, beam 6]
 uss = True
 input_uss=os.path.join(indatadir, 'list_file_uss.txt')

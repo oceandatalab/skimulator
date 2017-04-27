@@ -125,17 +125,8 @@ def cart2spher(x, y, z):
     lon = lon * 180/math.pi
     return lon % 360, lat
 
-def proj_radial(u, v, time, pos, inclination, p):
-    #inclination = p.inclination
-    omega = p.rotation_speed * numpy.pi * 2. / 60.
-    #omega = p.rotation_speed / 60.
-    '''
-    ualong = (v * numpy.sin(inclination) + u * numpy.cos(inclination))
-    uacross = (-v * numpy.cos(inclination)  + u * numpy.sin(inclination))
-    ur = (uacross * numpy.cos(omega * time + pos)
-          + ualong * numpy.sin(omega * time + pos))
-    '''
-    ur = u * numpy.cos(inclination) + v * numpy.sin(inclination)
+def proj_radial(u, v, radial_angle):
+    ur = u * numpy.cos(radial_angle) + v * numpy.sin(radial_angle)
     return ur
 
 def update_progress(progress, arg1, arg2):

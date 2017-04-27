@@ -4,7 +4,7 @@ import scipy
 import skimsimulator.rw_data as rw_data
 import skimsimulator.const as const
 import skimsimulator.mod_tools as mod_tools
-from math import pi, sqrt
+import math
 from scipy.io import netcdf as nc
 import sys
 from scipy.ndimage.filters import gaussian_filter
@@ -42,21 +42,50 @@ class error():
         pass
 
 
-    def make_error(self, u_true, time, pos, p, incl, Gvar, rms_instr,
+    def make_error(self, u_true, p, radial_angle, Gvar, file_rms_instr,
                    uss=(None, None)):
         ''' Build errors corresponding to each selected noise
         among the effect of the wet_tropo, the phase between the two signals,
         the timing error, the roll of the satellite, the sea surface bias,
         the distorsion of the mast,
         the karin noise due to the sensor itself. '''
+        # - Load instrumental rms file into dictionnary
+        theta, rms = numpy.loadtxt(file_rms_instr, usecols=(0,1), unpack=True)
+        dic_rms = {}
+        with open(file_rms_instr) as f:
+           for line in f:
+               (key, val) = line.split()
+               dic_rms[int(key)] = float(val)
+
+        # - Compute rms corresponding to each radial angle
+        # Refer radial angle to along track direction
+        radial_angle_along = numpy.degrees((radial_angle + math.pi / 2)
+                                            % math.pi)
+        # Interpolate radial_angle with theta values
+        step = theta[1]-theta[0]
+        if((theta[1:]-theta[:-1]) != step).any():
+            logger.error('instrumental rms file noise has not a constant step')
+            sys.exit(1)
+        thetaprev = numpy.floor(radial_angle_along/step)
+        fac = radial_angle_along - thetaprev
+        rms_theta = radial_angle * 0
+        i = 0
+        for itheta, ifac in zip(thetaprev, fac):
+            keytheta = list(dic_rms.keys())[int(itheta)]
+            keythetanext = list(dic_rms.keys())[int(itheta + step)%180]
+            rms_theta[i] = (dic_rms[keytheta] * ifac / step
+                           + (step - ifac) / step
+                           * dic_rms[keythetanext])
+            i += 1
         # - Errors array are the same size as the swath size
         nal = numpy.shape(u_true)
         # ind_al=numpy.arange(0,nal)
         if p.instr is True:
-            self.instr = numpy.random.normal(0.0, rms_instr, nal)
+            self.instr = numpy.random.normal(0.0 * rms_theta,
+                                             rms_theta * 10**(-2))
         if p.uss is True and uss[0] is not None and uss[1] is not None:
             self.ur_uss = mod_tools.proj_radial(uss[0], uss[1],
-                                                time, pos, incl, p)
+                                                radial_angle)
 
             self.ur_uss *= Gvar
         return None
@@ -189,9 +218,9 @@ class errornadir():
         # - Compute random noise of 10**2 cm**2/(km/cycle)
         # - Compute the correspond error on the nadir in m
         for comp in range(0, self.ncomp1d):
-            phase_x_al = (2. * pi * float(self.f[comp])
+            phase_x_al = (2. * math.pi * float(self.f[comp])
                           *(numpy.float64(orb.x_al[:])
-                          + float(cycle*orb.al_cycle))) % (2.*pi)
+                          + float(cycle*orb.al_cycle))) % (2.*math.pi)
             errnadir[:] = (errnadir[:] + 2*self.A[comp]
                            *numpy.cos(phase_x_al[:]+self.phi[comp]))
         # - Compute the correspond timing error on the swath in m
@@ -215,16 +244,16 @@ class errornadir():
             # - Compute path delay error due to wet tropo and radiometer error
             #   using random coefficient initialized with power spectrums
             for comp in range(0, self.ncomp2d):
-                phase_x_al_large = (2. * pi * (float(self.frx_wt[comp])
+                phase_x_al_large = (2. * math.pi * (float(self.frx_wt[comp])
                                     * (numpy.float64(x_large))
                                     + float(self.fry_wt[comp])
-                                    * numpy.float64(y_large))) % (2.*pi)
+                                    * numpy.float64(y_large))) % (2.*math.pi)
                 wt_large = (wt_large + self.A_wt[comp]
                             * numpy.cos(phase_x_al_large
                             + self.phi_wt[comp])*10**-2)
-                phase_x_al = (2. * pi * float(self.fr_radio[comp])
+                phase_x_al = (2. * math.pi * float(self.fr_radio[comp])
                               * (numpy.float64(orb.x_al[:])
-                              + float(cycle*orb.al_cycle))) % (2.*pi)
+                              + float(cycle*orb.al_cycle))) % (2.*math.pi)
                 err_radio = (err_radio + 2*self.A_radio[comp]
                              *numpy.cos(phase_x_al+self.phi_radio[comp])*10**-2)
             # - Compute Residual path delay error after a 1-beam radiometer
@@ -247,7 +276,7 @@ class errornadir():
                 x, y = numpy.meshgrid(x_ac_large[min(indac): max(indac)+1],
                                       (orb.x_al[(min(indal)): (max(indal)+1)]-orb.x_al[i]))
                 # - Compute path delay on gaussian footprint
-                G = 1. / (2.*pi*p.sigma**2) * numpy.exp(-(x**2.+y**2.)
+                G = 1. / (2.*math.pi*p.sigma**2) * numpy.exp(-(x**2.+y**2.)
                                                         / (2.*p.sigma**2))
                 beam[i] = sum(sum(G*wt_large[min(indal): max(indal)+1,
                               min(indac):max(indac)+1]))/sum(sum(G))+err_radio[i]
