@@ -6,6 +6,8 @@ import skimsimulator.const as const
 import skimsimulator.rw_data as rw_data
 import os
 
+# Define logger level for debug purposes
+logger = logging.getLogger(__name__)
 
 def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     '''Computes the swath of SKIM satellites on a subdomain.
@@ -20,7 +22,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     '''
     npoints = 1
     # - Load SKIM orbit ground track
-    print('Load data from orbit file')
+    logger.info('Load data from orbit file')
     bnorbit = os.path.basename(orbitfile)
     if ((bnorbit == 'orbs1a.txt') | (bnorbit == 'orbs1a_test.txt')
          | (bnorbit == 'orbits1_ifremer')
@@ -30,8 +32,8 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     else:
         volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(1, 2, 0),
                                          unpack=True)
-    # - If orbit is at low resolution, interpolate at 0.5 s resolution
-    cycle = const.cycle #0.0368
+    # - If orbit is at low resolution, interpolate at cycle (s) resolution
+    cycle = const.cycle
     votime = votime * const.secinday
     ## macrocycle is fixed or depend on number of beam
     if numpy.mean(votime[1:] - votime[:-1]) != cycle:
@@ -48,6 +50,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         for ii in range(len(x_hr)):
             lon_hr[ii], lat_hr[ii] = mod_tools.cart2spher(x_hr[ii], y_hr[ii],
                                                           z_hr[ii])
+        # Cut orbit if too long
         ind = numpy.where((time_hr < const.satcycle * const.secinday))
         volon = lon_hr[ind]
         volat = lat_hr[ind]
@@ -93,7 +96,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     votime = numpy.hstack([votime[decal:], votime[:decal]])
     votime = (votime - votime[0]) % tcycle
     if votime[numpy.where(votime < 0)]:
-        print('WARNING: there are negative times in your orbit')
+        logger.warn('WARNING: there are negative times in your orbit')
     del ind
     # Compute the initial time of each pass
     dlat = numpy.roll(volat, 1) - volat
@@ -129,7 +132,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     distance = numpy.zeros((nop))
     # Compute and store distances and coordinates that are in the defined
     # subdomain
-    print('Compute SKIM nadir coordinate in the new domain')
+    logger.info('Compute SKIM nadir coordinate in the new domain')
     for i in range(0, nop - 1):
         mod_tools.update_progress(float(i) / float(nop-1), None, None)
         if abs(volon[i + 1] - volon[i]) > 1:
@@ -155,74 +158,12 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     ind = numpy.where(dstime > 3*(votime[1] - votime[0]))
     index = numpy.hstack([0, ind[0]])
     nindex = numpy.shape(index)[0]
-    # Initialize along track distance, time and coordinates at delta_al
-    # resolution
-    '''
-    if nindex > 1:
-        dgap = numpy.zeros((nindex))
-        for i in range(1, nindex):
-            dgap[i] = x_al_lr[index[i]] - x_al_lr[max(index[i] - 1, 0)]
-        Ninterp = (int((x_al_lr[-1] - x_al_lr[0] - sum(dgap))
-                   / float(p.delta_al)) + 1)
-        x_al = numpy.zeros((Ninterp))
-        stime = numpy.zeros((Ninterp))
-        lon = numpy.zeros((Ninterp))
-        lat = numpy.zeros((Ninterp))
-        imin = 0
-        imax = 0
-        for i in range(0, nindex - 1):
-            imax = imin + int((x_al_lr[index[i+1]-1] - x_al_lr[index[i]])
-                              / float(p.delta_al)) + 1
-            if imax <= (imin + 1):
-                x_al[imin] = x_al_lr[index[i]]
-                stime[imin] = stime_lr[index[i]]
-                lon[imin] = lon_lr[index[i]]
-                lat[imin] = lat_lr[index[i]]
-            else:
-                x_al[imin: imax] = x_al_lr[index[i]], index[i+1]]
-                stime[imin: imax] = stime_lr[index[i]: index[i+1]])
-                loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(
-                                        lon_lr[index[i]: index[i+1]])))
-                # if numpy.min(lon_lr[index[i]:index[i+1]])<1.
-                # and numpy.max(lon_lr[index[i]:index[i+1]])>359.:
-                # lontmp=lon_lr[index[i]:index[i+1]]
-                # lontmp[numpy.where(lontmp>180.)]=lontmp[numpy.where(
-                # lontmp>180.)]-360.
-                # lon[imin:imax]=numpy.interp(x_al[imin:imax],
-                # x_al_lr[index[i]:index[i+1]], lontmp)
-                #    lon[imin:imax]=(lon[imin:imax]+360)%360
-                # else:
-                #    lon[imin:imax]=numpy.interp(x_al[imin:imax],
-                # x_al_lr[index[i]:index[i+1]], lon_lr[index[i]:index[i+1]])
-                lon = lon_lr[index[i]: index[i+1]]
-                lat[imin: imax] = lat_lr[index[i]: index[i+1]])
-            imin = imax
-        x_al[imin:] = x_al_lr[index[-1]:]
-        stime[imin:] = stime_lr[index[-1]:]
-        loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(
-                                lon_lr[index[-1]:])))
-        # if numpy.min(lon_lr[index[-1]:])<1.
-        # and numpy.max(lon_lr[index[-1]:])>539:
-        # lontmp=lon_lr[index[-1]:]
-        # lontmp[numpy.where(lontmp>180.)]=lontmp[numpy.where(lontmp>180.)]-360
-        # lon[imin:]=numpy.interp(x_al[imin:], x_al_lr[index[-1]:], lontmp)
-        #    lon[imin:]=(lon[imin:]+360)%360
-        # else:
-        #    lon[imin:]=numpy.interp(x_al[imin:], x_al_lr[index[-1]:], lon_lr[index[-1]:])
-        lon[imin:] = lon_lr[index[-1]:]
-        lat[imin:] = lat_lr[index[-1]:]
-    else:
-        x_al = x_al_lr[:-1]
-        stime = stime_lr[:-1]
-        loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_lr[:-1])))
-        lon = lon_lr[:-1]
-        lat = lat_lr[:-1]
-    '''
     lon = lon_lr
     lat = lat_lr
     stime = stime_lr
     x_al = x_al_lr
     lon = lon % 360
+    # Save orbit data in Sat_SKIM object
     orb = rw_data.Sat_SKIM(file='{}.nc'.format(os.path.basename(orbitfile)))
     orb.x_al = x_al
     orb.time = stime
@@ -246,7 +187,7 @@ def orbit2swath(modelbox, p, orb):
     al_cycle = orb.al_cycle
     passtime = orb.passtime
     # - Computation of SKIM grid and storage by passes
-    print('\n Compute SKIM grid')
+    logger.info('\n Compute SKIM grid')
     # Detect first pass that is in the subdomain
     ipass0 = 0
     strpass = []
@@ -254,8 +195,8 @@ def orbit2swath(modelbox, p, orb):
     omega = p.rotation_speed * 2 * math.pi  / 60.
     # Number of beam to lighten:
     nbeam = len(p.list_shift) + 1
-    #omega = p.rotation_speed / 60.
-    # Loop on all passes after the first pass detected
+    # Loop on all passes after the first pass detected (note that ipass is
+    # actually stored as ipass + 1 to have the first pass at 1 and ascending
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
         # Detect indices corresponding to the pass
         if ipass == numpy.shape(passtime)[0]-1:
@@ -279,7 +220,7 @@ def orbit2swath(modelbox, p, orb):
             sgrid.al_cycle = al_cycle
             sgrid.ipass = ipass + 1
 
-            # Project in cartesian coordinates satellite ground location
+            # Compute nadir coordinate and initialize angles
             lonnad = (lon[ind] + 360) % 360
             latnad = + lat[ind]
             timenad = + stime[ind]
@@ -297,57 +238,53 @@ def orbit2swath(modelbox, p, orb):
                                            / numpy.cos(latnad[1:] * math.pi / 180.)
                                            /(lonnad[1:] - lonnad[:-1]))
             inclination_angle[0] = inclination_angle[1]
-            #inclination = p.inclination
-            #inclination = 0
-            #x_nad, y_nad, z_nad = mod_tools.spher2cart(lonnad, latnad)
+            # Check that list of position, shift and angle have the same
+            # dimension
             if len(p.list_pos) != len(p.list_shift) or \
                   len(p.list_pos) != len(p.list_angle) or \
                   len(p.list_angle) != len(p.list_shift):
                 logger.error('Wrong length in list_pos, list_shift'\
                              'or list_angle')
                 sys.exit(1)
+            # Loop on beam to construct cycloid
             for angle, shift, beam in zip(p.list_pos, p.list_shift,
                                           p.list_angle):
+                # Angle projected on the earth
                 rc = const.Rearth* (beam * math.pi / 180 - numpy.arcsin(const.Rearth
                            *numpy.sin(math.pi- beam * math.pi / 180)
                            /(const.Rearth + const.sat_elev))) * 10**(-3)
-                timebeamshift = timenad[shift::nbeam] # + shift
+                timebeamshift = timenad[shift::nbeam]
                 beam_angle = omega * timebeamshift + angle
-                # Even pass: descending 
+                xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
+                xac = (rc * numpy.cos(beam_angle))  / const.deg2km
+                # Even pass: descending
                 if ((ipass + 1) % 2 ==0):
                     #inclination = -inclination_angle[shift::nbeam] + math.pi
                     inclination = inclination_angle[shift::nbeam]
-                    xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
-                    xac = (rc * numpy.cos(beam_angle))  / const.deg2km
-                    lon_tmp = (lonnad[shift::nbeam]
-                                    + (xal * numpy.cos(inclination)
-                                    + xac * numpy.sin(inclination))
-                                    / numpy.cos(latnad[shift::nbeam]
-                                    * math.pi / 180.))
-                    lat_tmp = (latnad[shift::nbeam]
-                                    + (xal * numpy.sin(inclination)
-                                    - xac * numpy.cos(inclination)))
-                    #inclination_save = -inclination_angle[0::nbeam] + math.pi
-                    inclination_save = inclination_angle[0::nbeam]# + math.pi
+                    inclination_save = inclination_angle[0::nbeam]
                     radial_angle = -beam_angle + inclination - math.pi/2.
-                # Odd pass: ascending 
+                # Odd pass: ascending
                 else:
                     inclination = math.pi + inclination_angle[shift::nbeam]
                     #inclination = + inclination_angle[shift::nbeam]
-                    #radial_angle = math.pi / 2 + beam_angle - inclination
-                    xal = -( rc * numpy.sin(beam_angle))  /const.deg2km
-                    xac = (rc * numpy.cos(beam_angle))  / const.deg2km
-                    lon_tmp = (lonnad[shift::nbeam] + (xal * numpy.cos(inclination)
-                                    + xac * numpy.sin(inclination))
-                                    / numpy.cos(latnad[shift::nbeam]
-                                    * math.pi / 180.))
-                    lat_tmp = (latnad[shift::nbeam] + (xal * numpy.sin(inclination)
-                                    - xac * numpy.cos(inclination)))
+                   # lon_tmp = (lonnad[shift::nbeam] + (xal * numpy.cos(inclination)
+                   #                 + xac * numpy.sin(inclination))
+                   #                 / numpy.cos(latnad[shift::nbeam]
+                   #                 * math.pi / 180.))
+                   # lat_tmp = (latnad[shift::nbeam] + (xal * numpy.sin(inclination)
+                   #                 - xac * numpy.cos(inclination)))
                     inclination_save = math.pi + inclination_angle[0::nbeam]
                     radial_angle = -beam_angle + inclination - math.pi / 2.
-                    #radial_angle = beam_angle - inclination - math.pi / 2.
-                #lon_tmp, lat_tmp = mod_tools.cart2sphervect(x, y, z_nad)
+                lon_tmp = (lonnad[shift::nbeam]
+                                + (xal * numpy.cos(inclination)
+                                + xac * numpy.sin(inclination))
+                                / numpy.cos(latnad[shift::nbeam]
+                                * math.pi / 180.))
+                lat_tmp = (latnad[shift::nbeam]
+                                + (xal * numpy.sin(inclination)
+                                - xac * numpy.cos(inclination)))
                 lon_tmp = (lon_tmp + 360) % 360
+                # Concatenate list for each beam angle
                 lon_beam.append(lon_tmp)
                 lat_beam.append(lat_tmp)
                 xal_beam.append(xal * const.deg2km)
@@ -355,7 +292,7 @@ def orbit2swath(modelbox, p, orb):
                 time_beam.append(timebeamshift)
                 angle_beam.append(beam_angle)
                 radial_angle_tot.append(radial_angle)
-                # lon_tmp, lat_tmp = mod_tools.cart2sphervect(x, y, z_nad)
+            # Save Sgrid object
             sgrid.timeshift = orb.timeshift
             sgrid.lon = lon_beam
             sgrid.lat = lat_beam
@@ -367,6 +304,7 @@ def orbit2swath(modelbox, p, orb):
             sgrid.beam_angle = angle_beam
             sgrid.radial_angle = radial_angle_tot
             sgrid.angle = inclination_save
+            # Remove grid file if it exists and save it
             if os.path.exists(filesgrid):
                 os.remove(filesgrid)
             sgrid.write_swath(p)

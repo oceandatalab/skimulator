@@ -27,7 +27,7 @@ config="WW3_GS"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = True
+makesgrid = False
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)

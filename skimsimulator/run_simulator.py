@@ -39,17 +39,6 @@ import numpy
 import glob
 import sys
 import logging
-'''
-try:
-    import params as p
-except:
-    if os.path.isfile('params.py'):
-        print("There is a wrong entry in your params file")
-        import params
-    else:
-        print("Error: No params.py module found")
-        sys.exit()
-'''
 import skimsimulator
 import skimsimulator.build_swath as build_swath
 import skimsimulator.rw_data as rw_data
@@ -110,14 +99,15 @@ def run_simulator(p):
     else:
         list_file = None
     # - Read model input coordinates '''
-    # if no modelbox is specified (modelbox=None), the domain of the input
-    # data is taken as a modelbox
-    # coordinates from the region defined by modelbox are selected
+    # If a list of model files are specified, read model file coordinates
     if p.file_input:
         #model_data = eval('rw_data.' + model
         #                  + '(p, file=p.indatadir+os.sep+list_file[0])')
         model_data_ctor = getattr(rw_data, model)
         model_data = model_data_ctor(p, file=p.indatadir+os.sep+list_file[0])
+    # if no modelbox is specified (modelbox=None), the domain of the input
+    # data is taken as a modelbox
+    # coordinates from the region defined by modelbox are selected
     if p.modelbox:
         modelbox = numpy.array(p.modelbox, dtype='float')
         # Use convert to 360 data
@@ -128,8 +118,11 @@ def run_simulator(p):
         if p.file_input:
             modelbox = model_data.calc_box()
         else:
-            print('modelbox should be provided if no model file is provided')
-            sys.exit()
+            logger.error('modelbox should be provided if no model file is'\
+                         'provided')
+            sys.exit(1)
+    # - Extract data on modelbox
+    ### TODO: do only this step if modelbox is defined? Do it later?
     if p.file_input:
         model_data.read_coordinates()
         # Select model data in the region modelbox
@@ -166,33 +159,38 @@ def run_simulator(p):
                     model_data.model_indexv = numpy.where(((modelbox[0]-1) <= model_data.vlonv) | (model_data.vlonv <= (modelbox[1]+1)) & ((modelbox[2]-1) <= model_data.vlatv) & (model_data.vlatv <= (modelbox[3]+1)))
 
         model_data.model = model
+        # prevent IDL issues
         model_data.vloncircu = numpy.rad2deg(numpy.unwrap(model_data.vlonu))
         if p.lonu != p.lonv:
             model_data.vloncircv = numpy.rad2deg(numpy.unwrap(model_data.vlonv))
+    # avoid issue with 0=360 for global modelbox
     if modelbox[1] == 0:
         modelbox[1] = 359.99
     # - Make SKIM grid if necessary """
     if p.makesgrid:
-        print('\n Force creation of SKIM grid')
+        logger.info('\n Force creation of SKIM grid')
+        # make nadir orbit
         orb = build_swath.makeorbit(modelbox, p, orbitfile=p.filesat)
+        # build swath around this orbit
         build_swath.orbit2swath(modelbox, p, orb)
-        print("\n SKIM Grids and nadir tracks have been written in"\
+        logger.info("\n SKIM Grids and nadir tracks have been written in"\
               "{}".format(p.outdatadir))
-        print("-----------------------------------------------")
+        logger.info("-----------------------------------------------")
 
     ## Initialize errors
     err, errnad = load_error(p)
 
     # - Compute interpolated SSH and errors for each pass, at each
     #   cycle
-    print('Compute interpolated SSH and errors:')
+    logger.info('Compute interpolated SSH and errors:')
     #   load all SKIM grid files (one for each pass)
     listsgridfile = sorted(glob.glob(p.filesgrid + '_p*.nc'))
     if not listsgridfile:
-        print('\n There is no SKIM grid file in ' + p.outdatadir
-              + ', run simulator with option makesgrid set to true in your params file')
+        logger.error('\n There is no SKIM grid file in ' + p.outdatadir
+              + ', run simulator with option makesgrid set to true in your'\
+              'params file')
         sys.exit()
-    #   Model time step
+    # Build model time steps from parameter file
     modeltime = numpy.arange(0, p.nstep*p.timestep, p.timestep)
     #   Remove the grid from the list of model files
     if p.file_input:
@@ -204,35 +202,43 @@ def run_simulator(p):
     for sgridfile in listsgridfile:
         #   Load SKIM grid files (Swath and nadir)
         sgrid = load_sgrid(sgridfile, p)
+        # duplicate SKIM grids to assure that data are not modified and are
+        #saved properly
         sgrid_tmp = load_sgrid(sgridfile, p)
         sgrid.gridfile = sgridfile
         # Convert cycle in days
         sgrid.cycle /= 86400.
         sgrid_tmp.cycle /= 86400.
-    #   Select model data around the swath to reduce interpolation cost in
-    #   griddata
-    # - Generate SKIM like
-    #   Compute number of cycles needed to cover all nstep model timesteps
+        # Select model data around the swath to reduce interpolation cost in
+        # griddata ### TODO comment to be removed?
+        # - Generate SKIM like data
+        # Compute number of cycles needed to cover all nstep model timesteps
         rcycle = (p.timestep * p.nstep)/float(sgrid.cycle)
         ncycle = int(rcycle)
-    #   Loop on all cycles
+        #  Loop on all cycles
         for cycle in range(0, ncycle+1):
             if ifile > (p.nstep*p.timestep + 1):
                 break
-            #   Create SKIM-like
+            # Create SKIM-like data
             if p.file_input is None:
                 model_data = []
+            # Initialize all list of variables (each beam is appended to the
+            # list)
             ur_true_all = []
             u_true_all = []
             v_true_all = []
             vindice_all = []
             err_instr = []
             err_uss = []
+            ur_uss = []
             ur_obs = []
+            # Loop over the beams
             for i in range(len(p.list_pos) + 1):
                 sgrid_tmp.lon = sgrid.lon[i]
                 sgrid_tmp.lat = sgrid.lat[i]
                 sgrid_tmp.time = sgrid.time[i]
+                # If nadir, compute a different noise, not implemented so far,
+                # Initialize at zero.
                 if i == 0:
                     ur_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     u_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
@@ -241,10 +247,16 @@ def run_simulator(p):
                     err.ur_obs = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.instr = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    errr.err_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                # Interpolate the velocity and compute the noise for each beam
                 else:
+                    # Position of the beam in the antenna
                     pos = p.list_pos[i - 1]
+                    # Stoke drift bias impact factor
                     Gvar = p.G[i - 1]
+                    # Instrument noise file
                     rms_instr = p.rms_instr[i - 1]
+                    # Read radial angle for projection on lon, lat reference
                     radial_angle = sgrid.radial_angle[:, i - 1]
                     ur_true, u_true, v_true, vindice, time, progress = \
                     create_SKIMlikedata(cycle,
@@ -252,10 +264,11 @@ def run_simulator(p):
                                         * (len(p.list_pos) + 1),
                                         list_file, list_file_uss, modelbox,
                                         sgrid_tmp, model_data, modeltime, err,
-                                        pos, Gvar, rms_instr, radial_angle, p,
+                                        Gvar, rms_instr, radial_angle, p,
                                         progress_bar=True)
                 err_instr.append(err.instr)
                 err_uss.append(err.ur_uss)
+                ur_uss.append(err.ur_uss)
                 ur_true_all.append(ur_true)
                 u_true_all.append(u_true)
                 v_true_all.append(v_true)
@@ -268,7 +281,7 @@ def run_simulator(p):
                 sgrid.ncycle = cycle
                 save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
                           ur_model=ur_true_all, ur_obs=ur_obs,
-                          err_instr=err_instr, err_uss=err_uss,
+                          err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss,
                           u_model=u_true_all, v_model=v_true_all)
             del time
             # if p.file_input: del index
@@ -286,8 +299,8 @@ def run_simulator(p):
                                              '')
     # - Write Selected parameters in a txt file
     rw_data.write_params(p, p.outdatadir + os.sep + 'skim_simulator.output')
-    print("\n Simulated skim files have been written in " + p.outdatadir)
-    print("----------------------------------------------------------")
+    logger.info("\n Simulated skim files have been written in " + p.outdatadir)
+    logger.info("----------------------------------------------------------")
 
 
 def load_error(p):
@@ -324,20 +337,47 @@ def load_sgrid(sgridfile, p):
     sgrid.ipass=ipass
     return sgrid
 
+def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
+    ''' Interpolation of data when grid is regular and coordinate in 1D. '''
+    if Teval is None:
+        Teval = interpolate.RectBivariateSpline(lat_in, lon_in,
+                                            numpy.isnan(var),
+                                            kx=1, ky=1, s=0).ev(lat_out,
+                                            lon_out)
+    var_mask = + var
+    var_mask[numpy.isnan(var_mask)] = 0.
+    var_out = interpolate.RectBivariateSpline(lat_in, lon_in, var, kx=1, ky=1,
+                                              s=0).ev(lat_out, lon_out)
+    var_out[Teval > 0] = numpy.nan
+    return var_out, Teval
 
-def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgrid,
-                        model_data, modeltime, err, pos, Gvar, rms_instr,
-                        radial_angle, p,
-                        progress_bar=True):
-    '''Create SKIM and nadir errors err and errnad, interpolate model SSH model_data on swath and nadir track,
+
+def interpolate_irregular_pyresample(swath_in, var, grid_out, radius
+                                     interp_type='nearest'):
+    ''' Interpolation of data when grid is irregular and pyresample is
+    installed.'''
+    if interp_type == 'nearest':
+        var_out = pr.kd_tree.resample_nearest(swath_in, var, grid_out,
+                                          radius_of_influence=radius
+                                          *10**3, epsilon=100)
+    else:
+        var_out = pr.kd_tree.resample_gauss(swath_in, var, grid_out,
+                                          radius_of_influence=3*radius *10**3,
+                                          sigmas=radius*10**3, fill_value=None)
+    return var_out
+
+
+def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
+                        sgrid, model_data, modeltime, err, Gvar, rms_instr,
+                        radial_angle, p, progress_bar=True):
+    '''Create SKIM and nadir errors err and errnad, interpolate model SSH\
+    model_data on swath and nadir track,
     compute SKIM-like and nadir-like data for cycle, SKIM grid sgrid and ngrid. '''
     # - Progress bar variables are global
     global istep
     global ntot
     #   Initialiaze errors and SSH
     progress = 0
-    #inclination = p.inclination #* math.pi / 180
-    #omega = p.rotation_speed * numpy.pi * 2. / 60.
     err.instr = numpy.zeros((numpy.shape(sgrid.lon)[0]))
     err.ur_uss = numpy.zeros((numpy.shape(sgrid.lon)[0]))
     err.wet_tropo1nadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
@@ -352,10 +392,10 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
     ur_true = (numpy.zeros((numpy.shape(sgrid.lon)[0])))
     vindice = numpy.zeros((numpy.shape(sgrid.lon)[0])) * numpy.nan
     # Definition of the time in the model
-    time = sgrid.time / 86400. + date1
+    time = sgrid.time / 86400. + date1 # in days
     lon = sgrid.lon
     lat = sgrid.lat
-    sgrid.timeshift /= 86400
+    sgrid.timeshift /= 86400 # in days
     # Look for satellite data that are beween step-p.timestep/2 and step+p.timestep/2
     if p.file_input is not None:
         index_filemodel = numpy.where(((time[-1]-sgrid.timeshift) >= (modeltime-p.timestep/2.))
@@ -378,19 +418,29 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                 # Select part of the track that corresponds to the time of the model (+-timestep/2)
                 ind_time = numpy.where(((time-sgrid.timeshift) >= (modeltime[ifile]-p.timestep/2.)) & ((time-sgrid.timeshift) < (modeltime[ifile]+p.timestep/2.)) )
             # Load data from this model file
-            #import pdb ; pdb.set_trace()
+            # if output from ww3, time dimension is >1 (hourly outputs,
+            # one file per month
             if model_data.model == 'WW3':
                 filetime = ifile - time_offset
+                # read next file when the time dimension is reached
                 if filetime >= (time_offset + p.dim_time[nfile]):
                     time_offset += p.dim_time[nfile]
                     nfile += 1
                     filetime = ifile - time_offset
-                model_step = rw_data.WW3(p, file=p.indatadir+os.sep+list_file[nfile], varu=p.varu, varv=p.varv, time=filetime)
+                model_step = rw_data.WW3(p,
+                                      file=p.indatadir+os.sep+list_file[nfile],
+                                      varu=p.varu, varv=p.varv, time=filetime)
                 if p.uss is True:
-                    uss_step =  rw_data.WW3(p, file=p.indatadir+os.sep+list_file_uss[nfile], varu='uuss', varv='vuss', time=filetime)
+                    uss_step =  rw_data.WW3(p,
+                                  file=p.indatadir+os.sep+list_file_uss[nfile],
+                                  varu='uuss', varv='vuss', time=filetime)
             else:
-                model_step = eval('rw_data.' + model_data.model
-                              + '(file=p.indatadir+os.sep+list_file[ifile], varu=p.varu, varv=p.varv)')
+                #model_step = eval('rw_data.' + model_data.model
+                #              + '(file=p.indatadir+os.sep+list_file[ifile], varu=p.varu, varv=p.varv)')
+                model_step_ctor = getattr(rw_data, model_data.model)
+                model_step = model_data_ctor(file=os.path.join(p.indatadir,
+                                            list_file[ifile]), varu=p.varu,
+                                            varv = p.varv)
             if p.grid == 'regular':
                 model_step.read_var()
                 u_model = model_step.vvaru[model_data.model_index_latu, :]
@@ -417,32 +467,40 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
             # interpolate
             if p.grid == 'regular' and \
                     len(numpy.shape(model_data.vlonu)) == 1:
-                # ########################TODO
                 # Flatten satellite grid and select part of the track
                 # corresponding to the model time
-                Teval = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, numpy.isnan(u_model), kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                u_model_mask = + u_model
-                u_model_mask[numpy.isnan(u_model_mask)] = 0.
-                u_true_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_model_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                u_true_ind_time[Teval > 0] = numpy.nan
+                #Teval = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, numpy.isnan(u_model), kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
+                #u_model_mask = + u_model
+                #u_model_mask[numpy.isnan(u_model_mask)] = 0.
+                #u_true_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_model_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
+                #u_true_ind_time[Teval > 0] = numpy.nan
+                u_true_ind_time, Teval = interpolate_regular_1D(model_data.vlonu,
+                                                         model_data.vlatu,
+                                                         u_model,
+                                                         lon[ind_time[0]],
+                                                         lat[ind_time[0]])
                 u_true[ind_time[0]] = u_true_ind_time #[ind_time[0]]
                 if p.uss is True:
-                    u_uss_mod_mask = + u_uss_mod
-                    u_uss_mod_mask[numpy.isnan(u_uss_mod_mask)] = 0.
-                    u_uss_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_uss_mod_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                    u_uss_ind_time[Teval > 0] = numpy.nan
+                    u_uss_ind_time, Teval = interpolate_regular_1D(model_data.vlonu,
+                                                         model_data.vlatu,
+                                                         u_uss_mod,
+                                                         lon[ind_time[0]],
+                                                         lat[ind_time[0]],
+                                                         Teval=Teval)
                     u_uss[ind_time[0]] = u_uss_ind_time #[ind_time[0]]
-                Teval = interpolate.RectBivariateSpline(model_data.vlatv, model_data.vlonv, numpy.isnan(v_model), kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                v_model_mask = + v_model
-                v_model_mask[numpy.isnan(v_model_mask)] = 0.
-                v_true_ind_time = interpolate.RectBivariateSpline(model_data.vlatv, model_data.vlonv, v_model_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                v_true_ind_time[Teval > 0] = numpy.nan
+                v_true_ind_time, Teval = interpolate_regular_1D(model_data.vlonv,
+                                                         model_data.vlatv,
+                                                         v_model,
+                                                         lon[ind_time[0]],
+                                                         lat[ind_time[0]])
                 v_true[ind_time[0]] = v_true_ind_time #[ind_time[0]]
                 if p.uss is True:
-                    v_uss_mod_mask = + v_uss_mod
-                    v_uss_mod_mask[numpy.isnan(v_uss_mod_mask)] = 0.
-                    v_uss_ind_time = interpolate.RectBivariateSpline(model_data.vlatv, model_data.vlonv, v_uss_mod_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                    v_uss_ind_time[Teval > 0] = numpy.nan
+                    v_uss_ind_time, Teval = interpolate_regular_1D(model_data.vlonu,
+                                                         model_data.vlatu,
+                                                         v_uss_mod,
+                                                         lon[ind_time[0]],
+                                                         lat[ind_time[0]],
+                                                         Teval=Teval)
                     v_uss[ind_time[0]] = v_uss_ind_time #[ind_time[0]]
             else:
                 # Grid is irregular, interpolation can be done using
@@ -455,30 +513,49 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                     model_data.vlon = pr.utils.wrap_longitudes(model_data.vlon)
                     lon = pr.utils.wrap_longitudes(lon)
                     if len(numpy.shape(model_data.vlon)) <= 1:
-                        model_data.vlon, model_data.vlat = numpy.meshgrid(model_data.vlon, model_data.vlat)
-                    swath_defu = pr.geometry.SwathDefinition(lons=model_data.vlonu, lats=model_data.vlatu)
-                    swath_defv = pr.geometry.SwathDefinition(lons=model_data.vlonv, lats=model_data.vlatv)
+                        model_data.vlon, model_data.vlat = numpy.meshgrid(
+                                                           model_data.vlon,
+                                                           model_data.vlat)
+                    swath_defu = pr.geometry.SwathDefinition(
+                                 lons=model_data.vlonu, lats=model_data.vlatu)
+                    swath_defv = pr.geometry.SwathDefinition(
+                                 lons=model_data.vlonv, lats=model_data.vlatv)
                     grid_def = pr.geometry.SwathDefinition(lons=lon,
                                                            lats=lat)
-                    if p.interpolation=='nearest':
-                        u_true[ind_time[0]] = pr.kd_tree.resample_nearest(swath_defu, u_model, grid_def, radius_of_influence=max(p.delta_al)*10**3, epsilon=100)
-                        v_true[ind_time[0]] = pr.kd_tree.resample_nearest(swath_defv, v_model, grid_def, radius_of_influence=max(p.delta_al)*10**3, epsilon=100)
-                        if p.uss is True:
-                            u_uss[ind_time[0]] = pr.kd_tree.resample_nearest(swath_defu, u_uss_mod, grid_def, radius_of_influence=(p.delta_al)*10**3, epsilon=100)
-                            v_uss[ind_time[0]] = pr.kd_tree.resample_nearest(swath_defv, v_uss_mod, grid_def, radius_of_influence=max(p.delta_al)*10**3, epsilon=100)
-                    else:
-                        u_true[ind_time[0]] = pr.kd_tree.resample_gauss(swath_defu, u_model, grid_def, radius_of_influence=3*max(p.delta_al)*10**3, sigmas=max(p.delta_al, p.delta_ac)*10**3, fill_value=None)
-                        v_true[ind_time[0]] = pr.kd_tree.resample_gauss(swath_defv, v_model, grid_def, radius_of_influence=3*max(p.delta_al)*10**3, sigmas=max(p.delta_al, p.delta_ac)*10**3, fill_value=None)
-                        if p.uss is True:
-                            u_uss[ind_time[0]] = pr.kd_tree.resample_gauss(swath_defu, u_uss_mod, grid_def, radius_of_influence=3*max(p.delta_al)*10**3, sigmas=max(p.delta_al, p.delta_ac)*10**3, fill_value=None)
-                            v_uss[ind_time[0]] = pr.kd_tree.resample_gauss(swath_defv, v_uss_mod, grid_def, radius_of_influence=3*max(p.delta_al)*10**3, sigmas=max(p.delta_al, p.delta_ac)*10**3, fill_value=None)
+                    u_true[ind_time[0]] = interpolate_irregular_pyresample(
+                                          swath_defu, u_model, grid_def,
+                                          p.delta_al,
+                                          interp_type=p.interpolation)
+                    v_true[ind_time[0]] = interpolate_irregular_pyresample(
+                                          swath_defv, v_model, grid_def,
+                                          p.delta_al,
+                                          interp_type=p.interpolation)
+                    if p.uss is True:
+                        u_uss[ind_time[0]] = interpolate_irregular_pyresample(
+                                          swath_defu, u_uss_mod, grid_def,
+                                          p.delta_al,
+                                          interp_type=p.interpolation)
+                        v_uss[ind_time[0]] = interpolate_irregular_pyresample(
+                                          swath_defu, v_uss_mod, grid_def,
+                                          p.delta_al,
+                                          interp_type=p.interpolation)
                 except:
-                    u_true[ind_time[0]] = interpolate.griddata((model_data.vlonu.ravel(), model_data.vlatu.ravel()), u_model.ravel(), (lon[ind_time[0]], lat[ind_time[0]]), method=p.interpolation)
-                    v_true[ind_time[0]] = interpolate.griddata((model_data.vlonv.ravel(), model_data.vlatv.ravel()), v_model.ravel(), (lon[ind_time[0]], lat[ind_time[0]]), method=p.interpolation)
+                    u_true[ind_time[0]] = interpolate.griddata(
+                                           (model_data.vlonu.ravel(),
+                                           model_data.vlatu.ravel()),
+                                           u_model.ravel(), (lon[ind_time[0]],
+                                           lat[ind_time[0]]),
+                                           method=p.interpolation)
+                    v_true[ind_time[0]] = interpolate.griddata(
+                                           (model_data.vlonv.ravel(),
+                                           model_data.vlatv.ravel()),
+                                           v_model.ravel(), (lon[ind_time[0]],
+                                           lat[ind_time[0]]),
+                                           method=p.interpolation)
                     if p.uss is True:
                         u_uss[ind_time[0]] = interpolate.griddata((model_data.vlonu.ravel(), model_data.vlatu.ravel()), u_uss_mod.ravel(), (lon[ind_time[0]], lat[ind_time[0]]), method=p.interpolation)
                         v_uss[ind_time[0]] = interpolate.griddata((model_data.vlonv.ravel(), model_data.vlatv.ravel()), v_uss_mod.ravel(), (lon[ind_time[0]], lat[ind_time[0]]), method=p.interpolation)
-            #if p.interpolation == 'nearest':
+            # Force value outside modelbox at nan
             if modelbox[0] > modelbox[1]:
                     u_true[numpy.where(((lon < modelbox[0])
                              & (lon > modelbox[1]))
@@ -507,10 +584,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox, sgr
                                              'pass: ' + str(sgrid.ipass),
                                              'no model file provided'
                                              + ', cycle:' + str(cycle+1))
-    try:
-       ur_true = mod_tools.proj_radial(u_true, v_true,
-                                       radial_angle)
-    except: import pdb; pdb.set_trace()
+   ur_true = mod_tools.proj_radial(u_true, v_true, radial_angle)
     if p.uss is not True:
         u_uss = None
         v_uss = None
