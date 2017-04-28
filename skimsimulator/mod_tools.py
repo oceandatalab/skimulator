@@ -103,8 +103,6 @@ def cart2sphervect(x, y, z):
     if (x < 0).any():
         lon[x < 0] = (numpy.arctan(y [x < 0]/x[x < 0]) % (2*math.pi)
                       + x[x < 0] / x[x < 0]*math.pi)
-        # + max(-sign(x),0)*math.pi
-    # lon=(lon+2*math.pi)%2*math.pi
     lon = lon * 180/math.pi
     return lon % 360, lat
 
@@ -120,8 +118,6 @@ def cart2spher(x, y, z):
     else:
         lon = numpy.arctan(y/x) % (2*math.pi)
 
-        # + max(-sign(x),0)*math.pi
-    # lon=(lon+2*math.pi)%2*math.pi
     lon = lon * 180/math.pi
     return lon % 360, lat
 
