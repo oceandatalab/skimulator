@@ -5,6 +5,7 @@ import skimsimulator.mod_tools as mod_tools
 import skimsimulator.const as const
 import skimsimulator.rw_data as rw_data
 import os
+import logging
 
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)

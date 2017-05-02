@@ -247,7 +247,7 @@ def run_simulator(p):
                     err.ur_obs = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.instr = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    errr.err_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    err.err_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                 # Interpolate the velocity and compute the noise for each beam
                 else:
                     # Position of the beam in the antenna
@@ -267,6 +267,7 @@ def run_simulator(p):
                                         Gvar, rms_instr, radial_angle, p,
                                         progress_bar=True)
                 err_instr.append(err.instr)
+                ##### TODO: To be updated with computation of bias
                 err_uss.append(err.ur_uss)
                 ur_uss.append(err.ur_uss)
                 ur_true_all.append(ur_true)
@@ -352,7 +353,7 @@ def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
     return var_out, Teval
 
 
-def interpolate_irregular_pyresample(swath_in, var, grid_out, radius
+def interpolate_irregular_pyresample(swath_in, var, grid_out, radius,
                                      interp_type='nearest'):
     ''' Interpolation of data when grid is irregular and pyresample is
     installed.'''
@@ -584,7 +585,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                              'pass: ' + str(sgrid.ipass),
                                              'no model file provided'
                                              + ', cycle:' + str(cycle+1))
-   ur_true = mod_tools.proj_radial(u_true, v_true, radial_angle)
+    ur_true = mod_tools.proj_radial(u_true, v_true, radial_angle)
     if p.uss is not True:
         u_uss = None
         v_uss = None
@@ -596,7 +597,8 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
 
 
 def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
-              ur_obs=(), err_instr=(), err_uss=(), u_model=(), v_model=()):
+              ur_obs=(), err_instr=(), ur_uss = (), err_uss=(),
+              u_model=(), v_model=()):
     file_output = (p.file_output + '_c' + str(cycle+1).zfill(2) + '_p'
                    + str(sgrid.ipass).zfill(3) + '.nc')
     OutputSKIM = rw_data.Sat_SKIM(file=file_output, lon=sgrid.lon,
@@ -606,7 +608,7 @@ def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
     OutputSKIM.ipass = sgrid.ipass
     OutputSKIM.ncycle = sgrid.ncycle
     OutputSKIM.write_data(p, ur_model=ur_model, index=vindice,
-                          uss_err=err_uss,
+                          uss_err=err_uss, ur_uss = ur_uss,
                           nadir_err=[err.nadir, ], ur_obs=ur_obs,
                           instr=err_instr, u_model=u_model, v_model=v_model)
     return None
