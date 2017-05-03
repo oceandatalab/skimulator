@@ -23,9 +23,11 @@ class error():
     def __init__(self, p,
                  instr=None,
                  uss=None,
+                 err_uss=None,
                  ):
         self.instr = instr
         self.ur_uss = uss
+        self.err_uss = err_uss
 
     def init_error(self, p):
         '''Initialization of errors: Random realisation of errors are
@@ -43,7 +45,7 @@ class error():
 
 
     def make_error(self, u_true, p, radial_angle, Gvar, file_rms_instr,
-                   uss=(None, None)):
+                   uss=(None, None), std_local=None, errdcos = None):
         ''' Build errors corresponding to each selected noise
         among the effect of the wet_tropo, the phase between the two signals,
         the timing error, the roll of the satellite, the sea surface bias,
@@ -88,6 +90,13 @@ class error():
                                                 radial_angle)
 
             self.ur_uss *= Gvar
+        if p.uss is True and std_local is not None:
+            if errdcos is None:
+                errdcos = 1.
+            err_uss_tmp = p.bias_std * std_local * errdcos
+            self.err_uss = numpy.random.normal(0.0 * std_local,
+                                               err_uss_tmp)
+            self.std_uss = std_local
         return None
 
     def make_vel_error(self, ur_true, p):
@@ -98,7 +107,7 @@ class error():
         if p.instr is True:
             self.ur_obs = self.ur_obs + self.instr
         if p.uss is True:
-            self.ur_obs = self.ur_obs + self.ur_uss
+            self.ur_obs = self.ur_obs + self.err_uss
         if p.file_input is not None:
             self.ur_obs[numpy.where(ur_true == p.model_nan)] = p.model_nan
 

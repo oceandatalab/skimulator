@@ -10,7 +10,7 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data_b/model/ww3_gs'
+indatadir = '/mnt/data_b/model/ww3_gs/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
@@ -31,7 +31,7 @@ makesgrid = False
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [280.144,290.598,32.07,40.0283]
+modelbox =  [270.144,290.598,32.07,40.0283]
 #------- Rotation speed of the antenna (in rad/min)
 rotation_speed = 3 # * 180
 rotation_speed = 3.774  # * 180
@@ -118,7 +118,8 @@ ncomp2d = 2000
 # ------- Instrument white noise error
 instr = True
 # ------- Instrument white noise rms 
-#rms_instr = [10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 20 * 10 ** (-2)]
+# rms_instr = [10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2),
+# 20 * 10 ** (-2)]
 rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_12.dat'),
@@ -126,8 +127,11 @@ rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat')]
 # ------- Stoke drift velocity [beam 12, beam 6]
 uss = True
-input_uss=os.path.join(indatadir, 'list_file_uss.txt')
-G=[40, 40, 40, 40, 40]
+input_uss = os.path.join(indatadir, 'list_file_uss.txt')
+G = [40, 40, 40, 40, 40]
+bias_std = 9.
+errdcos = [25.2006/20, 25.2747/20, 25.4763/20, 25.4271/20, 19.9728/20]
+footprint_std = 400
 
 ## -- Geophysical error
 ## ----------------------
