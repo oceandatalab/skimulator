@@ -128,8 +128,8 @@ rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
 # ------- Stoke drift velocity [beam 12, beam 6]
 uss = True
 input_uss = os.path.join(indatadir, 'list_file_uss.txt')
-G = [40, 40, 40, 40, 40]
-bias_std = 9.
+G = [50, 50, 50, 50, 50]
+bias_std = 0.09
 errdcos = [25.2006/20, 25.2747/20, 25.4763/20, 25.4271/20, 19.9728/20]
 footprint_std = 400
 

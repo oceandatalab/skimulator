@@ -321,6 +321,42 @@ def run_simulator(p):
                 vindice_all.append(vindice)
                 ### Make error here
                 ur_obs.append(err.ur_obs)
+            #   Compute errdcos
+            # Load mask
+            '''
+            mask = 
+            # Compute number of azimuth per mega cycle
+            naz = 
+            # Initialize errdcos
+            errdcos_tot = []
+            for i in range(1, len(p.list_pos) + 1): 
+                mask_minicycle = mask[i][:]
+                radial_angle = sgrid.radial_angle[:, i - 1]
+                N = len(~nympy.isnan(mask_minicycle)
+                dtheta = numpy.mean(radial_angle[1:] - radial_angle[:-1])
+                errdcos = numpy.zeros(numpy.shape(radial_angle)) * numpy.nan
+                for ib in range(N):
+                    theta = radial_angle[ib] % (2 * math.pi)
+                    errdcos[ib] = 0
+                    for theta2 in range(theta - math.pi/2,
+                                        theta + math.pi/2, dtheta):
+                        lon = numpy.transpose(numpy.array(
+                                      sgrid.lon[1:][(ib - naz*2): (ib + naz*2))
+                        lat = numpy.transpose)numpy.array(
+                                      sgrid.lat[1:][(ib - naz*2): (ib + naz*2))
+                        angle = sgrid.radial_angle[(ib- naz*2):(ib + naz*2), :]
+                        ind_angle = numpy.where((angle >= (theta2-dtheta/2)) 
+                                                & (angle < (theta2 + dtheta/2))
+                        lon = lon[ind_angle]
+                        lat = lat[ind_angle]
+                        dist = numpy.sqrt(((lon - sgrid.lon[i][ib])*111
+                                          * numpy.cos(sgrid.lat[i][ib]))**2
+                                          + ((lat - sgrid.lat[i][ib])*111)**2)
+                        ind_dist = numpy.argmin(dist)
+                        errdcos[ib] + = (dist[ind_dist] * numpy.cos(theta
+                                         - angle[ind_dist]))**2 
+                errdcos_tot.append(numpy.sqrt(errdcos))
+            '''
             #   Save outputs in a netcdf file
             if ((~numpy.isnan(numpy.array(vindice_all))).any()
                   or not p.file_input):

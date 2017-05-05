@@ -93,7 +93,7 @@ class error():
         if p.uss is True and std_local is not None:
             if errdcos is None:
                 errdcos = 1.
-            err_uss_tmp = p.bias_std * std_local * errdcos
+            err_uss_tmp = p.bias_std * std_local * Gvar * errdcos
             self.err_uss = numpy.random.normal(0.0 * std_local,
                                                err_uss_tmp)
             self.std_uss = std_local
