@@ -71,6 +71,17 @@ Run the nadir alone:
    > python run_nadiralone.py [your params file]
 
 
+Orbits data
+-----------
+Reference orbits data are available online:
+
+.. code-block:: console
+
+   $ cd [yourpath]/skimsimulator/data
+   $ wget "https://oceandatalab.com/files/skim/orbits.tar.xz"
+   $ tar xJf orbits.tar.xz
+
+
 Documentation
 -------------
 - To build the documentation, in the ``doc`` directory:
