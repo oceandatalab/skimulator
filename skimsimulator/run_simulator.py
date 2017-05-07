@@ -248,6 +248,7 @@ def run_simulator(p):
             std_uss = []
             ur_uss = []
             ur_obs = []
+            mask = []
             # Loop over the beams
             for i in range(len(p.list_pos) + 1):
                 sgrid_tmp.lon = sgrid.lon[i]
@@ -265,6 +266,7 @@ def run_simulator(p):
                     err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.err_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.std_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    mask_tmp = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     if (p.footprint_std is not None and p.footprint_std !=0
                           and sgrid_tmp.indi is None):
                         sgrid_tmp.indi = numpy.zeros((numpy.shape(sgrid_tmp.lon)[0], 2))
@@ -311,6 +313,7 @@ def run_simulator(p):
                                         Gvar, rms_instr, errdcos, radial_angle,
                                         p,
                                         progress_bar=True)
+                    mask_tmp = (numpy.isnan(ur_true))
                 err_instr.append(err.instr)
                 err_uss.append(err.err_uss)
                 ur_uss.append(err.ur_uss)
@@ -319,16 +322,16 @@ def run_simulator(p):
                 u_true_all.append(u_true)
                 v_true_all.append(v_true)
                 vindice_all.append(vindice)
+                mask.append(mask_tmp)
                 ### Make error here
                 ur_obs.append(err.ur_obs)
             #   Compute errdcos
             # Load mask
             '''
-            mask = 
             # Compute number of azimuth per mega cycle
             naz = 
             # Initialize errdcos
-            errdcos_tot = []
+            errdcos_tot = numpy.zeros(numpy.shape(mask[0][:]))
             for i in range(1, len(p.list_pos) + 1): 
                 mask_minicycle = mask[i][:]
                 radial_angle = sgrid.radial_angle[:, i - 1]
@@ -344,6 +347,10 @@ def run_simulator(p):
                                       sgrid.lon[1:][(ib - naz*2): (ib + naz*2))
                         lat = numpy.transpose)numpy.array(
                                       sgrid.lat[1:][(ib - naz*2): (ib + naz*2))
+                        mask_ind = numpy.transpose)numpy.array(
+                                     mask[1:][(ib - naz*2): (ib + naz*2))
+                        lon[numpy.where(numpy.isnan(mask_ind))] = -1.36 *10**9
+                        lat[numpy.where(numpy.isnan(mask_ind))] = -1.36 *10**9
                         angle = sgrid.radial_angle[(ib- naz*2):(ib + naz*2), :]
                         ind_angle = numpy.where((angle >= (theta2-dtheta/2)) 
                                                 & (angle < (theta2 + dtheta/2))
@@ -354,7 +361,8 @@ def run_simulator(p):
                                           + ((lat - sgrid.lat[i][ib])*111)**2)
                         ind_dist = numpy.argmin(dist)
                         errdcos[ib] + = (dist[ind_dist] * numpy.cos(theta
-                                         - angle[ind_dist]))**2 
+                                         - angle[ind_dist]))**2
+                err_uss[i][:] *= errdcos
                 errdcos_tot.append(numpy.sqrt(errdcos))
             '''
             #   Save outputs in a netcdf file
@@ -364,7 +372,8 @@ def run_simulator(p):
                 save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
                           ur_model=ur_true_all, ur_obs=ur_obs, std_uss=std_uss,
                           err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss,
-                          u_model=u_true_all, v_model=v_true_all)
+                          u_model=u_true_all, v_model=v_true_all,
+                          errdcos=errdcos_tot)
             del time
             # if p.file_input: del index
         if p.file_input:
@@ -736,7 +745,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
 
 def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
               ur_obs=(), err_instr=(), ur_uss = (), err_uss=(),
-              u_model=(), v_model=(), std_uss=()):
+              u_model=(), v_model=(), std_uss=(), errdcos=()):
     file_output = (p.file_output + '_c' + str(cycle+1).zfill(2) + '_p'
                    + str(sgrid.ipass).zfill(3) + '.nc')
     OutputSKIM = rw_data.Sat_SKIM(file=file_output, lon=sgrid.lon,
@@ -748,6 +757,7 @@ def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
     OutputSKIM.write_data(p, ur_model=ur_model, index=vindice,
                           uss_err=err_uss, ur_uss=ur_uss, std_uss=std_uss,
                           nadir_err=[err.nadir, ], ur_obs=ur_obs,
-                          instr=err_instr, u_model=u_model, v_model=v_model)
+                          instr=err_instr, u_model=u_model, v_model=v_model,
+                          errdcos=errdcos)
     return None
 
