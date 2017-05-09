@@ -36,6 +36,7 @@ import os
 import shutil
 from scipy import interpolate
 import numpy
+import math
 import glob
 import sys
 import logging
@@ -243,10 +244,18 @@ def run_simulator(p):
             u_true_all = []
             v_true_all = []
             vindice_all = []
-            err_instr = []
-            err_uss = []
-            std_uss = []
-            ur_uss = []
+            err_instr = None
+            if p.instr is True:
+                err_instr = []
+            err_uss = None
+            std_uss = None
+            ur_uss = None
+            errdcos_tot = None
+            if p.uss is True:
+                err_uss = []
+                std_uss = []
+                ur_uss = []
+                errdcos_tot = []
             ur_obs = []
             mask = []
             # Loop over the beams
@@ -263,12 +272,13 @@ def run_simulator(p):
                     vindice = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.ur_obs = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     err.instr = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    err.err_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    err.std_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                     mask_tmp = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    if (p.footprint_std is not None and p.footprint_std !=0
-                          and sgrid_tmp.indi is None):
+                    if p.uss is True:
+                        err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                        err.err_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                        err.std_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    if (p.uss is True and p.footprint_std is not None
+                          and p.footprint_std !=0 and sgrid_tmp.indi is None):
                         sgrid_tmp.indi = numpy.zeros((numpy.shape(sgrid_tmp.lon)[0], 2))
                         sgrid_tmp.indj = numpy.zeros((numpy.shape(sgrid_tmp.lon)[0], 2))
                         for ib in range(len(sgrid_tmp.lon)):
@@ -299,7 +309,9 @@ def run_simulator(p):
                     # Instrument noise file
                     rms_instr = p.rms_instr[i - 1]
                     # Geometrical error errdcos
-                    errdcos = p.errdcos[i - 1]
+                    errdcos = 1
+                    if p.errdcos is not None and p.uss is True:
+                        errdcos = p.errdcos[i - 1]
                     # Read radial angle for projection on lon, lat reference
                     radial_angle = sgrid.radial_angle[:, i - 1]
                     ##############################
@@ -313,58 +325,27 @@ def run_simulator(p):
                                         Gvar, rms_instr, errdcos, radial_angle,
                                         p,
                                         progress_bar=True)
-                    mask_tmp = (numpy.isnan(ur_true))
-                err_instr.append(err.instr)
-                err_uss.append(err.err_uss)
-                ur_uss.append(err.ur_uss)
-                std_uss.append(err.std_uss)
+                    mask_tmp = numpy.isnan(ur_true)
+                if p.instr is True:
+                    err_instr.append(err.instr)
+                if p.uss is True:
+                    ur_uss.append(err.ur_uss)
+                    std_uss.append(err.std_uss)
+                    err_uss.append(err.err_uss)
                 ur_true_all.append(ur_true)
                 u_true_all.append(u_true)
                 v_true_all.append(v_true)
                 vindice_all.append(vindice)
                 mask.append(mask_tmp)
-                ### Make error here
                 ur_obs.append(err.ur_obs)
+                ### Make error here
             #   Compute errdcos
-            # Load mask
-            '''
-            # Compute number of azimuth per mega cycle
-            naz = 
-            # Initialize errdcos
-            errdcos_tot = numpy.zeros(numpy.shape(mask[0][:]))
-            for i in range(1, len(p.list_pos) + 1): 
-                mask_minicycle = mask[i][:]
-                radial_angle = sgrid.radial_angle[:, i - 1]
-                N = len(~nympy.isnan(mask_minicycle)
-                dtheta = numpy.mean(radial_angle[1:] - radial_angle[:-1])
-                errdcos = numpy.zeros(numpy.shape(radial_angle)) * numpy.nan
-                for ib in range(N):
-                    theta = radial_angle[ib] % (2 * math.pi)
-                    errdcos[ib] = 0
-                    for theta2 in range(theta - math.pi/2,
-                                        theta + math.pi/2, dtheta):
-                        lon = numpy.transpose(numpy.array(
-                                      sgrid.lon[1:][(ib - naz*2): (ib + naz*2))
-                        lat = numpy.transpose)numpy.array(
-                                      sgrid.lat[1:][(ib - naz*2): (ib + naz*2))
-                        mask_ind = numpy.transpose)numpy.array(
-                                     mask[1:][(ib - naz*2): (ib + naz*2))
-                        lon[numpy.where(numpy.isnan(mask_ind))] = -1.36 *10**9
-                        lat[numpy.where(numpy.isnan(mask_ind))] = -1.36 *10**9
-                        angle = sgrid.radial_angle[(ib- naz*2):(ib + naz*2), :]
-                        ind_angle = numpy.where((angle >= (theta2-dtheta/2)) 
-                                                & (angle < (theta2 + dtheta/2))
-                        lon = lon[ind_angle]
-                        lat = lat[ind_angle]
-                        dist = numpy.sqrt(((lon - sgrid.lon[i][ib])*111
-                                          * numpy.cos(sgrid.lat[i][ib]))**2
-                                          + ((lat - sgrid.lat[i][ib])*111)**2)
-                        ind_dist = numpy.argmin(dist)
-                        errdcos[ib] + = (dist[ind_dist] * numpy.cos(theta
-                                         - angle[ind_dist]))**2
-                err_uss[i][:] *= errdcos
-                errdcos_tot.append(numpy.sqrt(errdcos))
-            '''
+            if p.uss is True and p.errdcos is None:
+                errdcos_tot, err_uss = compute_errdcos(p, sgrid, mask,
+                                                          err_uss)
+                #errdcos_tot.append(errdcos)
+                #err_uss.append(err.err_uss)
+                #, err_uss)
             #   Save outputs in a netcdf file
             if ((~numpy.isnan(numpy.array(vindice_all))).any()
                   or not p.file_input):
@@ -742,6 +723,67 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     # if p.file_input: del ind_time, SSH_model, model_step
     return ur_true, u_true, v_true, vindice, time, progress
 
+def compute_errdcos(p, sgrid, mask, err_uss):
+    # Compute number of azimuth per mega cycle
+    naz = (60 / (p.rotation_speed * const.cycle * len(p.list_pos)))
+    # Initialize errdcos
+    errdcos_tot = []
+    errdcos_tot.append(numpy.zeros(numpy.shape(mask[0][:])))
+    # Convert list into arrays
+    lon_array = numpy.transpose(numpy.array(sgrid.lon[1:][:]))
+    lat_array = numpy.transpose(numpy.array(sgrid.lat[1:][:]))
+    mask_array = numpy.transpose(numpy.array(mask[1:][:]))
+    for i in range(1, len(p.list_pos) + 1):
+        mask_minicycle = mask[i][:]
+        radial_angle = sgrid.radial_angle[:, i - 1]
+        N = len(mask_minicycle)
+        dtheta = numpy.mean(abs(radial_angle[1:] - radial_angle[:-1]))
+        #errdcos = numpy.zeros(numpy.shape(radial_angle)) * numpy.nan
+        errdcos = numpy.full(numpy.shape(radial_angle), numpy.nan)
+        #import pdb; pdb.set_trace()
+        for ib in range(N):
+            if mask_minicycle[ib] is True:
+                continue
+            theta = radial_angle[ib] % (2 * math.pi)
+            errdcos[ib] = 0
+            ntheta2 = 0
+            for theta2 in numpy.arange(theta - math.pi/2,
+                                theta + math.pi/2, dtheta):
+                theta2 = theta2 % (2 * math.pi)
+                start_az = int(max(0, (ib - naz*1.5)))
+                end_az = int(min(N, (ib + naz*1.5)))
+                slice_az = slice(start_az, end_az)
+
+                lon = lon_array[slice_az, :]
+                lat = lat_array[slice_az, :]
+                mask_ind = mask_array[slice_az, :]
+                lon[numpy.where(mask_ind==True)] = -1.36 *10**9
+                lat[numpy.where(mask_ind==True)] = -1.36 *10**9
+                angle = sgrid.radial_angle[slice_az, :]
+                angle = numpy.mod(angle, 2 * math.pi)
+                ind_angle = numpy.where((angle >= (theta2 - dtheta/2.))
+                                       & (angle < (theta2 + dtheta/2.)))
+                ## To be tested: ind_angle can be empty near coast?
+                if len(ind_angle) == 0:
+                    logger.debug('WTF')
+                    continue
+                lon = lon[ind_angle]
+                lat = lat[ind_angle]
+                dlon_km = ((lon - sgrid.lon[i][ib])*111
+                            * numpy.cos(sgrid.lat[i][ib] * math.pi / 180.))
+                dlat_km = (lat - sgrid.lat[i][ib])*111
+                dist = numpy.sqrt(dlon_km**2 + dlat_km **2)
+                ind_dist = numpy.argmin(dist)
+                #errdcos[ib] += (dist[ind_dist] * numpy.cos(theta
+                #                 - angle[ind_angle[0][ind_dist],
+                #                         ind_angle[1][ind_dist]]))**2
+                errdcos[ib] += (dist[ind_dist] * numpy.cos(theta - theta2))**2
+                ntheta2 += 1
+            errdcos[ib] /= ntheta2
+        errdcos = numpy.sqrt(errdcos)
+        err_uss[i][:] *= errdcos / 20
+        errdcos_tot.append(errdcos)
+    return errdcos_tot, err_uss
 
 def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
               ur_obs=(), err_instr=(), ur_uss = (), err_uss=(),

@@ -447,14 +447,16 @@ class Sat_SKIM():
                   "index": "Equivalent model output number in list of file",
                   "ur_uss": "Stokes drift radial velocity bias",
                   "uss_err": "Stokes drift radial velocity bias_corrected",
-                  "nadir_err": "Nadir error", 
+                  "nadir_err": "Nadir error",
                   "std_uss": "Standard deviation of uss on a {} km"\
-                             "radius".format(p.footprint_std)}
+                             "radius".format(p.footprint_std),
+                  "errdcos": "Weight for uss_err computation"}
         unit = {"instr": "m/s", "ur_model": "m/s", "ur_obs": "m/s",
                 "index": " ", "ur_uss": "m/s", "uss_err": "m/s",
                 "uss_err": "m/s", "nadir_err": "m/s", "u_model": "m/s",
-                "v_model": "m/s", "std_uss": "m/s"
+                "v_model": "m/s", "std_uss": "m/s", "errdcos": "km",
                 }
+        list_nadir = {"instr", "nadir_err"}
         for key, value in kwargs.items():
             if value is not None:
                 nvar_nadir = '{}_nadir'.format(key)
@@ -486,9 +488,16 @@ class Sat_SKIM():
                         mask_ind = numpy.where(value_tmp == 0)
                         value_tmp[mask_ind] = -1.36e9
                         if i == 0:
-                            var_nadir[:] = value_tmp
+                            if key in list_nadir:
+                                var_nadir[:] = value_tmp
+                            else:
+                                continue
                         else:
-                            var[:, i - 1] = value_tmp
+                            try:
+                                var[:, i - 1] = value_tmp
+                            except:
+                                import pdb ; pdb.set_trace()
+
                 # try:    var.missing_value = p.model_nan
                 # except: var.missing_value = 0.
                 # fid.setncattr('missing_value','-9999.f')

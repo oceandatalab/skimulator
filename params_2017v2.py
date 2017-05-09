@@ -18,7 +18,7 @@ outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 filesat = os.path.join(dir_setup,'orbits1_ifremer')
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Name of the configuration (to build output files names) 
-config="WW3_GS_6b108az"
+config="WW3_GS_8b60az"
 
 # -----------------------# 
 # SKIM swath parameters 
@@ -34,16 +34,17 @@ makesgrid = True
 modelbox =  [270.144,290.598,32.07,40.0283]
 #------- Rotation speed of the antenna (in tr/min)
 #rotation_speed = 3.774  # * 180
-rotation_speed = 2.5161
-
+rotation_speed = 3.396739
 #------- List of position of beams:
-list_pos = (0, math.pi/2, math.pi, math.pi * 3 / 2., 0)
+list_pos = (0, 72*math.pi/180., 144*math.pi/180., 216*math.pi / 180.,
+            288*math.pi/180., 0, math.pi)
 #------- List of angle of beams in degrees:
-list_angle = (12, 12, 12, 12, 6)
+list_angle = (12, 12, 12, 12, 12, 6, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
-beam_period = 0.0368
-list_shift = (beam_period, beam_period * 2, beam_period * 3, beam_period * 4, beam_period * 5)
-list_shift = (1, 2, 3, 4, 5)
+beam_period = 0.03680
+list_shift = (beam_period, beam_period * 2, beam_period * 4, beam_period * 5,
+              beam_period * 7, beam_period * 3, beam_period * 6)
+list_shift = (1, 2, 4, 5, 7, 3, 6)
 #------- Inclination of orbit, to be moved to const
 #inclination = 88.18 * math.pi / 180.
 inclination = 98.18 * math.pi / 180.
@@ -124,11 +125,13 @@ rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_12.dat'),
+             os.path.join(dir_setup, 'instrumentnoise_12.dat'),
+             os.path.join(dir_setup, 'instrumentnoise_06.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat')]
 # ------- Stoke drift velocity [beam 12, beam 6]
 uss = True
 input_uss = os.path.join(indatadir, 'list_file_uss.txt')
-G = [50, 50, 50, 50, 50]
+G = [50, 50, 50, 50, 50, 50, 50]
 bias_std = 0.09
 errdcos = None
 #[25.2006/20, 25.2747/20, 25.4763/20, 25.4271/20, 19.9728/20]
