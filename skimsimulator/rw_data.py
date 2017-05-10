@@ -237,7 +237,8 @@ class Sat_SKIM():
         ## - Create dimensions
         #if (not os.path.isfile(self.file)):
         dimsample = 'sample'
-        nsample = numpy.shape(self.lon[-1])[0]
+        maxpos = numpy.argmax(numpy.array(p.list_shift))
+        nsample = numpy.shape(self.lon[maxpos + 1])[0]
         fid.createDimension(dimsample, nsample)
         #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
         dimcycle = 'cycle'

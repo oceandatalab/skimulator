@@ -95,10 +95,12 @@ def run_simulator(p):
     # - Read list of user model files """
     if p.file_input is not None:
         list_file = [line.strip() for line in open(p.file_input)]
-    if p.uss is True:
-        list_file_uss = [line.strip() for line in open(p.input_uss)]
     else:
         list_file = None
+    if p.uss is True and p.input_uss is not None:
+        list_file_uss = [line.strip() for line in open(p.input_uss)]
+    else:
+        list_file_uss = None
     # - Read model input coordinates '''
     # If a list of model files are specified, read model file coordinates
     if p.file_input:
@@ -750,8 +752,8 @@ def compute_errdcos(p, sgrid, mask, err_uss):
             for theta2 in numpy.arange(theta - math.pi/2,
                                 theta + math.pi/2, dtheta):
                 theta2 = theta2 % (2 * math.pi)
-                start_az = int(max(0, (ib - naz*1.5)))
-                end_az = int(min(N, (ib + naz*1.5)))
+                start_az = int(max(0, (ib - naz*2)))
+                end_az = int(min(N, (ib + naz*2)))
                 slice_az = slice(start_az, end_az)
 
                 lon = lon_array[slice_az, :]

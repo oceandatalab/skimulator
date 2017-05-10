@@ -10,7 +10,7 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data_b/model/ww3_oregon/' #netcdf3/'
+indatadir = '/mnt/data_b/model/ww3_gs/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
@@ -18,7 +18,7 @@ outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 filesat = os.path.join(dir_setup,'orbits1_ifremer')
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Name of the configuration (to build output files names) 
-config="WW3_OR_8b60az"
+config="WW3_NATL_8b60az"
 
 # -----------------------# 
 # SKIM swath parameters 
@@ -27,11 +27,11 @@ config="WW3_OR_8b60az"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = False
+makesgrid = True
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [230.000,237.000,42.20,47.9000]
+modelbox =  [260,35,0.,80]
 #------- Rotation speed of the antenna (in tr/min)
 #rotation_speed = 3.774  # * 180
 rotation_speed = 3.396739
@@ -62,7 +62,7 @@ shift_time = None
 #	 (The first file contains the grid and is not considered as model data)
 #        To generate the noise alone, file_input=None and specify region 
 #        in modelbox
-file_input = os.path.join(indatadir, 'list_of_file.txt')
+file_input = None # os.path.join(indatadir, 'list_of_file.txt')
 # ------ Type of model data: 
 #	 (Optional, default is NETCDF_MODEL and reads netcdf3 and netcdf4 files)
 #	 (Other options are ROMS, NEMO and CLS to read Nemo, roms or CLS)
@@ -83,12 +83,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = (228, 43)
+dim_time = (444, 744)
 # ------ Time step between two model outputs (in days):
-timestep = 1/8.
+timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 270.
+nstep = 1000.
 # ------ Not a number value:
 model_nan = -32767.
 
@@ -117,7 +117,7 @@ file_coeff = None  # outdatadir+os.sep+'Random_coeff.nc'
 ncomp1d = 3000
 ncomp2d = 2000
 # ------- Instrument white noise error
-instr = True
+instr = False #True
 # ------- Instrument white noise rms 
 # rms_instr = [10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2), 10 * 10**(-2),
 # 20 * 10 ** (-2)]
@@ -129,8 +129,8 @@ rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat')]
 # ------- Stoke drift velocity [beam 12, beam 6]
-uss = True
-input_uss = os.path.join(indatadir, 'list_file_uss.txt')
+uss = False # True
+input_uss = None # os.path.join(indatadir, 'list_file_uss.txt')
 G = [50, 50, 50, 50, 50, 50, 50]
 bias_std = 0.09
 errdcos = None
