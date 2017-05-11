@@ -10,7 +10,7 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data_b/model/ww3_agh/' #netcdf3/'
+indatadir = '/mnt/data_b/model/ww3_fram/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
@@ -18,7 +18,7 @@ outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 filesat = os.path.join(dir_setup,'orbits1_ifremer')
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Name of the configuration (to build output files names) 
-config="WW3_AGH_8b60az"
+config="WW3_FRAM_8b60az"
 
 # -----------------------# 
 # SKIM swath parameters 
@@ -27,11 +27,11 @@ config="WW3_AGH_8b60az"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = True
+makesgrid = False
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [15.,34.,-41.,-27.]
+modelbox =  [334,24,72,86]
 #------- Rotation speed of the antenna (in tr/min)
 #rotation_speed = 3.774  # * 180
 rotation_speed = 3.396739
@@ -83,12 +83,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = (627,)
+dim_time = (744,)
 # ------ Time step between two model outputs (in days):
 timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 625.
+nstep = 740.
 # ------ Not a number value:
 model_nan = -32767.
 
