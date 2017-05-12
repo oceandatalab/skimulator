@@ -775,11 +775,15 @@ def compute_errdcos(p, sgrid, mask, err_uss):
                             * numpy.cos(sgrid.lat[i][ib] * math.pi / 180.))
                 dlat_km = (lat - sgrid.lat[i][ib])*111
                 dist = numpy.sqrt(dlon_km**2 + dlat_km **2)
-                ind_dist = numpy.argmin(dist)
+                if len(dist) > 0:
+                    ind_dist = numpy.argmin(dist)
                 #errdcos[ib] += (dist[ind_dist] * numpy.cos(theta
                 #                 - angle[ind_angle[0][ind_dist],
                 #                         ind_angle[1][ind_dist]]))**2
-                errdcos[ib] += (dist[ind_dist] * numpy.cos(theta - theta2))**2
+                    errdcos[ib] += (dist[ind_dist] * numpy.cos(theta - theta2))**2
+                else:
+                    errdcos[ib] = numpy.nan
+
                 ntheta2 += 1
             errdcos[ib] /= ntheta2
         errdcos = numpy.sqrt(errdcos)
