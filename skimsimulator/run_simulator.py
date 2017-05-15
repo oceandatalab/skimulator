@@ -298,7 +298,7 @@ def run_simulator(p):
                             else:
                                 sgrid_tmp.indi[ib-1, :]
 
-                                sgrid_tmp.indi[ib, 0] = sgrid_tmp.indi[ib-1, 0] 
+                                sgrid_tmp.indi[ib, 0] = sgrid_tmp.indi[ib-1, 0]
                                 sgrid_tmp.indi[ib, 1] = sgrid_tmp.indi[ib-1, 1]
                                 sgrid_tmp.indj[ib, 0] = sgrid_tmp.indj[ib-1, 0]
                                 sgrid_tmp.indj[ib, 1] = sgrid_tmp.indj[ib-1, 1]
@@ -418,6 +418,9 @@ def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
                 #u_model_mask[numpy.isnan(u_model_mask)] = 0.
                 #u_true_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_model_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
                 #u_true_ind_time[Teval > 0] = numpy.nan
+    #lon_in = numpy.rad2deg(numpy.unwrap(lon_in))
+    #lon_out = numpy.rad2deg(numpy.unwrap(lon_out))
+    #logger.debug(lat_out, lon_out)
     if Teval is None:
         Teval = interpolate.RectBivariateSpline(lat_in, lon_in,
                                             numpy.isnan(var),
