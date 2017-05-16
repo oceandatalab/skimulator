@@ -54,7 +54,7 @@ shift_lon = 0
 # ------ Shift time of the satellite pass (in day):
 #        Default value is None (no shift)
 shift_time = None
-
+timeshift=0
 # -----------------------#
 # Model input parameters
 # -----------------------#
@@ -83,12 +83,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = (72,)
+dim_time = (72,720)
 # ------ Time step between two model outputs (in days):
 timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 70.
+nstep = 790.
 # ------ Not a number value:
 model_nan = -32767.
 

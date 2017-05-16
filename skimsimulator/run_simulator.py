@@ -828,7 +828,7 @@ def compute_errussr(p, sgrid, mask, uss_r, err_uss):
             ntheta2 = 0
             for theta2 in numpy.arange(theta - math.pi/2,
                                 theta + math.pi/2, dtheta):
-                theta2 = theta2 % (2 * math.pi)
+                theta2rad = theta2 % (2 * math.pi)
                 start_az = int(max(0, (ib - naz*2)))
                 end_az = int(min(N, (ib + naz*2)))
                 slice_az = slice(start_az, end_az)
@@ -841,35 +841,46 @@ def compute_errussr(p, sgrid, mask, uss_r, err_uss):
                 lat[numpy.where(mask_ind==True)] = -1.36 *10**9
                 angle = sgrid.radial_angle[slice_az, :]
                 angle = numpy.mod(angle, 2 * math.pi)
-                ind_angle = numpy.where((angle >= (theta2 - dtheta/2.))
-                                       & (angle < (theta2 + dtheta/2.)))
+                ind_angle = numpy.where((angle >= (theta2rad - dtheta))
+                                       & (angle < (theta2rad + dtheta)))
                 ## To be tested: ind_angle can be empty near coast?
                 if len(ind_angle) == 0:
-                    logger.debug('WTF')
+                    logger.debug('no ind_angle found, pass is to small?')
                     continue
                 lon = lon[ind_angle]
                 lat = lat[ind_angle]
-                uss_r_loc = uss_r_loc[ind_angle]
-                dlon_km = ((lon - sgrid.lon[i][ib])*111
+                uss_r_loc2 = uss_r_loc[ind_angle]
+                sgridlon = sgrid.lon[i][ib]
+                if numpy.max(lon)>359 and numpy.min(lon)<1:
+                    lon[lon > 180] = lon[lon > 180] - 360
+                    #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
+                    lon = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon)))
+                    if sgridlon > 180:
+                        sgridlon = sgridlon - 360
+                    #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
+                        sgridlon = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(sgridlon)))
+                dlon_km = ((lon - sgridlon)*111
                             * numpy.cos(sgrid.lat[i][ib] * math.pi / 180.))
                 dlat_km = (lat - sgrid.lat[i][ib])*111
                 dist = numpy.sqrt(dlon_km**2 + dlat_km **2)
                 if len(dist) > 0:
                     ind_dist = numpy.argmin(dist)
+                    #if (dist[ind_dist] > 50):
+                    #    print(dist[ind_dist], dlon_km[ind_dist], dlat_km[ind_dist], lon[ind_dist], lat[ind_dist], sgridlon, sgrid.lat[i][ib])
                 #errdcos[ib] += (dist[ind_dist] * numpy.cos(theta
                 #                 - angle[ind_angle[0][ind_dist],
                 #                         ind_angle[1][ind_dist]]))**2
                     errussr[ib] += (numpy.cos(theta
                                    - angle[ind_angle[0][ind_dist],                                                                  ind_angle[1][ind_dist]])
-                                   * uss_r_loc[ind_dist] * dtheta )
+                                   * uss_r_loc2[ind_dist] * dtheta
+                                   / (math.pi) * 2)
                 else:
                     errussr[ib] = numpy.nan
 
                 ntheta2 += 1
             #if not numpy.isnan(errussr[ib]) and errussr[ib]!=0:
             #    import pdb ; pdb.set_trace()
-            errussr[ib] /=   (2* math.pi)
-        err_uss[i][:] = (errussr - uss_r[i][:]) # / 50
+        err_uss[i][:] = (errussr - uss_r[i][:])
     return err_uss
 
 def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
