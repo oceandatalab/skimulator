@@ -135,7 +135,8 @@ G = [50, 50, 50, 50, 50, 50, 50]
 bias_std = 0.09
 errdcos = None
 #[25.2006/20, 25.2747/20, 25.4763/20, 25.4271/20, 19.9728/20]
-footprint_std = 400
+footprint_std = 0 #400
+formula = False
 
 ## -- Geophysical error
 ## ----------------------

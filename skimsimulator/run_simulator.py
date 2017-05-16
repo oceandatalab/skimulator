@@ -345,6 +345,8 @@ def run_simulator(p):
             if p.uss is True and p.errdcos is None:
                 errdcos_tot, err_uss = compute_errdcos(p, sgrid, mask,
                                                           err_uss)
+            if p.uss is True and p.formula is False:
+                err_uss = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
                 #errdcos_tot.append(errdcos)
                 #err_uss.append(err.err_uss)
                 #, err_uss)
@@ -421,6 +423,10 @@ def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
     #lon_in = numpy.rad2deg(numpy.unwrap(lon_in))
     #lon_out = numpy.rad2deg(numpy.unwrap(lon_out))
     #logger.debug(lat_out, lon_out)
+    if numpy.max(lon_in)>359 and numpy.min(lon_in)<1:
+        lon_in[lon_in > 180] = lon_in[lon_in > 180] - 360
+        #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
+        lon_in = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_in)))
     if Teval is None:
         Teval = interpolate.RectBivariateSpline(lat_in, lon_in,
                                             numpy.isnan(var),
@@ -429,7 +435,8 @@ def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
     var_mask = + var
     var_mask[numpy.isnan(var_mask)] = 0.
 
-    var_out = interpolate.RectBivariateSpline(lat_in, lon_in, var_mask, kx=1, ky=1,
+    var_out = interpolate.RectBivariateSpline(lat_in, lon_in, var_mask, kx=1,
+                                              ky=1,
                                               s=0).ev(lat_out, lon_out)
 
     var_out[Teval > 0] = numpy.nan
@@ -482,11 +489,13 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     time = sgrid.time / 86400. + date1 # in days
     lon = sgrid.lon
     lat = sgrid.lat
-    sgrid.timeshift /= 86400 # in days
+    timeshift = sgrid.timeshift / 86400.  # in days 
+    # TODO remove timeshift=0 when grid are recomputed
+    timeshift = 0
     # Look for satellite data that are beween step-p.timestep/2 and step+p.timestep/2
     if p.file_input is not None:
-        index_filemodel = numpy.where(((time[-1]-sgrid.timeshift) >= (modeltime-p.timestep/2.))
-                                      & ((time[0]-sgrid.timeshift) < (modeltime+p.timestep/2.)))  # [0]
+        index_filemodel = numpy.where(((time[-1]-timeshift) >= (modeltime-p.timestep/2.))
+                                      & ((time[0]-timeshift) < (modeltime+p.timestep/2.)))  # [0]
         nfile=0
         time_offset=0
         # At each step, look for the corresponding time in the satellite data
@@ -503,7 +512,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                 ntot = numpy.shape(index_filemodel)[1]
                 # if numpy.shape(index)[1]>1:
                 # Select part of the track that corresponds to the time of the model (+-timestep/2)
-                ind_time = numpy.where(((time-sgrid.timeshift) >= (modeltime[ifile]-p.timestep/2.)) & ((time-sgrid.timeshift) < (modeltime[ifile]+p.timestep/2.)) )
+                ind_time = numpy.where(((time-timeshift) >= (modeltime[ifile]-p.timestep/2.)) & ((time-timeshift) < (modeltime[ifile]+p.timestep/2.)) )
             else:
                 logger.error('No model file is found around time')
                 sys.exit(1)
@@ -690,7 +699,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                 #TODO: To be moved at the beginning
                 lon2D, lat2D = numpy.meshgrid(model_data.vlonu,
                                               model_data.vlatu)
-                if p.footprint_std is not None and p.footprint_std !=0:
+                if p.footprint_std is not None and p.footprint_std !=0 and p.formula is True:
                     std_uss_local = numpy.zeros(numpy.shape(ind_time[0]))
                     for ib in range(len(ind_time[0])):
                         indi = sgrid.indi[ind_time[0][ib], :]
@@ -793,6 +802,75 @@ def compute_errdcos(p, sgrid, mask, err_uss):
         err_uss[i][:] *= errdcos / 20
         errdcos_tot.append(errdcos)
     return errdcos_tot, err_uss
+
+def compute_errussr(p, sgrid, mask, uss_r, err_uss):
+    # Compute number of azimuth per mega cycle
+    naz = (60 / (p.rotation_speed * const.cycle * len(p.list_pos)))
+    # Initialize errdcos
+    # Convert list into arrays
+    lon_array = numpy.transpose(numpy.array(sgrid.lon[1:][:]))
+    lat_array = numpy.transpose(numpy.array(sgrid.lat[1:][:]))
+    uss_r_array = numpy.transpose(numpy.array(uss_r[1:][:]))
+    mask_array = numpy.transpose(numpy.array(mask[1:][:]))
+    for i in range(1, len(p.list_pos) + 1):
+        mask_minicycle = mask[i][:]
+        radial_angle = sgrid.radial_angle[:, i - 1]
+        N = len(mask_minicycle)
+        dtheta = numpy.mean(abs(radial_angle[1:] - radial_angle[:-1]))
+        #errdcos = numpy.zeros(numpy.shape(radial_angle)) * numpy.nan
+        errussr = numpy.full(numpy.shape(radial_angle), numpy.nan)
+        #import pdb; pdb.set_trace()
+        for ib in range(N):
+            if mask_minicycle[ib]==True:
+                continue
+            theta = radial_angle[ib] % (2 * math.pi)
+            errussr[ib] = 0
+            ntheta2 = 0
+            for theta2 in numpy.arange(theta - math.pi/2,
+                                theta + math.pi/2, dtheta):
+                theta2 = theta2 % (2 * math.pi)
+                start_az = int(max(0, (ib - naz*2)))
+                end_az = int(min(N, (ib + naz*2)))
+                slice_az = slice(start_az, end_az)
+
+                lon = lon_array[slice_az, :]
+                lat = lat_array[slice_az, :]
+                uss_r_loc = uss_r_array[slice_az, :]
+                mask_ind = mask_array[slice_az, :]
+                lon[numpy.where(mask_ind==True)] = -1.36 *10**9
+                lat[numpy.where(mask_ind==True)] = -1.36 *10**9
+                angle = sgrid.radial_angle[slice_az, :]
+                angle = numpy.mod(angle, 2 * math.pi)
+                ind_angle = numpy.where((angle >= (theta2 - dtheta/2.))
+                                       & (angle < (theta2 + dtheta/2.)))
+                ## To be tested: ind_angle can be empty near coast?
+                if len(ind_angle) == 0:
+                    logger.debug('WTF')
+                    continue
+                lon = lon[ind_angle]
+                lat = lat[ind_angle]
+                uss_r_loc = uss_r_loc[ind_angle]
+                dlon_km = ((lon - sgrid.lon[i][ib])*111
+                            * numpy.cos(sgrid.lat[i][ib] * math.pi / 180.))
+                dlat_km = (lat - sgrid.lat[i][ib])*111
+                dist = numpy.sqrt(dlon_km**2 + dlat_km **2)
+                if len(dist) > 0:
+                    ind_dist = numpy.argmin(dist)
+                #errdcos[ib] += (dist[ind_dist] * numpy.cos(theta
+                #                 - angle[ind_angle[0][ind_dist],
+                #                         ind_angle[1][ind_dist]]))**2
+                    errussr[ib] += (numpy.cos(theta
+                                   - angle[ind_angle[0][ind_dist],                                                                  ind_angle[1][ind_dist]])
+                                   * uss_r_loc[ind_dist] * dtheta )
+                else:
+                    errussr[ib] = numpy.nan
+
+                ntheta2 += 1
+            #if not numpy.isnan(errussr[ib]) and errussr[ib]!=0:
+            #    import pdb ; pdb.set_trace()
+            errussr[ib] /=   (2* math.pi)
+        err_uss[i][:] = (errussr - uss_r[i][:]) # / 50
+    return err_uss
 
 def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
               ur_obs=(), err_instr=(), ur_uss = (), err_uss=(),

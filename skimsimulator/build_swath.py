@@ -173,7 +173,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     orb.cycle = tcycle
     orb.al_cycle = distance[-1]
     orb.passtime = numpy.sort(passtime)
-    orb.timeshift = timeshift
+    orb.timeshift = p.timeshift
     return orb
 
 

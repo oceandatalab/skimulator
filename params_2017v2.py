@@ -10,7 +10,7 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data_b/model/ww3_gs/' #netcdf3/'
+indatadir = '/mnt/data/model/ww3_gs/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
@@ -135,7 +135,8 @@ G = [50, 50, 50, 50, 50, 50, 50]
 bias_std = 0.09
 errdcos = None
 #[25.2006/20, 25.2747/20, 25.4763/20, 25.4271/20, 19.9728/20]
-footprint_std = 400
+footprint_std = 0 #400
+formula = False
 
 ## -- Geophysical error
 ## ----------------------

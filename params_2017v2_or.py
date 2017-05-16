@@ -10,7 +10,7 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data_b/model/ww3_gs/' #netcdf3/'
+indatadir = '/mnt/data_b/model/ww3_orq/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
@@ -27,7 +27,7 @@ config="WW3_OR_8b60az"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = True
+makesgrid = False
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
@@ -135,7 +135,8 @@ G = [50, 50, 50, 50, 50, 50, 50]
 bias_std = 0.09
 errdcos = None
 #[25.2006/20, 25.2747/20, 25.4763/20, 25.4271/20, 19.9728/20]
-footprint_std = 400
+footprint_std = 0 #400
+formula = False
 
 ## -- Geophysical error
 ## ----------------------

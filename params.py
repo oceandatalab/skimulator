@@ -10,7 +10,7 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data_b/model/ww3_fram/' #netcdf3/'
+indatadir = '/mnt/data/model/ww3_fram/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
@@ -27,11 +27,11 @@ config="WW3_FRAM_8b60az"
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 # ------ Force the computation of the satellite grid:
-makesgrid = False
+makesgrid = True
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [0,24,72,86]
+modelbox =  [334,24,72,86]
 #------- Rotation speed of the antenna (in tr/min)
 #rotation_speed = 3.774  # * 180
 rotation_speed = 3.396739
@@ -54,6 +54,7 @@ shift_lon = 0
 # ------ Shift time of the satellite pass (in day):
 #        Default value is None (no shift)
 shift_time = None
+timeshift = 0
 
 # -----------------------#
 # Model input parameters
@@ -85,7 +86,7 @@ latv = 'latitude'
 # ------ Specify number of time in file:
 dim_time = (744,)
 # ------ Time step between two model outputs (in days):
-timestep = 1.
+timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
 nstep = 740.
@@ -102,7 +103,7 @@ file_output = os.path.join(outdatadir, config)
 #         pyresample is not installed:
 #        (either 'linear' or 'nearest', use 'nearest' for large region
 #        as it is faster and use less memory.)
-interpolation = 'nearest'
+interpolation = 'linear'
 # -----------------------# 
 # SKIM error parameters 
 # -----------------------# 
@@ -135,7 +136,8 @@ G = [50, 50, 50, 50, 50, 50, 50]
 bias_std = 0.09
 errdcos = None
 #[25.2006/20, 25.2747/20, 25.4763/20, 25.4271/20, 19.9728/20]
-footprint_std = 400
+footprint_std = 0 #400
+formula = False
 
 ## -- Geophysical error
 ## ----------------------
