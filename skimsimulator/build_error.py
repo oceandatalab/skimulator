@@ -83,8 +83,8 @@ class error():
         nal = numpy.shape(u_true)
         # ind_al=numpy.arange(0,nal)
         if p.instr is True:
-            self.instr = numpy.random.normal(0.0 * rms_theta,
-                                             rms_theta * 10**(-2))
+            self.instr = numpy.random.normal(0.0 * rms_theta, rms_theta
+                                             * p.rms_instr_factor * 10**(-2))
         if p.uss is True and uss[0] is not None and uss[1] is not None:
             self.ur_uss = mod_tools.proj_radial(uss[0], uss[1],
                                                 radial_angle)

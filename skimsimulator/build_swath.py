@@ -34,7 +34,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(1, 2, 0),
                                          unpack=True)
     # - If orbit is at low resolution, interpolate at cycle (s) resolution
-    cycle = const.cycle
+    cycle = p.cycle
     votime = votime * const.secinday
     ## macrocycle is fixed or depend on number of beam
     if numpy.mean(votime[1:] - votime[:-1]) != cycle:

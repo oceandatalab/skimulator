@@ -1,7 +1,7 @@
-Changelog for swotsimulator
+Changelog for skimsimulator
 ===========================
 
 1.0 beta 1
 ----------
-2017/03/15 
-
+2017/05/15
+First beta version, undocumented

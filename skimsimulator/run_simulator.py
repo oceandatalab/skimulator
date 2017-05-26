@@ -88,6 +88,8 @@ def run_simulator(p):
         p.grid = p.grid
     except:
         p.grid = 'regular'
+    p.rms_instr_factor = getattr(p, 'rms_instr_factor', 1)
+
     # - Progress bar variables are global
     global istep
     global ntot
@@ -739,7 +741,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
 
 def compute_errdcos(p, sgrid, mask, err_uss):
     # Compute number of azimuth per mega cycle
-    naz = (60 / (p.rotation_speed * const.cycle * len(p.list_pos)))
+    naz = (60 / (p.rotation_speed * p.cycle * len(p.list_pos)))
     # Initialize errdcos
     errdcos_tot = []
     errdcos_tot.append(numpy.zeros(numpy.shape(mask[0][:])))
@@ -805,7 +807,7 @@ def compute_errdcos(p, sgrid, mask, err_uss):
 
 def compute_errussr(p, sgrid, mask, uss_r, err_uss):
     # Compute number of azimuth per mega cycle
-    naz = (60 / (p.rotation_speed * const.cycle * len(p.list_pos)))
+    naz = (60 / (p.rotation_speed * p.cycle * len(p.list_pos)))
     # Initialize errdcos
     # Convert list into arrays
     lon_array = numpy.transpose(numpy.array(sgrid.lon[1:][:]))

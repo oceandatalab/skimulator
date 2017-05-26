@@ -1,0 +1,9 @@
+For non-commercial use of this software
+=======================================
+The license is the following one:
+- GPLv2.0 (see doc/GPLv2-LICENSE.txt)
+
+For commercial use of this software
+===================================
+Send an email to contact@oceandatalab.com in which you describe how this
+software is used in your product.
