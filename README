@@ -4,7 +4,7 @@ SKIM Simulator for Ocean Current
 
 Description
 -----------
-This software simulates SKIM sea surface current observations that can be applied to an ocean general circulation model (OGCM). 
+This software simulates SKIM sea surface current observations that can be applied to an ocean general circulation model (OGCM).
 
 
 Licence
@@ -12,28 +12,28 @@ Licence
 
 Installation
 ------------
-The code runs with python and uses the following libraries: 
+The code runs with python and uses the following libraries:
 
-* Numpy 
+* Numpy
 
 * Scipy
 
 * NetCDF4 if you need to read netcdf4 model files (not included in Canopy)
 
-If you don't have python and the needed python libraries on your machine 
+If you don't have python and the needed python libraries on your machine
 you can download the enthought python distribution canopy at
 <https://store.enthought.com/> and follow the installation instructions.
 
-To install skimsimulator: 
+To install skimsimulator:
 
 -> If you have installed canopy:
 
-Open a canopy terminal (``Tools - Canopy Terminal``) 
+Open a canopy terminal (``Tools - Canopy Terminal``)
 
 .. code-block:: python
 
    > cd [yourpath]/skimsimulator/
-   > python setup.py install 
+   > python setup.py install
 
 ->If you have your own python and libraries:
 
@@ -41,15 +41,15 @@ Open a canopy terminal (``Tools - Canopy Terminal``)
 
 .. code-block:: python
 
-   > sudo python setup.py install 
+   > sudo python setup.py install
 
 - local installation:
 
 .. code-block:: python
 
-   > python setup.py install --home=your/local/path 
+   > python setup.py install --home=your/local/path
 
-- Uninstall: 
+- Uninstall:
 
 .. code-block:: python
 
@@ -85,12 +85,12 @@ Reference orbits data are available online:
 Documentation
 -------------
 - To build the documentation, in the ``doc`` directory:
-  
+
     * Build html: ``make html``
 
     * Build pdf: ``make latexpdf``
 
-  The build documentation files are located in ``doc/build/html`` and in ``doc/build/latex/`` 
+  The build documentation files are located in ``doc/build/html`` and in ``doc/build/latex/``
 
 - for a complete description:
   see the ``doc`` directory or just run ``pydoc PyDom``
