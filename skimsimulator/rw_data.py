@@ -24,26 +24,35 @@ import sys, os
 import time as ti
 import logging
 logger = logging.getLogger(__name__)
+try:
+    from netCDF4 import Dataset
+except ImportError:
+    logger.warn('WARNING: package netCDF4 missing, scipy.io.netcdf is used'\
+                'instead of netCDF4')
+    from scipy.io.netcdf import netcdf_file as Dataset
+    netcdf4=False
+try: import params as p
+except:
+    logger.error('params.py not found')
+    sys.exit(1)
+
 
 def read_params(params_file):
     """ Read parameters from parameters file and store it in p.\n
     This program is not used in skim_simulator."""
     import imp
-    f = open(params_file)
-    #global p
-    p = imp.load_source('p', '',f)
-    f.close()
+    with open(params_file, 'r') as f:
+        p = imp.load_source('p', '',f)
     return p
 
 def write_params(params, pfile):
-    """ Write parameters that have been selected to run skim_simulator. """
-    f = open(pfile, 'w')
-    for key in dir(params):
-        if not key[0: 2] == '__':
-            f.write('{} = {}\n'.format(key, params.__dict__[key]))
-    f.close()
+    """ Write parameters that have been selected to run swot_simulator. """
+    with open(pfile, 'w') as f:
+        for key in dir(params):
+            if not key[0:2] == '__':
+                f.write('{} = {}\n'.format(key, params.__dict__[key]))
 
-def read_coordinates(file,  nlon, nlat, twoD=True ):
+def read_coordinates(file,  nlon, nlat, twoD=True):
     ''' General routine to read coordinates in a netcdf file. \n
     Inputs are file name, longitude name, latitude name. \n
     Outputs are longitudes and latitudes (2D arrays).'''
@@ -52,21 +61,20 @@ def read_coordinates(file,  nlon, nlat, twoD=True ):
     try:
         fid = Dataset(file, 'r')
     except IOError:
-        print('There was an error opening the file {}'.format(file))
-        sys.exit()
-    #fid = Dataset(file, 'r')
+        logger.error('There was an error opening the file {}'.format(file))
+        sys.exit(1)
 
 ## - Read 1d or 2d coordinates
     try:
         vartmp = fid.variables[nlat]
     except:
-        sys.exit('Coordinates {} not found in file {}'.format(nlat, file))
-
+        logger.error('Coordinates {} not found in file {}'.format(nlat, file))
+        sys.exit(1)
     try:
         vartmp = fid.variables[nlon]
     except:
-        sys.exit('Coordinates {} not found in file {}'.format(nlon, file))
-        #sys.exit()
+        logger.error('Coordinates {} not found in file {}'.format(nlon, file))
+        sys.exit(1)
     if  len(vartmp.shape) == 1:
         lon_tmp = numpy.array(fid.variables[nlon][:]).squeeze()
         lat_tmp = numpy.array(fid.variables[nlat][:]).squeeze()
@@ -82,7 +90,7 @@ def read_coordinates(file,  nlon, nlat, twoD=True ):
             lon = lon[0,:]
             lat = lat[:,0]
     else:
-        print('unknown dimension for lon and lat')
+        logger.warn('unknown dimension for lon and lat')
     fid.close()
     return lon, lat
 
@@ -97,17 +105,17 @@ def read_var(file, var, index=None, time=0, depth=0, model_nan=None):
 
 ## - Open Netcdf file
     try:
-    #fid = nc.netcdf_file(file, 'r')
         fid = Dataset(file, 'r')
     except IOError:
-        print('There was an error opening the file {}'.format(file))
-        sys.exit()
+        logger.error('There was an error opening the file {}'.format(file))
+        sys.exit(1)
     #fid = Dataset(file, 'r')
 
 ## - Check dimension of variable
     try : vartmp = fid.variables[var]
     except:
-        sys.exit('Variable {} not found in file {}'.format(var, file))
+        logger.error('Variable {} not found in file {}'.format(var, file))
+        sys.exit(1)
 ## - Read variable
     if index is None:
         if len(vartmp.shape) == 1:
@@ -129,7 +137,10 @@ def read_var(file, var, index=None, time=0, depth=0, model_nan=None):
             elif depth is None:
                 T = numpy.array(fid.variables[var][time, :, :, :]).squeeze()
             else:
-                T = numpy.array(fid.variables[var][time, depth, :, :]).squeeze()
+                T = numpy.array(fid.variables[var][time,depth, :, :]).squeeze()
+        else:
+            logger.error('wrong dimension in variables {}'.format(var))
+            sys.exit(1)
     else :
             if len(vartmp.shape) == 1:
                 Ttmp = numpy.array(fid.variables[var][:]).squeeze()
@@ -439,7 +450,11 @@ class Sat_SKIM():
                 vtime[:, i - 1] = self.time[i][:]
                 vlon[:, i - 1] = self.lon[i][:]
                 vlat[:, i - 1] = self.lat[i][:]
-
+        if p.footprint_std == 0 or p.footprint_std is None:
+            longname_std = "Standard deviation of uss on the model domain"
+        else:
+            longname_std = "Standard deviation of uss on a {} km"\
+                             "radius".format(p.footprint_std)
         longname = {"instr": "Instrumental error",
                   "ur_model": "Radial velocity interpolated from model",
                   "u_model": "Zonal velocity interpolated from model",
@@ -449,15 +464,14 @@ class Sat_SKIM():
                   "ur_uss": "Stokes drift radial velocity bias",
                   "uss_err": "Stokes drift radial velocity bias_corrected",
                   "nadir_err": "Nadir error",
-                  "std_uss": "Standard deviation of uss on a {} km"\
-                             "radius".format(p.footprint_std),
+                  "std_uss": longname_std,
                   "errdcos": "Weight for uss_err computation"}
         unit = {"instr": "m/s", "ur_model": "m/s", "ur_obs": "m/s",
                 "index": " ", "ur_uss": "m/s", "uss_err": "m/s",
                 "uss_err": "m/s", "nadir_err": "m/s", "u_model": "m/s",
                 "v_model": "m/s", "std_uss": "m/s", "errdcos": "km",
                 }
-        list_nadir = {"instr", "nadir_err"}
+        list_nadir = {"instr", "nadir_err", "vindice"}
         for key, value in kwargs.items():
             if value is not None:
                 nvar_nadir = '{}_nadir'.format(key)
@@ -515,10 +529,14 @@ class Sat_SKIM():
         try :
             fid = Dataset(self.file, 'r')
         except IOError:
-            print('There was an error opening the file '+self.file)
+            logger.error('There was an error opening the file '+self.file)
             sys.exit(1)
         #fid = Dataset(self.file, 'r')
-        time = []; lon = []; lat = []; cycle = []; x_al = []
+        time = []
+        lon = []
+        lat = []
+        cycle = []
+        x_al = []
         listvar={'time':time, 'lon': lon, 'lat': lat,}
         self.lon = []
         self.lat = []
@@ -586,7 +604,7 @@ class NEMO():
         self.nlat = latv
         self.ntime = time
         self.nfile = file
-        self.ndepth=depth
+        self.ndepth = depth
         try:
             self.model_nan = p.model_nan
         except:
@@ -596,11 +614,8 @@ class NEMO():
     def read_var(self, index=None):
         '''Read variables from NEMO file \n
         Argument is index=index to load part of the variable.'''
-        try:
-            vel_factor = p.vel_factor
-        except:
-            vel_factor = 1.
-            p.vel_factor = vel_factor
+        vel_factor = getattr(p, 'vel_factor', 1)
+        p.vel_factor = vel_factor
         self.vvaru = read_var(self.nfile, self.nvaru, index=index, time=0,
                               depth=0, model_nan=self.model_nan)*vel_factor
         self.vvarv = read_var(self.nfile, self.nvarv, index=index, time=0,
@@ -655,14 +670,14 @@ class ROMS():
     low corner of the domain (lon0, lat0) in params file.'''
     def __init__(self,
                 file=None,
-                varu = 'u',
-                varv = 'v',
-                depth = 'depth',
-                time = 'time',
-                lonu = 'lon_u',
-                latu = 'lat_u',
-                lonv = 'lon_v',
-                latv = 'lat_v',
+                varu='u',
+                varv='v',
+                depth='depth',
+                time='time',
+                lonu='lon_u',
+                latu='lat_u',
+                lonv='lon_v',
+                latv='lat_v',
                 ):
         self.nvaru = varu
         self.nlonu = lonu
@@ -673,20 +688,14 @@ class ROMS():
         self.ntime = time
         self.nfile = file
         self.ndepth = depth
-        try:
-            self.model_nan = p.model_nan
-        except:
-            self.model_nan = 0.
-            p.model_nan = 0.
+        self.model_nan = getattr(p, 'model_nan', 0)
+        p.model_nan = self.model
 
     def read_var(self, index=None):
         '''Read variables from ROMS file\n
         Argument is index=index to load part of the variable.'''
-        try:
-            SSH_factor = p.SSH_factor
-        except:
-            vel_factor = 1.
-            p.vel_factor = 1.
+        vel_factor = getattr(p, 'vel_factor', 1.)
+        p.vel_factor = vel_factor
         self.vvaru = read_var(self.nfile, self.nvaru, index=index, time=0,
                               depth=0, model_nan=self.model_nan) *vel_factor
         self.vvarv = read_var(self.nfile, self.nvarv, index=index, time=0,
@@ -717,11 +726,11 @@ class ROMS():
         self.read_coordinates()
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlon) > 359.):
             self.vlonu[numpy.where(self.vlonu > 180.)] = self.vlonu[numpy.where(self.vlonu > 180.)] - 360
-            lon1=(numpy.min(self.vlonu) + 360) % 360
-            lon2=(numpy.max(self.vlonu) + 360) % 360
+            lon1 = (numpy.min(self.vlonu) + 360) % 360
+            lon2 = (numpy.max(self.vlonu) + 360) % 360
         else:
-            lon1=numpy.min(self.vlonu)
-            lon2=numpy.max(self.vlonu)
+            lon1 = numpy.min(self.vlonu)
+            lon2 = numpy.max(self.vlonu)
         return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
 
 
@@ -753,20 +762,14 @@ class NETCDF_MODEL():
         self.nfile = file
         self.depth = depth
         self.time = time
-        try:
-            self.model_nan = p.model_nan
-        except:
-            self.model_nan = 0.
-            p.model_nan = 0.
+        self.model_nan = getattr(p, 'model_nan', 0)
+        p.model_nan = self.model_nan
 
     def read_var(self, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        try:
-            vel_factor = p.vel_factor
-        except:
-            vel_factor=1.
-            p.vel_factor=1.
+        vel_factor = getattr(p, 'vel_factor', 1.)
+        p.vel_factor = vel_factor
         self.vvarv = read_var(self.nfile, self.nvarv, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
@@ -799,11 +802,11 @@ class NETCDF_MODEL():
         self.read_coordinates()
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
             self.vlonu[numpy.where(self.vlonu > 180.)]=self.vlonu[numpy.where(self.vlonu > 180.)] - 360
-            lon1=(numpy.min(self.vlonu) + 360) % 360
-            lon2=(numpy.max(self.vlonu) + 360) % 360
+            lon1 = (numpy.min(self.vlonu) + 360) % 360
+            lon2 = (numpy.max(self.vlonu) + 360) % 360
         else:
-            lon1=numpy.min(self.vlonu)
-            lon2=numpy.max(self.vlonu)
+            lon1 = numpy.min(self.vlonu)
+            lon2 = numpy.max(self.vlonu)
         return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
 
 class WW3():
@@ -834,11 +837,8 @@ class WW3():
         self.depth = depth
         self.time = time
         self.p = p
-        try:
-            self.model_nan = p.model_nan
-        except:
-            self.model_nan = 0.
-            p.model_nan = 0.
+        self.model_nan = getattr(p, 'model_nan', 0.)
+        p.model_nan = self.model_nan
 
     def read_var(self, index=None):
         '''Read variables from netcdf file \n
@@ -880,10 +880,10 @@ class WW3():
         self.read_coordinates()
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
             self.vlonu[numpy.where(self.vlonu > 180.)]=self.vlonu[numpy.where(self.vlonu > 180.)] - 360
-            lon1=(numpy.min(self.vlonu) + 360) % 360
-            lon2=(numpy.max(self.vlonu) + 360) % 360
+            lon1 = (numpy.min(self.vlonu) + 360) % 360
+            lon2 = (numpy.max(self.vlonu) + 360) % 360
         else:
-            lon1=numpy.min(self.vlonu)
-            lon2=numpy.max(self.vlonu)
+            lon1 = numpy.min(self.vlonu)
+            lon2 = numpy.max(self.vlonu)
         return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
 

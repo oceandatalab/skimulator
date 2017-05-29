@@ -66,7 +66,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     # shift time if the user needs to shift the time of the orbit
     try:
         pshift_time = p.shift_time
-        if pshift_time:
+        if pshift_time is not None:
             shift_index = numpy.where(votime >= pshift_time)[0]
             volon = numpy.hstack([volon[shift_index[0][0]:],
                                  volon[:shift_index[0][0]]])
@@ -178,6 +178,19 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
 
 
 def orbit2swath(modelbox, p, orb):
+    '''Computes the swath of SKIM satellites on a subdomain from an orbit.
+    The path of the satellite is given by the orbit file and the subdomain
+    corresponds to the one in the model. Note that a subdomain can be manually
+    added in the parameters file. \n
+    Inputs are satellite orbit (p.filesat), subdomain (modelbox), Swath
+    parameters (half gap distance p.halfgap, half swath distance p.halfswath,
+    along track
+    resolution p.delta_al, across track resolution p.delta_ac). \n
+    Outputs are netcdf files containing SKIM grid (along track distance x_al,
+    radial angle, longitude lon and latitude lat,
+    number of days in a cycle cycle, distance crossed in a cycle cycle_al,
+    time'''
+    ''' Compute orbit from Swath '''
     # - Load altimeter orbit
     npoints = 1
     x_al = orb.x_al

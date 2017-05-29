@@ -43,16 +43,12 @@ list_angle = (12, 12, 12, 12, 12, 6, 6)
 list_shift = (1, 2, 4, 5, 7, 3, 6)
 #------- Cycle duration
 cycle = 0.0096
-#------- Inclination of orbit, to be moved to const
-#inclination = 88.18 * math.pi / 180.
-inclination = 98.18 * math.pi / 180.
 # ------ Shift longitude of the orbit file if no pass is in the domain 
 #        (in degree): Default value is None (no shift)
 shift_lon = 0
 # ------ Shift time of the satellite pass (in day):
 #        Default value is None (no shift)
 shift_time = None
-timeshift=0
 # -----------------------#
 # Model input parameters
 # -----------------------#

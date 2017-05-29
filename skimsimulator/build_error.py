@@ -10,7 +10,10 @@ import sys
 from scipy.ndimage.filters import gaussian_filter
 import skimsimulator.mod_tools as mod_tools
 import skimsimulator.rw_data as rw_data
+#import logging
 
+# Define logging level for debug purposes
+#logger = logging.getLevel(__name__)
 
 class error():
     '''Class error define all the possible errors that can be computed using
@@ -123,21 +126,12 @@ class errornadir():
         self.nadir = nadir
         self.wet_tropo1 = wet_tropo1
         self.wt = wt
-        try:
-            self.nrand = p.nrandkarin
-        except:
-            self.nrand = 1000
-            p.nrandkarin = 1000
-        try:
-            self.ncomp2d = p.ncomp2d
-        except:
-            self.ncomp2d = 2000
-            p.ncomp2d = 2000
-        try:
-            self.ncomp1d = p.ncomp1d
-        except:
-            self.ncomp1d = 2000
-            p.ncomp1d = 2000
+        self.nrand = getattr(p, 'nrandkarin', 1000)
+        p.nrandkarin = self.nrand
+        self.ncomp2d = getattr(p, 'ncomp2d', 2000)
+        p.ncomp2d = self.ncomp2d
+        self.ncomp1d = getattr(p, 'ncomp1d', 2000)
+        p.ncomp1d = self.ncomp1d
 
     def init_error(self, p):
         '''Initialization of errors: Random realisation of errors are computed
@@ -149,11 +143,8 @@ class errornadir():
         spectrum error.'''
         # Run reprodictible: generate or load nrand random numbers:
         # - Compute random coefficients in 1D for the nadir error
-        try:
-            wnoise = p.wnoise
-        except:
-            wnoise = 100
-            p.wnoise = 100
+        wnoise = getattr(p, 'wnoise', 100)
+        p.wnoise = wnoise
         # - Define the sepctrum of the nadir instrument error
         # self.A=numpy.random.normal(0.0,sqrt(p.wnoise)
         # /numpy.float64(sqrt(2*p.delta_al)), (self.nrand))*0.01
@@ -166,7 +157,7 @@ class errornadir():
         PSD = PSD * 10**(-4)
         self.A, self.phi, self.f = mod_tools.gen_coeff_signal1d(f, PSD,
                                                                 self.ncomp1d)
-        if p.wet_tropo:
+        if p.wet_tropo is True:
             # - Define power spectrum of error in path delay due to wet tropo
             f = numpy.arange(1./3000., 1./float(2.*p.delta_al), 1./3000.)
             # - Global mean wet tropo power spectrum in cm**2/(cycle/km)
@@ -200,13 +191,12 @@ class errornadir():
         try:
             fid = nc.netcdf_file(p.file_coeff[:-3] + '_nadir.nc', 'r')
         except:
-            print('There was an error opening the file nadir'
-                  + p.file_coeff[:-3] + '_nadir.nc')
-            sys.exit()
+            logger.error('There was an error opening the file nadir {}_nadir.nc'.format(p.file_coeff[:-3]))
+            sys.exit(1)
         self.A = numpy.array(fid.variables['A'][:]).squeeze()
         self.f = numpy.array(fid.variables['f'][:]).squeeze()
         self.phi = numpy.array(fid.variables['phi'][:]).squeeze()
-        if p.wet_tropo:
+        if p.wet_tropo is True:
             self.A_wt = numpy.array(fid.variables['A_wt'][:]).squeeze()
             if numpy.shape(self.A_wt)[0] != self.ncomp2d:
               sys.exit(p.file_coeff + ' dimensions are different from ncomp2d='
@@ -323,7 +313,7 @@ class errornadir():
         # var[:] = self.phi
         # var = fid.createVariable('fr', 'f4', ('ninstr',))
         # var[:] = self.fr
-        if p.wet_tropo:
+        if p.wet_tropo is True:
             var = fid.createVariable('A_wt', 'f4', ('nrand2d', ))
             var[:] = self.A_wt
             var = fid.createVariable('phi_wt', 'f4', ('nrand2d', ))

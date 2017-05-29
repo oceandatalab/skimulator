@@ -10,7 +10,7 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data_b/model/ww3_fram/' #netcdf3/'
+indatadir = '/mnt/data/model/ww3_fram/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
@@ -41,13 +41,7 @@ list_pos = (0, 72*math.pi/180., 144*math.pi/180., 216*math.pi / 180.,
 #------- List of angle of beams in degrees:
 list_angle = (12, 12, 12, 12, 12, 6, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
-beam_period = 0.03680
-list_shift = (beam_period, beam_period * 2, beam_period * 4, beam_period * 5,
-              beam_period * 7, beam_period * 3, beam_period * 6)
 list_shift = (1, 2, 4, 5, 7, 3, 6)
-#------- Inclination of orbit, to be moved to const
-#inclination = 88.18 * math.pi / 180.
-inclination = 98.18 * math.pi / 180.
 # ------ Shift longitude of the orbit file if no pass is in the domain 
 #        (in degree): Default value is None (no shift)
 shift_lon = 0

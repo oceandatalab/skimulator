@@ -59,36 +59,21 @@ ifile = 0
 def run_simulator(p):
 
     # - Initialize some parameters values
-    try:
-        p.shift_lon = p.shift_lon
-    except:
-        p.shift_lon = None
-    try:
-        p.shift_time = p.shift_time
-    except:
-        p.shift_time = None
-    try:
-        model = p.model
-    except:
-        model = 'NETCDF_MODEL'
-        p.model = model
-    try:
-        p.model_nan = p.model_nan
-    except:
-        p.model_nan = 0.
-    try:
-        p.vel_factor = p.vel_factor
-    except:
-        p.vel_factor = 1.
-    try:
-        p.nadir = p.nadir
-    except:
-        p.nadir = True
-    try:
-        p.grid = p.grid
-    except:
-        p.grid = 'regular'
+    p.shift_lon = getattr(p, 'shift_lon', None)
+    p.shift_time = getattr(p, 'p.shift_time', None)
+    model = getattr(p, 'model', 'NETCDF_MODEL')
+    p.model = model
+    p.model_nan = getattr(p, 'model_nan', 0)
+    p.vel_factor = getattr(p, 'vel_factor', 1.)
+    p.nadir = getattr(p, 'nadir', True)
+    p.grid = getattr(p, 'grid', 'regular')
     p.rms_instr_factor = getattr(p, 'rms_instr_factor', 1)
+    p.cycle = getattr(p, 'cycle', 0.0368)
+    p.formula = getattr(p, 'formula', False)
+    p.footprint_std = getattr(p, 'footprint_std', 0)
+    p.timeshift = getattr(p, 'timeshift', 0)
+    if p.shift_time is None:
+        p.timeshift = 0
 
     # - Progress bar variables are global
     global istep
@@ -109,18 +94,19 @@ def run_simulator(p):
         #model_data = eval('rw_data.' + model
         #                  + '(p, file=p.indatadir+os.sep+list_file[0])')
         model_data_ctor = getattr(rw_data, model)
-        model_data = model_data_ctor(p, file=p.indatadir+os.sep+list_file[0])
+        model_data = model_data_ctor(p,
+                                   file=os.path.join(p.indatadir,list_file[0]))
     # if no modelbox is specified (modelbox=None), the domain of the input
     # data is taken as a modelbox
     # coordinates from the region defined by modelbox are selected
-    if p.modelbox:
+    if p.modelbox is not None:
         modelbox = numpy.array(p.modelbox, dtype='float')
         # Use convert to 360 data
         modelbox[0] = (modelbox[0]+360) % 360
         if modelbox[1] != 360:
             modelbox[1] = (modelbox[1]+360) % 360
     else:
-        if p.file_input:
+        if p.file_input is not None:
             modelbox = model_data.calc_box()
         else:
             logger.error('modelbox should be provided if no model file is'\
@@ -128,7 +114,7 @@ def run_simulator(p):
             sys.exit(1)
     # - Extract data on modelbox
     ### TODO: do only this step if modelbox is defined? Do it later?
-    if p.file_input:
+    if p.file_input is not None:
         model_data.read_coordinates()
         # Select model data in the region modelbox
         if p.grid == 'regular':
@@ -168,8 +154,7 @@ def run_simulator(p):
         model_data.model = model
         # prevent IDL issues
         model_data.vloncircu = numpy.rad2deg(numpy.unwrap(model_data.vlonu))
-        if p.lonu != p.lonv:
-            model_data.vloncircv = numpy.rad2deg(numpy.unwrap(model_data.vlonv))
+        model_data.vloncircv = numpy.rad2deg(numpy.unwrap(model_data.vlonv))
         # If corrdinates are 1D and local std needs to be computed for uss bias
         # Grid coordinates in 2D
         if (p.uss is True and p.footprint_std is not None
@@ -186,14 +171,14 @@ def run_simulator(p):
     if modelbox[1] == 0:
         modelbox[1] = 359.99
     # - Make SKIM grid if necessary """
-    if p.makesgrid:
+    if p.makesgrid==True:
         logger.info('\n Force creation of SKIM grid')
         # make nadir orbit
         orb = build_swath.makeorbit(modelbox, p, orbitfile=p.filesat)
         # build swath around this orbit
         build_swath.orbit2swath(modelbox, p, orb)
         logger.info("\n SKIM Grids and nadir tracks have been written in"\
-              "{}".format(p.outdatadir))
+                    "{}".format(p.outdatadir))
         logger.info("-----------------------------------------------")
 
     ## Initialize errors
@@ -205,10 +190,10 @@ def run_simulator(p):
     #   load all SKIM grid files (one for each pass)
     listsgridfile = sorted(glob.glob(p.filesgrid + '_p*.nc'))
     if not listsgridfile:
-        logger.error('\n There is no SKIM grid file in ' + p.outdatadir
-              + ', run simulator with option makesgrid set to true in your'\
-              'params file')
-        sys.exit()
+        logger.error('\n There is no SKIM grid file in {}, run simulator with'\
+                    'option makesgrid set to true in your params'\
+                    'file'.format(p.outdatadir))
+        sys.exit(1)
     # Build model time steps from parameter file
     modeltime = numpy.arange(0, p.nstep*p.timestep, p.timestep)
     #   Remove the grid from the list of model files
@@ -217,6 +202,7 @@ def run_simulator(p):
     #   Initialize progress bar variables
     istep = 0
     ntot = 1
+
     # - Loop on SKIM grid files
     for sgridfile in listsgridfile:
         #   Load SKIM grid files (Swath and nadir)
@@ -244,24 +230,28 @@ def run_simulator(p):
                 model_data = []
             # Initialize all list of variables (each beam is appended to the
             # list)
+            #Initialize velocity, indices and mask to empty lists
             ur_true_all = []
             u_true_all = []
             v_true_all = []
             vindice_all = []
+            ur_obs = []
+            mask = []
+            # Initialize noise to None if this noise is not computed
+            # (so that the variable is not written in the netcdf)
             err_instr = None
-            if p.instr is True:
-                err_instr = []
             err_uss = None
             std_uss = None
             ur_uss = None
             errdcos_tot = None
+            # Initialize noises to empty lists if the noise is set to True
+            if p.instr is True:
+                err_instr = []
             if p.uss is True:
                 err_uss = []
                 std_uss = []
                 ur_uss = []
                 errdcos_tot = []
-            ur_obs = []
-            mask = []
             # Loop over the beams
             for i in range(len(p.list_pos) + 1):
                 sgrid_tmp.lon = sgrid.lon[i]
@@ -281,14 +271,21 @@ def run_simulator(p):
                         err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                         err.err_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
                         err.std_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    # If the footprint of the std is defined, find the cycles
+                    # loacated in the area of the footprint to compute the std
+                    # later. Only use when the approximation with errdcos is
+                    # used.
                     if (p.uss is True and p.footprint_std is not None
-                          and p.footprint_std !=0 and sgrid_tmp.indi is None):
-                        sgrid_tmp.indi = numpy.zeros((numpy.shape(sgrid_tmp.lon)[0], 2))
-                        sgrid_tmp.indj = numpy.zeros((numpy.shape(sgrid_tmp.lon)[0], 2))
+                          and p.footprint_std !=0 and sgrid_tmp.indi is None
+                          and p.formula is True):
+                        sgrid_tmp.indi = numpy.zeros((numpy.shape(
+                                                         sgrid_tmp.lon)[0], 2))
+                        sgrid_tmp.indj = numpy.zeros((numpy.shape(
+                                                         sgrid_tmp.lon)[0], 2))
                         for ib in range(len(sgrid_tmp.lon)):
                             ilon = sgrid_tmp.lon[ib]
                             ilat = sgrid_tmp.lat[ib]
-                            indi, indj = numpy.where((((model_data.lon2D - ilon)
+                            indi, indj = numpy.where((((model_data.lon2D-ilon)
                                               * numpy.cos(model_data.lat2D))**2
                                               + (model_data.lat2D - ilat)**2)
                                               < p.footprint_std / const.deg2km)
@@ -314,6 +311,8 @@ def run_simulator(p):
                     rms_instr = p.rms_instr[i - 1]
                     # Geometrical error errdcos
                     errdcos = 1
+                    # If the formula is used and errdcos is constant for each
+                    # beam. Rough temporary approximation, should not be used. 
                     if p.errdcos is not None and p.uss is True:
                         errdcos = p.errdcos[i - 1]
                     # Read radial angle for projection on lon, lat reference
@@ -330,6 +329,7 @@ def run_simulator(p):
                                         p,
                                         progress_bar=True)
                     mask_tmp = numpy.isnan(ur_true)
+                # Append variables for each beam
                 if p.instr is True:
                     err_instr.append(err.instr)
                 if p.uss is True:
@@ -365,8 +365,7 @@ def run_simulator(p):
             # if p.file_input: del index
         if p.file_input:
             model_data.vlonu = (model_data.vlonu + 360) % 360
-            if p.lonu != p.lonv:
-                model_data.vlonv = (model_data.vlonv + 360) % 360
+            model_data.vlonv = (model_data.vlonv + 360) % 360
 
         modelbox[0] = (modelbox[0] + 360) % 360
         modelbox[1] = (modelbox[1] + 360) % 360
@@ -376,8 +375,10 @@ def run_simulator(p):
                                              'All passes have been processed',
                                              '')
     # - Write Selected parameters in a txt file
-    rw_data.write_params(p, p.outdatadir + os.sep + 'skim_simulator.output')
-    logger.info("\n Simulated skim files have been written in " + p.outdatadir)
+    rw_data.write_params(p, os.path.join(p.outdatadir,
+                                         'skim_simulator.output'))
+    logger.info("\n Simulated skim files have been written in "\
+                "{}".format(p.outdatadir))
     logger.info("----------------------------------------------------------")
 
 
@@ -387,7 +388,6 @@ def load_error(p):
     If a random coefficient file is specified, random coefficients
     are loaded from this file.
     '''
-    # import skimsimulator.build_error as build_error
     err = build_error.error(p)
     err.init_error(p)
     errnad = build_error.errornadir(p)
@@ -397,7 +397,6 @@ def load_error(p):
 
 def load_sgrid(sgridfile, p):
     '''Load SKIM swath and Nadir data for file sgridfile '''
-    # import skimsimulator.rw_data as rw_data
 
     # Load SKIM swath file
     sgrid = rw_data.Sat_SKIM(file=sgridfile)
@@ -417,30 +416,25 @@ def load_sgrid(sgridfile, p):
 
 def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
     ''' Interpolation of data when grid is regular and coordinate in 1D. '''
-                    #Teval = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, numpy.isnan(u_model), kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                #u_model_mask = + u_model
-                #u_model_mask[numpy.isnan(u_model_mask)] = 0.
-                #u_true_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_model_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                #u_true_ind_time[Teval > 0] = numpy.nan
-    #lon_in = numpy.rad2deg(numpy.unwrap(lon_in))
-    #lon_out = numpy.rad2deg(numpy.unwrap(lon_out))
-    #logger.debug(lat_out, lon_out)
+    # To correct for IDL issues
     if numpy.max(lon_in)>359 and numpy.min(lon_in)<1:
         lon_in[lon_in > 180] = lon_in[lon_in > 180] - 360
         #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
         lon_in = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_in)))
+    # Interpolate mask if it has not been done (Teval is None)
     if Teval is None:
         Teval = interpolate.RectBivariateSpline(lat_in, lon_in,
                                             numpy.isnan(var),
                                             kx=1, ky=1, s=0).ev(lat_out,
                                             lon_out)
+    # Trick to avoid nan in interpolation
     var_mask = + var
     var_mask[numpy.isnan(var_mask)] = 0.
-
+    # Interpolate variable
     var_out = interpolate.RectBivariateSpline(lat_in, lon_in, var_mask, kx=1,
                                               ky=1,
                                               s=0).ev(lat_out, lon_out)
-
+    # Mask variable with Teval
     var_out[Teval > 0] = numpy.nan
     return var_out, Teval
 
@@ -492,35 +486,43 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     lon = sgrid.lon
     lat = sgrid.lat
     timeshift = sgrid.timeshift / 86400.  # in days 
-    # TODO remove timeshift=0 when grid are recomputed
-    timeshift = 0
     # Look for satellite data that are beween step-p.timestep/2 and step+p.timestep/2
     if p.file_input is not None:
+        # meshgrid in 2D for interpolation purposes
+        if p.grid=='irregular':
+            lon2Du, lat2Du = numpy.meshgrid(model_data.vlonu, model_data.vlatu)
+            if (p.lonu ==  p.lonv) and (p.latu == p.latv):
+                lon2Dv, lat2Dv = lon2Du, lat2Du
+            else:
+                lon2Dv, lat2Dv = numpy.meshgrid(model_data.vlonv,
+                                                model_data.vlatv)
         index_filemodel = numpy.where(((time[-1]-timeshift) >= (modeltime-p.timestep/2.))
-                                      & ((time[0]-timeshift) < (modeltime+p.timestep/2.)))  # [0]
+                                      & ((time[0]-timeshift) < (modeltime+p.timestep/2.)))
+        #local variable to find time record in file for WW3
         nfile=0
         time_offset=0
         # At each step, look for the corresponding time in the satellite data
         for ifile in index_filemodel[0]:
             progress = mod_tools.update_progress(float(istep)/float(ntot
-                                                 * ntotfile), 'pass: '
-                                                 + str(sgrid.ipass),
-                                                 'model file: '+ str(ifile)
-                                                 + ', cycle:'+str(cycle+1))
-                # If there are satellite data, Get true SSH from model
+                                                 * ntotfile),
+                                                 'pass: {}'.format(sgrid.ipass),
+                                                 'model file: {}, cycle: {}'.format(ifile, cycle+1))
+            # If there are satellite data, Get true velcoity from model
             if numpy.shape(index_filemodel)[1] > 0:
                 # number of file to be processed used in the progress bar
                 # ntot = ntot + numpy.shape(index_filemodel)[1]-1
                 ntot = numpy.shape(index_filemodel)[1]
                 # if numpy.shape(index)[1]>1:
                 # Select part of the track that corresponds to the time of the model (+-timestep/2)
-                ind_time = numpy.where(((time-timeshift) >= (modeltime[ifile]-p.timestep/2.)) & ((time-timeshift) < (modeltime[ifile]+p.timestep/2.)) )
+                ind_time = numpy.where(((time-timeshift) >= (modeltime[ifile]-p.timestep/2.))
+                                     & ((time-timeshift) < (modeltime[ifile]+p.timestep/2.)))
             else:
                 logger.error('No model file is found around time')
                 sys.exit(1)
             # Load data from this model file
             # if output from ww3, time dimension is >1 (hourly outputs,
-            # one file per month
+            # one file per month): conversion of ifile into file number 
+            # and record number
             if model_data.model == 'WW3':
                 filetime = ifile - time_offset
                 # read next file when the time dimension is reached
@@ -574,39 +576,38 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                     len(numpy.shape(model_data.vlonu)) == 1:
                 # Flatten satellite grid and select part of the track
                 # corresponding to the model time
-                #Teval = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, numpy.isnan(u_model), kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                #u_model_mask = + u_model
-                #u_model_mask[numpy.isnan(u_model_mask)] = 0.
-                #u_true_ind_time = interpolate.RectBivariateSpline(model_data.vlatu, model_data.vlonu, u_model_mask, kx=1, ky=1, s=0).ev(lat[ind_time[0]], lon[ind_time[0]])
-                #u_true_ind_time[Teval > 0] = numpy.nan
-                u_true_ind_time, Teval_u = interpolate_regular_1D(model_data.vlonu,
+                u_true_ind_time, Teval_u = interpolate_regular_1D(
+                                                         model_data.vlonu,
                                                          model_data.vlatu,
                                                          u_model,
                                                          lon[ind_time[0]],
                                                          lat[ind_time[0]])
-                u_true[ind_time[0]] = u_true_ind_time #[ind_time[0]]
+                u_true[ind_time[0]] = u_true_ind_time
                 if p.uss is True:
-                    u_uss_ind_time, Teval = interpolate_regular_1D(model_data.vlonu,
+                    u_uss_ind_time, Teval = interpolate_regular_1D(
+                                                         model_data.vlonu,
                                                          model_data.vlatu,
                                                          u_uss_mod,
                                                          lon[ind_time[0]],
                                                          lat[ind_time[0]],
                                                          Teval=Teval_u)
-                    u_uss[ind_time[0]] = u_uss_ind_time #[ind_time[0]]
-                v_true_ind_time, Teval_v = interpolate_regular_1D(model_data.vlonv,
+                    u_uss[ind_time[0]] = u_uss_ind_time
+                v_true_ind_time, Teval_v = interpolate_regular_1D(
+                                                         model_data.vlonv,
                                                          model_data.vlatv,
                                                          v_model,
                                                          lon[ind_time[0]],
                                                          lat[ind_time[0]])
-                v_true[ind_time[0]] = v_true_ind_time #[ind_time[0]]
+                v_true[ind_time[0]] = v_true_ind_time
                 if p.uss is True:
-                    v_uss_ind_time, Teval = interpolate_regular_1D(model_data.vlonu,
+                    v_uss_ind_time, Teval = interpolate_regular_1D(
+                                                         model_data.vlonu,
                                                          model_data.vlatu,
                                                          v_uss_mod,
                                                          lon[ind_time[0]],
                                                          lat[ind_time[0]],
                                                          Teval=Teval_v)
-                    v_uss[ind_time[0]] = v_uss_ind_time #[ind_time[0]]
+                    v_uss[ind_time[0]] = v_uss_ind_time
             else:
                 # Grid is irregular, interpolation can be done using
                 # pyresample module if it is installed or griddata
@@ -615,14 +616,19 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
 
                 try:
                     import pyresample as pr
-                    model_data.vlonu = pr.utils.wrap_longitudes(model_data.vlonu)
+                    model_data.vlonu = pr.utils.wrap_longitudes(
+                                                              model_data.vlonu)
                     lon = pr.utils.wrap_longitudes(lon)
                     if len(numpy.shape(model_data.vlonu)) <= 1:
-                        model_data.vlonu, model_data.vlatu = numpy.meshgrid(
-                                                           model_data.vlonu,
-                                                           model_data.vlatu)
-                    model_data.vlonv = model_data.vlonu
-                    model_data.vlatv = model_data.vlatu
+                        model_data.vlonu = lon2Du
+                        model_data.vlatu = lat2Du
+                        if p.lonu == p.lonv:
+                            model_data.vlonv = model_data.vlonu
+                            model_data.vlatv = model_data.vlatu
+                        else:
+                            model_data.vlonv = lon2Dv
+                            model_data.vlatv = lat2Dv
+
                     swath_defu = pr.geometry.SwathDefinition(
                                  lons=model_data.vlonu, lats=model_data.vlatu)
                     swath_defv = pr.geometry.SwathDefinition(
@@ -698,9 +704,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
             # Compute std of uss at each beam to compute the corrected bias of
             # the stoke drift
             if p.uss is True:
-                #TODO: To be moved at the beginning
-                lon2D, lat2D = numpy.meshgrid(model_data.vlonu,
-                                              model_data.vlatu)
                 if p.footprint_std is not None and p.footprint_std !=0 and p.formula is True:
                     std_uss_local = numpy.zeros(numpy.shape(ind_time[0]))
                     for ib in range(len(ind_time[0])):
@@ -726,9 +729,9 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     else:
         istep += 1
         progress = mod_tools.update_progress(float(istep)/float(ntotfile*ntot),
-                                             'pass: ' + str(sgrid.ipass),
-                                             'no model file provided'
-                                             + ', cycle:' + str(cycle+1))
+                                             'pass: {}'.format(sgrid.ipass),
+                                             'no model file provided, cycle: '\
+                                             '{}'.format(cycle+1))
     ur_true = mod_tools.proj_radial(u_true, v_true, radial_angle)
     if p.uss is not True:
         u_uss = None
@@ -740,6 +743,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     return ur_true, u_true, v_true, vindice, time, progress
 
 def compute_errdcos(p, sgrid, mask, err_uss):
+    '''Compute the weigthed distance for the uss reconstruction formula. '''
     # Compute number of azimuth per mega cycle
     naz = (60 / (p.rotation_speed * p.cycle * len(p.list_pos)))
     # Initialize errdcos
@@ -806,6 +810,8 @@ def compute_errdcos(p, sgrid, mask, err_uss):
     return errdcos_tot, err_uss
 
 def compute_errussr(p, sgrid, mask, uss_r, err_uss):
+    ''' Compute the reconstructed error of ussr using information from the uss
+    calculated with closed beams. '''
     # Compute number of azimuth per mega cycle
     naz = (60 / (p.rotation_speed * p.cycle * len(p.list_pos)))
     # Initialize errdcos
@@ -851,8 +857,12 @@ def compute_errussr(p, sgrid, mask, uss_r, err_uss):
                     continue
                 lon = lon[ind_angle]
                 lat = lat[ind_angle]
+                if lon.size == 0:
+                    continue
                 uss_r_loc2 = uss_r_loc[ind_angle]
                 sgridlon = sgrid.lon[i][ib]
+                try: numpy.max(lon)
+                except: import pdb ; pdb.set_trace()
                 if numpy.max(lon)>359 and numpy.min(lon)<1:
                     lon[lon > 180] = lon[lon > 180] - 360
                     #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
@@ -860,28 +870,20 @@ def compute_errussr(p, sgrid, mask, uss_r, err_uss):
                     if sgridlon > 180:
                         sgridlon = sgridlon - 360
                     #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
-                        sgridlon = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(sgridlon)))
+                        sgridlon = numpy.rad2deg(numpy.deg2rad(sgridlon))
                 dlon_km = ((lon - sgridlon)*111
                             * numpy.cos(sgrid.lat[i][ib] * math.pi / 180.))
                 dlat_km = (lat - sgrid.lat[i][ib])*111
                 dist = numpy.sqrt(dlon_km**2 + dlat_km **2)
                 if len(dist) > 0:
                     ind_dist = numpy.argmin(dist)
-                    #if (dist[ind_dist] > 50):
-                    #    print(dist[ind_dist], dlon_km[ind_dist], dlat_km[ind_dist], lon[ind_dist], lat[ind_dist], sgridlon, sgrid.lat[i][ib])
-                #errdcos[ib] += (dist[ind_dist] * numpy.cos(theta
-                #                 - angle[ind_angle[0][ind_dist],
-                #                         ind_angle[1][ind_dist]]))**2
                     errussr[ib] += (numpy.cos(theta
                                    - angle[ind_angle[0][ind_dist],                                                                  ind_angle[1][ind_dist]])
                                    * uss_r_loc2[ind_dist] * dtheta
                                    / (math.pi) * 2)
                 else:
                     errussr[ib] = numpy.nan
-
                 ntheta2 += 1
-            #if not numpy.isnan(errussr[ib]) and errussr[ib]!=0:
-            #    import pdb ; pdb.set_trace()
         err_uss[i][:] = (errussr - uss_r[i][:])
     return err_uss
 
@@ -902,4 +904,3 @@ def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
                           instr=err_instr, u_model=u_model, v_model=v_model,
                           errdcos=errdcos)
     return None
-
