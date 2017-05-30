@@ -104,7 +104,8 @@ class error():
         return None
 
     def make_vel_error(self, ur_true, p):
-        '''Compute observed SSH adding all the computed error to the model SSH.
+        '''Compute observed velocity adding all the computed error to the model
+        velocity.
         '''
         numpy.seterr(invalid='ignore')
         self.ur_obs = ur_true

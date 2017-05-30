@@ -13,7 +13,7 @@
 
 #-----------------------------------------------------------------------
 #                       Additional Documentation
-# Authors: Lucile Gaultier and Clement Ubelmann
+# Authors: Lucile Gaultier
 #
 # Modification History:
 # - Mar 2017:  Original by Lucile Gaultier, ODL

@@ -7,7 +7,7 @@ The SKIM grid parameters are saved in netcdf files, if you don't want to
 recompute them, set maksgrid (in params file) to False.\n
 
 In the second part of the program, errors are computed on SKIM grid for
-each pass, for each cycle. The error free SSH is the velocity interpolated
+each pass, for each cycle. The error free velocity is the velocity interpolated
 from the model at each timestep. Note that there is no temporal interpolation
 between model files and thus if several files are used in the velocity
 interpolation, some discontinuities may be visible. \n
@@ -20,16 +20,16 @@ pass and every cycle.
 \n
 #-----------------------------------------------------------------------
 #                       Additional Documentation
-# Authors: Lucile Gaultier and Clement Ubelmann
+# Authors: Lucile Gaultier
 #
 # Modification History:
-# - Mar 2017:  Original by Clement Ubelmann and Lucile Gaultier
+# - Mar 2017:  Original by Lucile Gaultier, ODL
 #
 # Notes:
 # - Written for Python 2.7,  Python 3.5, tested with Python 2.7, Python 3.5
 #
 # Copyright (c)
-#
+# GPLv2.0 licence
 #-----------------------------------------------------------------------
 '''
 import os
@@ -184,9 +184,9 @@ def run_simulator(p):
     ## Initialize errors
     err, errnad = load_error(p)
 
-    # - Compute interpolated SSH and errors for each pass, at each
+    # - Compute interpolated velocity and errors for each pass, at each
     #   cycle
-    logger.info('Compute interpolated SSH and errors:')
+    logger.info('Compute interpolated velocity and errors:')
     #   load all SKIM grid files (one for each pass)
     listsgridfile = sorted(glob.glob(p.filesgrid + '_p*.nc'))
     if not listsgridfile:
@@ -465,13 +465,13 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                         sgrid, model_data, modeltime, err, Gvar, rms_instr,
                         errdcos,
                         radial_angle, p, progress_bar=True):
-    '''Create SKIM and nadir errors err and errnad, interpolate model SSH\
+    '''Create SKIM and nadir errors err and errnad, interpolate model velocity\
     model_data on swath and nadir track,
     compute SKIM-like and nadir-like data for cycle, SKIM grid sgrid and ngrid. '''
     # - Progress bar variables are global
     global istep
     global ntot
-    #   Initialiaze errors and SSH
+    #   Initialiaze errors and velocity
     progress = 0
     err.instr = numpy.zeros((numpy.shape(sgrid.lon)[0]))
     err.ur_uss = numpy.zeros((numpy.shape(sgrid.lon)[0]))
@@ -744,7 +744,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
         v_uss = None
     err.make_error(ur_true, p, radial_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss), std_local=std_uss, errdcos=errdcos)
-    # if p.file_input: del ind_time, SSH_model, model_step
     return ur_true, u_true, v_true, vindice, time, progress
 
 def compute_errdcos(p, sgrid, mask, err_uss):

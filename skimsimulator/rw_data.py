@@ -225,7 +225,7 @@ class Sat_SKIM():
         fid.history = 'Grid File created by skimsimulator version ' + version
         fid.processing_level = 'L2'
         fid.standard_name_vocabulary = "CF-1.6"
-        fid.creator_name = "Lucile Gaultier and Clement Ubelmann"
+        fid.creator_name = "Lucile Gaultier"
         fid.creator_email = "lucile.gaultier@gmail.com"
         fid.publisher_url = ""
         fid.time_coverage_start = self.time[0][0]
@@ -356,9 +356,9 @@ class Sat_SKIM():
         Dimensions are x_al (along track distance), x_ac (across
         track distance). \n
         Variables are longitude, latitude, index (file number),
-        error-free SSH (SSH interpolated from the model), selected
-        errors (karin, wet_tropo, roll, baseline_dilation, phase,
-        timing) and SSH with errors. \n
+        error-free radial velocity (velocity interpolated from the model and
+        projected with the radial angle), selected
+        errors (instrument, uss bias, radial uss) and velocity with errors. \n
         '''
 ## - Open netcdf file in write mode
         if netcdf4:
@@ -371,7 +371,7 @@ class Sat_SKIM():
         except:
             pass
         fid.title = 'SKIM-like data simulated by SKIM simulator'
-        fid.keywords = 'SKIM, altimetry, SSH, satellite, remote sensing'
+        fid.keywords = 'SKIM, altimetry, satellite, remote sensing'
         fid.Conventions = "CF-1.6"
         fid.summary = 'SKIM grid data produced'
         fid.description = "SKIM fixed grid"
