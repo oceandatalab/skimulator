@@ -94,10 +94,11 @@ class error():
 
             self.ur_uss *= Gvar
         if p.uss is True and std_local is not None:
-            if errdcos is None:
-                errdcos = 1.
-            err_uss_tmp = p.bias_std * std_local * Gvar * errdcos
-            self.err_uss = numpy.random.normal(0.0 * std_local,
+            if p.formula is True:
+                if errdcos is None:
+                    errdcos = 1.
+                err_uss_tmp = p.bias_std * std_local * Gvar * errdcos
+                self.err_uss = numpy.random.normal(0.0 * std_local,
                                                err_uss_tmp)
             self.std_uss = std_local
         return None
@@ -330,3 +331,18 @@ class errornadir():
             var[:] = self.fr_radio
         fid.close()
         return None
+
+
+def make_vel_error(ur_true, p, instr=None, err_uss=None):
+        '''Compute observed velocity adding all the computed error to the model
+        velocity.
+        '''
+        numpy.seterr(invalid='ignore')
+        ur_obs = + ur_true
+        if p.instr is True and instr is not None:
+            ur_obs = ur_obs + instr
+        if p.uss is True and err_uss is not None:
+            ur_obs = ur_obs + err_uss
+        if p.file_input is not None:
+            ur_obs[numpy.where(ur_true == p.model_nan)] = p.model_nan
+        return ur_obs

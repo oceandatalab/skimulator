@@ -341,17 +341,23 @@ def run_simulator(p):
                 v_true_all.append(v_true)
                 vindice_all.append(vindice)
                 mask.append(mask_tmp)
-                ur_obs.append(err.ur_obs)
-                ### Make error here
-            #   Compute errdcos
-            if p.uss is True and p.errdcos is None:
+                #ur_obs.append(err.ur_obs)
+            # Compute uss bias
+            #   Compute errdcos if Formula is True
+            if p.uss is True and p.errdcos is None and p.formula is True:
                 errdcos_tot, err_uss = compute_errdcos(p, sgrid, mask,
                                                           err_uss)
+            # Compute directly bias if formula is False
             if p.uss is True and p.formula is False:
                 err_uss = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
                 #errdcos_tot.append(errdcos)
                 #err_uss.append(err.err_uss)
                 #, err_uss)
+            for i in range(1, len(p.list_pos) +1):
+                ur_obs_i = build_error.make_vel_error(ur_true_all[i], p,
+                                                  instr=err_instr[i],
+                                                  err_uss=err_uss[i])
+                ur_obs.append(ur_obs_i)
             #   Save outputs in a netcdf file
             if ((~numpy.isnan(numpy.array(vindice_all))).any()
                   or not p.file_input):
@@ -738,7 +744,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
         v_uss = None
     err.make_error(ur_true, p, radial_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss), std_local=std_uss, errdcos=errdcos)
-    err.make_vel_error(ur_true, p)
     # if p.file_input: del ind_time, SSH_model, model_step
     return ur_true, u_true, v_true, vindice, time, progress
 
