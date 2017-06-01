@@ -293,6 +293,10 @@ class Sat_SKIM():
         vx_al = fid.createVariable('x_al', 'f4', (dimsample, dimnbeam))
         vx_al.units = "km"
         vx_al.long_name = "Along track distance from the nadir"
+        #vx_al_tot = fid.createVariable('x_al_total', 'f4', (dimsample, dimnbeam))
+        #vx_al_tot.units = "km"
+        #vx_al_tot.long_name = "Along track distance from the beginning of "\
+        #                      "the pass"
         vx_ac = fid.createVariable('x_ac', 'f4', (dimsample,dimnbeam))
         vx_ac.units = "km"
         vx_ac.long_name = "Across track distance from the nadir"
@@ -320,6 +324,7 @@ class Sat_SKIM():
                 vlon[:, i - 1] = self.lon[i][:nsample]
                 vlat[:, i - 1] = self.lat[i][:nsample]
                 vx_al[:, i - 1] = self.x_al[i][:nsample]
+                #vx_al_tot[:, i - 1] = self.x_al[i][:nsample] + self.x_al_tot[i][:nsample]
                 vx_ac[:, i - 1] = self.x_ac[i][:nsample]
                 vangle[:, i - 1] = self.beam_angle[i][:nsample]
                 vrangle[:, i - 1] = self.radial_angle[i][:nsample]
@@ -500,7 +505,11 @@ class Sat_SKIM():
                         vmax = numpy.nanmax(value_tmp)
                         mask = numpy.isnan(value_tmp)
                         value_tmp[numpy.where(mask)] = -1.36e9
-                        mask_ind = numpy.where(value_tmp == 0)
+                        mask_ind = numpy.where(value_tmp <-1e8)
+                        value_tmp[mask_ind] = -1.36e9
+                        mask_ind = numpy.where(value_tmp >1e8)
+                        value_tmp[mask_ind] = -1.36e9
+                        mask_ind = numpy.where(value_tmp == numpy.PINF)
                         value_tmp[mask_ind] = -1.36e9
                         if i == 0:
                             if key in list_nadir:

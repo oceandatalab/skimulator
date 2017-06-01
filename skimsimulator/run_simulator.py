@@ -260,17 +260,23 @@ def run_simulator(p):
                 # If nadir, compute a different noise, not implemented so far,
                 # Initialize at zero.
                 if i == 0:
-                    ur_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    u_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    v_true = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    vindice = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    err.ur_obs = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    err.instr = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                    mask_tmp = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                    ur_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
+                    u_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
+                    v_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
+                    vindice = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
+                    err.ur_obs = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                            numpy.nan)
+                    err.instr = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                           numpy.nan)
+                    mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                          numpy.nan)
                     if p.uss is True:
-                        err.ur_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                        err.err_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
-                        err.std_uss = numpy.zeros((numpy.shape(sgrid_tmp.lon)))
+                        err.ur_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                          numpy.nan)
+                        err.err_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                          numpy.nan)
+                        err.std_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                          numpy.nan)
                     # If the footprint of the std is defined, find the cycles
                     # loacated in the area of the footprint to compute the std
                     # later. Only use when the approximation with errdcos is
@@ -427,12 +433,18 @@ def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
         lon_in[lon_in > 180] = lon_in[lon_in > 180] - 360
         #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
         lon_in = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_in)))
+        lon_out[lon_out > 180] = lon_out[lon_out > 180] - 360
+        lon_out = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_out)))
+        #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
     # Interpolate mask if it has not been done (Teval is None)
     if Teval is None:
-        Teval = interpolate.RectBivariateSpline(lat_in, lon_in,
+        try:
+            Teval = interpolate.RectBivariateSpline(lat_in, lon_in,
                                             numpy.isnan(var),
                                             kx=1, ky=1, s=0).ev(lat_out,
                                             lon_out)
+        except:
+            import pdb ; pdb.set_trace()
     # Trick to avoid nan in interpolation
     var_mask = + var
     var_mask[numpy.isnan(var_mask)] = 0.
@@ -473,20 +485,20 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     global ntot
     #   Initialiaze errors and velocity
     progress = 0
-    err.instr = numpy.zeros((numpy.shape(sgrid.lon)[0]))
-    err.ur_uss = numpy.zeros((numpy.shape(sgrid.lon)[0]))
-    std_uss = numpy.zeros((numpy.shape(sgrid.lon)[0]))
-    err.wet_tropo1nadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
-    err.wet_tropo2nadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
-    err.wtnadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
-    err.nadir = numpy.zeros((numpy.shape(sgrid.lon)[0]))
+    err.instr =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.ur_uss =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    std_uss =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.wet_tropo1nadir =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.wet_tropo2nadir =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.wtnadir =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.nadir =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
     date1 = cycle * sgrid.cycle
-    u_true = (numpy.zeros((numpy.shape(sgrid.lon)[0])))
-    v_true = (numpy.zeros((numpy.shape(sgrid.lon)[0])))
-    u_uss = (numpy.zeros((numpy.shape(sgrid.lon)[0])))
-    v_uss = (numpy.zeros((numpy.shape(sgrid.lon)[0])))
-    ur_true = (numpy.zeros((numpy.shape(sgrid.lon)[0])))
-    vindice = numpy.zeros((numpy.shape(sgrid.lon)[0])) * numpy.nan
+    u_true =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    v_true =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    u_uss =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    v_uss =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    ur_true =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    vindice =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
     # Definition of the time in the model
     time = sgrid.time / 86400. + date1 # in days
     lon = sgrid.lon
@@ -556,16 +568,16 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                   varu='uuss', varv='vuss')
             if p.grid == 'regular':
                 model_step.read_var()
-                u_model = model_step.vvaru[model_data.model_index_latu, :]
-                u_model = u_model[:, model_data.model_index_lonu]
-                v_model = model_step.vvarv[model_data.model_index_latv, :]
-                v_model = v_model[:, model_data.model_index_lonv]
+                u_model_tmp = model_step.vvaru[model_data.model_index_latu, :]
+                u_model = u_model_tmp[:, model_data.model_index_lonu]
+                v_model_tmp = model_step.vvarv[model_data.model_index_latv, :]
+                v_model = v_model_tmp[:, model_data.model_index_lonv]
                 if p.uss is True:
                     uss_step.read_var()
-                    u_uss_mod = uss_step.vvaru[model_data.model_index_latu, :]
-                    u_uss_mod = u_uss_mod[:, model_data.model_index_lonu]
-                    v_uss_mod = uss_step.vvaru[model_data.model_index_latv, :]
-                    v_uss_mod = v_uss_mod[:, model_data.model_index_lonv]
+                    u_uss_mod_tmp = uss_step.vvaru[model_data.model_index_latu, :]
+                    u_uss_mod = u_uss_mod_tmp[:, model_data.model_index_lonu]
+                    v_uss_mod_tmp = uss_step.vvaru[model_data.model_index_latv, :]
+                    v_uss_mod = v_uss_mod_tmp[:, model_data.model_index_lonv]
             else:
                 model_step.read_var(index=None)
                 u_model = model_step.vvaru[model_data.model_indexu]
@@ -588,7 +600,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                                          u_model,
                                                          lon[ind_time[0]],
                                                          lat[ind_time[0]])
-                u_true[ind_time[0]] = u_true_ind_time
+                u_true[ind_time[0]] = + u_true_ind_time
                 if p.uss is True:
                     u_uss_ind_time, Teval = interpolate_regular_1D(
                                                          model_data.vlonu,
@@ -597,14 +609,14 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                                          lon[ind_time[0]],
                                                          lat[ind_time[0]],
                                                          Teval=Teval_u)
-                    u_uss[ind_time[0]] = u_uss_ind_time
+                    u_uss[ind_time[0]] = + u_uss_ind_time
                 v_true_ind_time, Teval_v = interpolate_regular_1D(
                                                          model_data.vlonv,
                                                          model_data.vlatv,
                                                          v_model,
                                                          lon[ind_time[0]],
                                                          lat[ind_time[0]])
-                v_true[ind_time[0]] = v_true_ind_time
+                v_true[ind_time[0]] = + v_true_ind_time
                 if p.uss is True:
                     v_uss_ind_time, Teval = interpolate_regular_1D(
                                                          model_data.vlonu,
@@ -613,7 +625,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                                          lon[ind_time[0]],
                                                          lat[ind_time[0]],
                                                          Teval=Teval_v)
-                    v_uss[ind_time[0]] = v_uss_ind_time
+                    v_uss[ind_time[0]] = + v_uss_ind_time
             else:
                 # Grid is irregular, interpolation can be done using
                 # pyresample module if it is installed or griddata
@@ -730,7 +742,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                     std_uss_local = (numpy.ones(numpy.shape(ind_time[0]))
                                      * numpy.nanstd(numpy.sqrt(u_uss_mod**2
                                      + v_uss_mod**2)))
-            std_uss[ind_time[0]] = std_uss_local
+            std_uss[ind_time[0]] = + std_uss_local
         istep += 1
     else:
         istep += 1
@@ -882,7 +894,8 @@ def compute_errussr(p, sgrid, mask, uss_r, err_uss):
                 if len(dist) > 0:
                     ind_dist = numpy.argmin(dist)
                     errussr[ib] += (numpy.cos(theta
-                                   - angle[ind_angle[0][ind_dist],                                                                  ind_angle[1][ind_dist]])
+                                   - angle[ind_angle[0][ind_dist],
+                                   ind_angle[1][ind_dist]])
                                    * uss_r_loc2[ind_dist] * dtheta
                                    / (math.pi) * 2)
                 else:

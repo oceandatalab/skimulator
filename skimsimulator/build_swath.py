@@ -246,6 +246,7 @@ def orbit2swath(modelbox, p, orb):
             radial_angle_tot = [numpy.zeros(numpy.shape(lon_beam[0]))]
             xal_beam = [x_al_nad]
             xac_beam = [x_al_nad * 0]
+            xal_beam_tot = [x_al_nad]
             x_al_tmp = x_al_nad - x_al_nad[0]
             inclination_angle = numpy.zeros(numpy.shape(lonnad))
             inclination_angle[1:] = numpy.arctan((latnad[1:] - latnad[:-1])
@@ -303,6 +304,7 @@ def orbit2swath(modelbox, p, orb):
                 lat_beam.append(lat_tmp)
                 xal_beam.append(xal * const.deg2km)
                 xac_beam.append(xac * const.deg2km)
+                xal_beam_tot.append(sgrid.x_al[shift::nbeam])
                 time_beam.append(timebeamshift)
                 angle_beam.append(beam_angle)
                 radial_angle_tot.append(radial_angle)
@@ -312,6 +314,7 @@ def orbit2swath(modelbox, p, orb):
             sgrid.lat = lat_beam
             sgrid.time = time_beam
             sgrid.x_al = xal_beam
+            sgrid.x_al_tot = xal_beam_tot
             sgrid.x_ac = xac_beam
             sgrid.list_angle = p.list_angle
             sgrid.list_pos = p.list_pos

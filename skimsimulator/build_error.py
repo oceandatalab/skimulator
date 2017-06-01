@@ -108,7 +108,7 @@ class error():
         velocity.
         '''
         numpy.seterr(invalid='ignore')
-        self.ur_obs = ur_true
+        self.ur_obs = + ur_true
         if p.instr is True:
             self.ur_obs = self.ur_obs + self.instr
         if p.uss is True:
