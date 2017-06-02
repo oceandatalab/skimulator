@@ -334,7 +334,7 @@ def run_simulator(p):
                                         Gvar, rms_instr, errdcos, radial_angle,
                                         p,
                                         progress_bar=True)
-                    mask_tmp = numpy.isnan(ur_true)
+                    mask_tmp = numpy.isnan(u_true)
                 # Append variables for each beam
                 if p.instr is True:
                     err_instr.append(err.instr)
@@ -351,18 +351,18 @@ def run_simulator(p):
             # Compute uss bias
             #   Compute errdcos if Formula is True
             if p.uss is True and p.errdcos is None and p.formula is True:
-                errdcos_tot, err_uss = compute_errdcos(p, sgrid, mask,
+                errdcos_tot, err_uss2 = compute_errdcos(p, sgrid, mask,
                                                           err_uss)
             # Compute directly bias if formula is False
             if p.uss is True and p.formula is False:
-                err_uss = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
+                err_uss2 = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
                 #errdcos_tot.append(errdcos)
                 #err_uss.append(err.err_uss)
                 #, err_uss)
             for i in range(1, len(p.list_pos) +1):
                 ur_obs_i = build_error.make_vel_error(ur_true_all[i], p,
                                                   instr=err_instr[i],
-                                                  err_uss=err_uss[i])
+                                                  err_uss=err_uss2[i])
                 ur_obs.append(ur_obs_i)
             #   Save outputs in a netcdf file
             if ((~numpy.isnan(numpy.array(vindice_all))).any()
@@ -370,7 +370,7 @@ def run_simulator(p):
                 sgrid.ncycle = cycle
                 save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
                           ur_model=ur_true_all, ur_obs=ur_obs, std_uss=std_uss,
-                          err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss,
+                          err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss2,
                           u_model=u_true_all, v_model=v_true_all,
                           errdcos=errdcos_tot)
             del time
@@ -485,20 +485,20 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     global ntot
     #   Initialiaze errors and velocity
     progress = 0
-    err.instr =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    err.ur_uss =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    std_uss =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    err.wet_tropo1nadir =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    err.wet_tropo2nadir =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    err.wtnadir =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    err.nadir =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.instr = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.ur_uss = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    std_uss = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.wet_tropo1nadir = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.wet_tropo2nadir = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.wtnadir = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    err.nadir = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
     date1 = cycle * sgrid.cycle
-    u_true =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    v_true =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    u_uss =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    v_uss =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    ur_true =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
-    vindice =  numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    u_true = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    v_true = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    u_uss = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    v_uss = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    ur_true = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
+    vindice = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
     # Definition of the time in the model
     time = sgrid.time / 86400. + date1 # in days
     lon = sgrid.lon
@@ -507,7 +507,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     # Look for satellite data that are beween step-p.timestep/2 and step+p.timestep/2
     if p.file_input is not None:
         # meshgrid in 2D for interpolation purposes
-        if p.grid=='irregular':
+        if p.grid == 'irregular':
             lon2Du, lat2Du = numpy.meshgrid(model_data.vlonu, model_data.vlatu)
             if (p.lonu ==  p.lonv) and (p.latu == p.latv):
                 lon2Dv, lat2Dv = lon2Du, lat2Du
@@ -700,8 +700,8 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                               method=p.interpolation)
             # Force value outside modelbox at nan
             if modelbox[0] > modelbox[1]:
-                    u_true[numpy.where(((lon > modelbox[0])
-                             & (lon < modelbox[1]))
+                    u_true[numpy.where(~((lon > modelbox[0])
+                             | (lon < modelbox[1]))
                              | (lat < modelbox[2])
                              | (lat > modelbox[3]))] = numpy.nan
                     v_true[numpy.where(((lon > modelbox[0])
@@ -723,7 +723,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
             # the stoke drift
             if p.uss is True:
                 if p.footprint_std is not None and p.footprint_std !=0 and p.formula is True:
-                    std_uss_local = numpy.zeros(numpy.shape(ind_time[0]))
+                    std_uss_local = numpy.full(numpy.shape(ind_time[0]), numpy.nan)
                     for ib in range(len(ind_time[0])):
                         indi = sgrid.indi[ind_time[0][ib], :]
                         indj = sgrid.indj[ind_time[0][ib], :]
@@ -764,7 +764,7 @@ def compute_errdcos(p, sgrid, mask, err_uss):
     naz = (60 / (p.rotation_speed * p.cycle * len(p.list_pos)))
     # Initialize errdcos
     errdcos_tot = []
-    errdcos_tot.append(numpy.zeros(numpy.shape(mask[0][:])))
+    errdcos_tot.append(numpy.full(numpy.shape(mask[0][:]), numpy.nan))
     # Convert list into arrays
     lon_array = numpy.transpose(numpy.array(sgrid.lon[1:][:]))
     lat_array = numpy.transpose(numpy.array(sgrid.lat[1:][:]))
@@ -836,6 +836,7 @@ def compute_errussr(p, sgrid, mask, uss_r, err_uss):
     lat_array = numpy.transpose(numpy.array(sgrid.lat[1:][:]))
     uss_r_array = numpy.transpose(numpy.array(uss_r[1:][:]))
     mask_array = numpy.transpose(numpy.array(mask[1:][:]))
+    #import pdb ; pdb.set_trace()
     for i in range(1, len(p.list_pos) + 1):
         mask_minicycle = mask[i][:]
         radial_angle = sgrid.radial_angle[:, i - 1]
@@ -843,7 +844,6 @@ def compute_errussr(p, sgrid, mask, uss_r, err_uss):
         dtheta = numpy.mean(abs(radial_angle[1:] - radial_angle[:-1]))
         #errdcos = numpy.zeros(numpy.shape(radial_angle)) * numpy.nan
         errussr = numpy.full(numpy.shape(radial_angle), numpy.nan)
-        #import pdb; pdb.set_trace()
         for ib in range(N):
             if mask_minicycle[ib]==True:
                 continue
@@ -853,8 +853,8 @@ def compute_errussr(p, sgrid, mask, uss_r, err_uss):
             for theta2 in numpy.arange(theta - math.pi/2,
                                 theta + math.pi/2, dtheta):
                 theta2rad = theta2 % (2 * math.pi)
-                start_az = int(max(0, (ib - naz*2)))
-                end_az = int(min(N, (ib + naz*2)))
+                start_az = int(max(0, (ib - naz*3)))
+                end_az = int(min(N, (ib + naz*3)))
                 slice_az = slice(start_az, end_az)
 
                 lon = lon_array[slice_az, :]
