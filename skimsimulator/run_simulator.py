@@ -57,7 +57,10 @@ ifile = 0
 
 
 def run_simulator(p):
-
+    '''Main routine to run simulator, input is the imported parameter file,
+    no outputs are returned but netcdf grid and data files are written as well
+    as a skimsimulator.output file to store all used parameter.
+    '''
     # - Initialize some parameters values
     p.shift_lon = getattr(p, 'shift_lon', None)
     p.shift_time = getattr(p, 'p.shift_time', None)
@@ -158,7 +161,7 @@ def run_simulator(p):
         # If corrdinates are 1D and local std needs to be computed for uss bias
         # Grid coordinates in 2D
         if (p.uss is True and p.footprint_std is not None
-                              and p.footprint_std !=0):
+                              and p.footprint_std != 0):
             if len(numpy.shape(model_data.vlonu)) == 1:
                 model_data.lon2D, model_data.lat2D = numpy.meshgrid(
                                                         model_data.vlonu,
@@ -282,7 +285,7 @@ def run_simulator(p):
                     # later. Only use when the approximation with errdcos is
                     # used.
                     if (p.uss is True and p.footprint_std is not None
-                          and p.footprint_std !=0 and sgrid_tmp.indi is None
+                          and p.footprint_std != 0 and sgrid_tmp.indi is None
                           and p.formula is True):
                         sgrid_tmp.indi = numpy.zeros((numpy.shape(
                                                          sgrid_tmp.lon)[0], 2))
@@ -334,7 +337,7 @@ def run_simulator(p):
                                         Gvar, rms_instr, errdcos, radial_angle,
                                         p,
                                         progress_bar=True)
-                    mask_tmp = numpy.isnan(u_true)
+                    mask_tmp = numpy.isnan(err.ur_uss)
                 # Append variables for each beam
                 if p.instr is True:
                     err_instr.append(err.instr)
@@ -429,29 +432,68 @@ def load_sgrid(sgridfile, p):
 def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
     ''' Interpolation of data when grid is regular and coordinate in 1D. '''
     # To correct for IDL issues
-    if numpy.max(lon_in)>359 and numpy.min(lon_in)<1:
-        lon_in[lon_in > 180] = lon_in[lon_in > 180] - 360
-        #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
-        lon_in = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_in)))
-        lon_out[lon_out > 180] = lon_out[lon_out > 180] - 360
-        lon_out = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_out)))
-        #lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
-    # Interpolate mask if it has not been done (Teval is None)
-    if Teval is None:
-        try:
-            Teval = interpolate.RectBivariateSpline(lat_in, lon_in,
-                                            numpy.isnan(var),
-                                            kx=1, ky=1, s=0).ev(lat_out,
-                                            lon_out)
-        except:
-            import pdb ; pdb.set_trace()
-    # Trick to avoid nan in interpolation
-    var_mask = + var
-    var_mask[numpy.isnan(var_mask)] = 0.
-    # Interpolate variable
-    var_out = interpolate.RectBivariateSpline(lat_in, lon_in, var_mask, kx=1,
-                                              ky=1,
-                                              s=0).ev(lat_out, lon_out)
+    if numpy.max(lon_in) > 359 and numpy.min(lon_in) < 1:
+        ind_in1 = numpy.where(lon_in <= 180)
+        ind_in2 = numpy.where(lon_in > 180)
+        #lon_in[lon_in > 180] = lon_in[lon_in > 180] - 360
+        ##lon_in = np.mod(lon_in - (lref - 180), 360) + (lref - 180)
+        #lon_in = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_in)))
+        ind_out1 = numpy.where(lon_out <=180)
+        ind_out2 = numpy.where(lon_out > 180)
+        #lon_out[lon_out > 180] = lon_out[lon_out > 180] - 360
+        #lon_out = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_out)))
+        if Teval is None:
+            Teval = numpy.zeros(numpy.shape(lon_out))
+            try:
+                if ind_out1[0].any():
+                    Teval[ind_out1] = interpolate.RectBivariateSpline(
+                                            lat_in, lon_in[ind_in1],
+                                            numpy.isnan(var[:, ind_in1[0]]),
+                                            kx=1, ky=1, s=0).ev(lat_out[ind_out1],
+                                            lon_out[ind_out1])
+                if ind_out2[0].any():
+                    Teval[ind_out2] = interpolate.RectBivariateSpline(
+                                            lat_in, lon_in[ind_in2],
+                                            numpy.isnan(var[:, ind_in2[0]]),
+                                            kx=1, ky=1, s=0).ev(lat_out[ind_out2],
+                                            lon_out[ind_out2])
+            except:
+                import pdb ; pdb.set_trace()
+        # Trick to avoid nan in interpolation
+        var_mask = + var
+        var_mask[numpy.isnan(var_mask)] = 0.
+        # Interpolate variable
+        var_out = numpy.full(numpy.shape(lon_out), numpy.nan)
+        if ind_out1[0].any():
+            var_out[ind_out1] = interpolate.RectBivariateSpline(lat_in,
+                                            lon_in[ind_in1], var_mask[:, ind_in1[0]],
+                                            kx=1, ky=1,
+                                            s=0).ev(lat_out[ind_out1],
+                                            lon_out[ind_out1])
+        if ind_out2[0].any():
+            var_out[ind_out2] = interpolate.RectBivariateSpline(lat_in,
+                                            lon_in[ind_in2], var_mask[:, ind_in2[0]],
+                                            kx=1, ky=1,
+                                            s=0).ev(lat_out[ind_out2],
+                                            lon_out[ind_out2])
+
+    else:
+        # Interpolate mask if it has not been done (Teval is None)
+        if Teval is None:
+            try:
+                Teval = interpolate.RectBivariateSpline(lat_in, lon_in,
+                                                numpy.isnan(var),
+                                                kx=1, ky=1, s=0).ev(lat_out,
+                                                lon_out)
+            except:
+                import pdb ; pdb.set_trace()
+        # Trick to avoid nan in interpolation
+        var_mask = + var
+        var_mask[numpy.isnan(var_mask)] = 0.
+        # Interpolate variable
+        var_out = interpolate.RectBivariateSpline(lat_in, lon_in, var_mask, kx=1,
+                                                  ky=1,
+                                                  s=0).ev(lat_out, lon_out)
     # Mask variable with Teval
     var_out[Teval > 0] = numpy.nan
     return var_out, Teval
@@ -517,8 +559,8 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
         index_filemodel = numpy.where(((time[-1]-timeshift) >= (modeltime-p.timestep/2.))
                                       & ((time[0]-timeshift) < (modeltime+p.timestep/2.)))
         #local variable to find time record in file for WW3
-        nfile=0
-        time_offset=0
+        nfile = 0
+        time_offset = 0
         # At each step, look for the corresponding time in the satellite data
         for ifile in index_filemodel[0]:
             progress = mod_tools.update_progress(float(istep)/float(ntot
@@ -722,8 +764,10 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
             # Compute std of uss at each beam to compute the corrected bias of
             # the stoke drift
             if p.uss is True:
-                if p.footprint_std is not None and p.footprint_std !=0 and p.formula is True:
-                    std_uss_local = numpy.full(numpy.shape(ind_time[0]), numpy.nan)
+                if (p.footprint_std is not None and p.footprint_std != 0
+                       and p.formula is True):
+                    std_uss_local = numpy.full(numpy.shape(ind_time[0]),
+                                               numpy.nan)
                     for ib in range(len(ind_time[0])):
                         indi = sgrid.indi[ind_time[0][ib], :]
                         indj = sgrid.indj[ind_time[0][ib], :]
