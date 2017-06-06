@@ -31,7 +31,7 @@ makesgrid = False
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [334,24,72,86]
+modelbox =  [335,23,73,85.00024]
 #------- Rotation speed of the antenna (in tr/min)
 #rotation_speed = 3.774  # * 180
 rotation_speed = 3.396739
@@ -42,6 +42,8 @@ list_pos = (0, 72*math.pi/180., 144*math.pi/180., 216*math.pi / 180.,
 list_angle = (12, 12, 12, 12, 12, 6, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
 list_shift = (1, 2, 4, 5, 7, 3, 6)
+#------- Cycle duration
+cycle = 0.0368
 # ------ Shift longitude of the orbit file if no pass is in the domain 
 #        (in degree): Default value is None (no shift)
 shift_lon = 0
@@ -77,12 +79,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = (744,)
+dim_time = (720,)
 # ------ Time step between two model outputs (in days):
 timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 740.
+nstep = 719.
 # ------ Not a number value:
 model_nan = -32767.
 
@@ -122,6 +124,10 @@ rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat')]
+# Multplication factor for instrument noise data to compensate for faster time
+# cycle
+rms_instr_factor = 1.
+
 # ------- Stoke drift velocity [beam 12, beam 6]
 uss = True
 input_uss = os.path.join(indatadir, 'list_file_uss.txt')

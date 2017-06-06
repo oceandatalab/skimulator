@@ -10,7 +10,7 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
-indatadir = '/mnt/data/model/ww3_or/' #netcdf3/'
+indatadir = '/mnt/data/model/ww3_oregon/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
 # ------ Orbit file:
@@ -77,12 +77,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = (228, 43)
+dim_time = (119, 43)
 # ------ Time step between two model outputs (in days):
 timestep = 1/8.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 270.
+nstep = 150.
 # ------ Not a number value:
 model_nan = -32767.
 

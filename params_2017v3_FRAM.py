@@ -31,7 +31,7 @@ makesgrid = False
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [334,24,72,86]
+modelbox =  [335,23,73,85.00024]
 #------- Rotation speed of the antenna (in tr/min)
 rotation_speed = 5.20833
 #------- List of position of beams:
@@ -49,6 +49,7 @@ shift_lon = 0
 # ------ Shift time of the satellite pass (in day):
 #        Default value is None (no shift)
 shift_time = None
+
 # -----------------------#
 # Model input parameters
 # -----------------------#
@@ -77,12 +78,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = (744,)
+dim_time = (720,)
 # ------ Time step between two model outputs (in days):
 timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 740.
+nstep = 719.
 # ------ Not a number value:
 model_nan = -32767.
 

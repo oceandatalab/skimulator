@@ -76,12 +76,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = (72,720)
+dim_time = (456,)
 # ------ Time step between two model outputs (in days):
 timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 790.
+nstep = 455.
 # ------ Not a number value:
 model_nan = -32767.
 
