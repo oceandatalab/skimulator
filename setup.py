@@ -6,9 +6,9 @@ import os
 # - Read in the package version and author fields from the Python
 #  source code package_version.py file:
 
-with open(os.curdir + os.sep + 'swotsimulator' + os.sep
+with open(os.curdir + os.sep + 'skimsimulator' + os.sep
           + 'package_version.py') as f:
-    code = compile(f.read(), os.curdir + os.sep + 'swotsimulator' + os.sep
+    code = compile(f.read(), os.curdir + os.sep + 'skimsimulator' + os.sep
                    + 'package_version.py', 'exec')
     exec(code)
 # execfile(os.curdir+os.sep+'swotsimulator'+os.sep+'package_version.py')
