@@ -64,12 +64,6 @@ Run the SKIM simulator:
 
    > python run.py [your params file]
 
-Run the nadir alone:
-
-.. code-block:: python
-
-   > python run_nadiralone.py [your params file]
-
 
 Orbits data
 -----------
