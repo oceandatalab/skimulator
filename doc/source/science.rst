@@ -56,15 +56,9 @@ The SKIM grid is stored by pass (e.g. ??? ascending passes and ??? descending pa
 .. figure:: ../images/Fig2.png
    :alt: SKIM geometry
 
-   FIG. 2: scheme of the SKIM geometry with 4 beams at 12 degrees and 1 beam at 6 degree.
+   FIG. 2: scheme of the SKIM geometry with 4 beams at 12 degrees and 1 beam at 6 degree for figure a and 5 beams at 12 degrees and 2 beams at 6 degree for figure b.
 
 
-.. _Fig2:
-
-.. figure:: ../images/Fig3.png
-   :alt: SKIM geometry
-
-   FIG. 2: scheme of the SKIM geometry with 5 beams at 12 degrees and 2 beams at 6 degree.
 
 Interpolation of currents and Stoke drift on the SWOT grid and nadir track
 -------------------------------------------------------
@@ -92,13 +86,26 @@ Instrumental errors
 .. _Fig4:
 
 .. figure:: ../images/Fig4.png
-   :scale: 60%
-   :alt: Power spectral density of the phase error
+   :alt: Model current Intrumental noise 
 
-   FIG. 4: Estimation of the power spectral density of the phase error
+   FIG. 4: Model interpolated currents and the corresponding intrumental error.
+
 
 Stoke drift remaining bias
 ````````````````````````
+.. _Fig5:
+
+.. figure:: ../images/Fig5.png
+   :alt: Model current Intrumental noise 
+
+   FIG. 5: Model interpolated currents and the corresponding stoke drift remaining bias.
+
+.. _Fig6:
+
+.. figure:: ../images/Fig6.png
+   :alt: Model current Intrumental noise 
+
+   FIG. 6: Model interpolated currents and the corresponding stoke drift remaining bias.
 
 Simulation of errors for the nadir altimeter
 ============================================
