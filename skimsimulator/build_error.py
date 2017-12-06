@@ -1,19 +1,12 @@
-# import params as p
-import numpy
-import scipy
-import skimsimulator.rw_data as rw_data
-import skimsimulator.const as const
-import skimsimulator.mod_tools as mod_tools
-import math
-from scipy.io import netcdf as nc
 import sys
+import math
+import numpy
+from scipy.io import netcdf as nc
 from scipy.ndimage.filters import gaussian_filter
 import skimsimulator.mod_tools as mod_tools
-import skimsimulator.rw_data as rw_data
-#import logging
+import logging
+logger = logging.getLogger(__name__)
 
-# Define logging level for debug purposes
-#logger = logging.getLevel(__name__)
 
 class error():
     '''Class error define all the possible errors that can be computed using
@@ -46,26 +39,25 @@ class error():
         #   and spectrum from the instrumental netcdf file:
         pass
 
-
     def make_error(self, u_true, p, radial_angle, Gvar, file_rms_instr,
-                   uss=(None, None), std_local=None, errdcos = None):
+                   uss=(None, None), std_local=None, errdcos=None):
         ''' Build errors corresponding to each selected noise
         among the effect of the wet_tropo, the phase between the two signals,
         the timing error, the roll of the satellite, the sea surface bias,
         the distorsion of the mast,
         the karin noise due to the sensor itself. '''
         # - Load instrumental rms file into dictionnary
-        theta, rms = numpy.loadtxt(file_rms_instr, usecols=(0,1), unpack=True)
+        theta, rms = numpy.loadtxt(file_rms_instr, usecols=(0, 1), unpack=True)
         dic_rms = {}
         with open(file_rms_instr) as f:
-           for line in f:
-               (key, val) = line.split()
-               dic_rms[int(key)] = float(val)
+            for line in f:
+                (key, val) = line.split()
+                dic_rms[int(key)] = float(val)
 
         # - Compute rms corresponding to each radial angle
         # Refer radial angle to along track direction
         radial_angle_along = numpy.degrees((radial_angle + math.pi / 2)
-                                            % math.pi)
+                                           % math.pi)
         # Interpolate radial_angle with theta values
         step = theta[1]-theta[0]
         if((theta[1:]-theta[:-1]) != step).any():
@@ -77,14 +69,13 @@ class error():
         i = 0
         for itheta, ifac in zip(thetaprev, fac):
             keytheta = list(dic_rms.keys())[int(itheta)]
-            keythetanext = list(dic_rms.keys())[int(itheta + step)%180]
+            keythetanext = list(dic_rms.keys())[int(itheta + step) % 180]
             rms_theta[i] = (dic_rms[keytheta] * ifac / step
-                           + (step - ifac) / step
-                           * dic_rms[keythetanext])
+                            + (step - ifac) / step * dic_rms[keythetanext])
             i += 1
         # - Errors array are the same size as the swath size
-        nal = numpy.shape(u_true)
-        # ind_al=numpy.arange(0,nal)
+        # nal = numpy.shape(u_true)
+        # ind_al=numpy.arange(0, nal)
         if p.instr is True:
             self.instr = numpy.random.normal(0.0 * rms_theta, rms_theta
                                              * p.rms_instr_factor * 10**(-2))
@@ -99,7 +90,7 @@ class error():
                     errdcos = 1.
                 err_uss_tmp = p.bias_std * std_local * Gvar * errdcos
                 self.err_uss = numpy.random.normal(0.0 * std_local,
-                                               err_uss_tmp)
+                                                   err_uss_tmp)
             self.std_uss = std_local
         return None
 
@@ -121,10 +112,7 @@ class errornadir():
     '''Class errornadir defines the error on the nadir.
     Random realisation of errors can be initialized using init_error.
     The correspondg errors on a swath can be computed using make_error. '''
-    def __init__(self,p,
-                 nadir=None,
-                 wet_tropo1=None,
-                 wt=None):
+    def __init__(self, p, nadir=None, wet_tropo1=None, wt=None):
         self.nadir = nadir
         self.wet_tropo1 = wet_tropo1
         self.wt = wt
@@ -152,7 +140,7 @@ class errornadir():
         # /numpy.float64(sqrt(2*p.delta_al)), (self.nrand))*0.01
         p.delta_al = 1
         f = numpy.arange(1./3000., 1./float(2.*p.delta_al), 1./3000.)
-        PSD=8 + 1.05 * 10**(-4) * f**(-2.2)
+        PSD = 8 + 1.05 * 10**(-4) * f**(-2.2)
         indf = numpy.where(f < 0.00023627939582672978)
         PSD[indf] = 10**4
         # Convert spectrum in m2/cy
@@ -170,7 +158,8 @@ class errornadir():
             PSwt[indf] = 1.4875 * 10**-4 * f[indf]**(-2.33)  # *10**-4
             # - Compute random coefficients in 2D using the previously defined
             #   power spectrum
-            self.A_wt, self.phi_wt, self.frx_wt, self.fry_wt = mod_tools.gen_coeff_signal2d(f, PSwt , self.ncomp2d)
+            gen_coeff = mod_tools.gen_coeff_signal2d(f, PSwt, self.ncomp2d)
+            self.A_wt, self.phi_wt, self.frx_wt, self.fry_wt = gen_coeff
             # - Define radiometer error power spectrum for a beam
             #   High frequencies are cut to filter the associated error during
             #   the reconstruction of the wet trop signal
@@ -182,7 +171,8 @@ class errornadir():
             PSradio[numpy.where(f > 0.0683)] = 0.32
             # - Compute random coefficients (1D) for the radiometer error power
             #   spectrum for right and left beams
-            self.A_radio, self.phi_radio, self.fr_radio = mod_tools.gen_coeff_signal1d(f, PSradio , self.ncomp2d)
+            gen_coeff = mod_tools.gen_coeff_signal1d(f, PSradio, self.ncomp2d)
+            self.A_radio, self.phi_radio, self.fr_radio = gen_coeff
         return None
 
     def load_coeff(self, p):
@@ -192,8 +182,9 @@ class errornadir():
         There are ncomp random realisations.'''
         try:
             fid = nc.netcdf_file(p.file_coeff[:-3] + '_nadir.nc', 'r')
-        except:
-            logger.error('There was an error opening the file nadir {}_nadir.nc'.format(p.file_coeff[:-3]))
+        except (FileNotFoundError, IOError):
+            logger.error('There was an error opening the file nadir'
+                         '{}_nadir.nc'.format(p.file_coeff[:-3]))
             sys.exit(1)
         self.A = numpy.array(fid.variables['A'][:]).squeeze()
         self.f = numpy.array(fid.variables['f'][:]).squeeze()
@@ -201,29 +192,33 @@ class errornadir():
         if p.wet_tropo is True:
             self.A_wt = numpy.array(fid.variables['A_wt'][:]).squeeze()
             if numpy.shape(self.A_wt)[0] != self.ncomp2d:
-              sys.exit(p.file_coeff + ' dimensions are different from ncomp2d='
-                       + str(self.ncomp2d) + '\n remove ' + p.file_coeff
-                       + ' or adjust ncomp2d number in the parameter file')
+                logger.error('{} dimensions are different from ncomp2d = {} \n'
+                             'remove {} or adjustncomp2d number in the '
+                             'parameter file'.format(p.file_coeff,
+                                                     self.ncomp2d,
+                                                     p.file_coeff))
+                sys.exit(1)
             self.phi_wt = numpy.array(fid.variables['phi_wt'][:]).squeeze()
             self.frx_wt = numpy.array(fid.variables['frx_wt'][:]).squeeze()
             self.fry_wt = numpy.array(fid.variables['fry_wt'][:]).squeeze()
             self.A_radio = numpy.array(fid.variables['A_radio'][:]).squeeze()
-            self.phi_radio = numpy.array(fid.variables['phi_radio'][:]).squeeze()
+            self.phi_radio = numpy.array(fid.variables['phi_radio']
+                                         [:]).squeeze()
             self.fr_radio = numpy.array(fid.variables['fr_radio'][:]).squeeze()
         fid.close()
         return None
 
-    def make_error(self, orb, cycle, SSH_true,p):
+    def make_error(self, orb, cycle, SSH_true, p):
         nal = numpy.shape(SSH_true)[0]
         errnadir = numpy.zeros((nal))
         # - Compute random noise of 10**2 cm**2/(km/cycle)
         # - Compute the correspond error on the nadir in m
         for comp in range(0, self.ncomp1d):
             phase_x_al = (2. * math.pi * float(self.f[comp])
-                          *(numpy.float64(orb.x_al[:])
+                          * (numpy.float64(orb.x_al[:])
                           + float(cycle*orb.al_cycle))) % (2.*math.pi)
             errnadir[:] = (errnadir[:] + 2*self.A[comp]
-                           *numpy.cos(phase_x_al[:]+self.phi[comp]))
+                           * numpy.cos(phase_x_al[:] + self.phi[comp]))
         # - Compute the correspond timing error on the swath in m
         self.nadir = errnadir[:]
         if p.wet_tropo:
@@ -239,9 +234,9 @@ class errornadir():
                                       p.delta_ac)
             wt_large = numpy.zeros((numpy.shape(orb.x_al[:])[0],
                                    numpy.shape(x_ac_large)[0]))
-            x_large,y_large = numpy.meshgrid(x_ac_large,
-                                             numpy.float64(orb.x_al[:])
-                                             + float(cycle*orb.al_cycle))
+            x_large, y_large = numpy.meshgrid(x_ac_large,
+                                              numpy.float64(orb.x_al[:])
+                                              + float(cycle*orb.al_cycle))
             # - Compute path delay error due to wet tropo and radiometer error
             #   using random coefficient initialized with power spectrums
             for comp in range(0, self.ncomp2d):
@@ -256,7 +251,8 @@ class errornadir():
                               * (numpy.float64(orb.x_al[:])
                               + float(cycle*orb.al_cycle))) % (2.*math.pi)
                 err_radio = (err_radio + 2*self.A_radio[comp]
-                             *numpy.cos(phase_x_al+self.phi_radio[comp])*10**-2)
+                             * numpy.cos(phase_x_al + self.phi_radio[comp])
+                             * 10**-2)
             # - Compute Residual path delay error after a 1-beam radiometer
             #   correction
             beam = numpy.zeros((nal))
@@ -268,19 +264,19 @@ class errornadir():
             indac = numpy.where((x_ac_large < 2.*p.sigma)
                                 & (x_ac_large > -2.*p.sigma))[0]
             for i in range(0, nal):
-            # - Find along track indices in the gaussian footprint of
-            #   2.*p.sigma
+                # - Find along track indices in the gaussian footprint of
+                #   2.*p.sigma
                 indal = numpy.where(((orb.x_al[:]-orb.x_al[i]) <= (2*p.sigma))
                                     & ((orb.x_al[:]-orb.x_al[i]) > -2*p.sigma))[0]
-                # indal=numpy.where(((sgrid.x_al[:]-sgrid.x_al[i])<=
-                # (2*p.sigma)) & ((sgrid.x_al[:]-sgrid.x_al[i])>(-2*p.sigma)))[0]
                 x, y = numpy.meshgrid(x_ac_large[min(indac): max(indac)+1],
-                                      (orb.x_al[(min(indal)): (max(indal)+1)]-orb.x_al[i]))
+                                      (orb.x_al[(min(indal)):
+                                                (max(indal)+1)]-orb.x_al[i]))
                 # - Compute path delay on gaussian footprint
                 G = 1. / (2.*math.pi*p.sigma**2) * numpy.exp(-(x**2.+y**2.)
-                                                        / (2.*p.sigma**2))
-                beam[i] = sum(sum(G*wt_large[min(indal): max(indal)+1,
-                              min(indac):max(indac)+1]))/sum(sum(G))+err_radio[i]
+                                                             / (2.*p.sigma**2))
+                beam[i] = (sum(sum(G*wt_large[min(indal): max(indal)+1,
+                                              min(indac):max(indac)+1]))
+                           / sum(sum(G))+err_radio[i])
             # - Filtering beam signal to cut frequencies higher than 125 km
             beam = gaussian_filter(beam, 30./p.delta_al)
             # - Compute residual path delay
@@ -300,10 +296,10 @@ class errornadir():
         fid = nc.netcdf_file(p.file_coeff[:-3] + '_nadir.nc', 'w')
         fid.description = "Random coefficients from orbit simulator"
 
-## - Create dimensions
+        # - Create dimensions
         fid.createDimension('nrand1d', self.ncomp1d)
         fid.createDimension('nrand2d', self.ncomp2d)
-## - Create and write Variables
+        # - Create and write Variables
         var = fid.createVariable('A', 'f4', ('nrand1d', ))
         var[:] = self.A
         var = fid.createVariable('f', 'f4', ('nrand1d', ))

@@ -5,45 +5,19 @@ Contains model classes: \n
                        -ROMS \n
                        -NEMO \n
                        -NETCDF_MODEL \n
+                       -WW3 \n
 Contains satellite class: Sat_SKIM \n
 Contains file instrumentation class: file_instr \n
 '''
-netcdf4 = True
-version = '2.21'
-try:
-    from netCDF4 import Dataset
-except ImportError:
-    print('WARNING: package netCDF4 missing, scipy.io.netcdf is used instead'\
-          'of netCDF4')
-    from scipy.io.netcdf import netcdf_file as Dataset
-    netcdf4 = False
-#from scipy.io.netcdf import netcdf_file as Dataset
-import skimsimulator.const as const
+import skimsimulator
+from netCDF4 import Dataset
 import numpy
-import sys, os
+import sys
 import time as ti
 import logging
+version = skimsimulator.__version__
 logger = logging.getLogger(__name__)
-try:
-    from netCDF4 import Dataset
-except ImportError:
-    logger.warn('WARNING: package netCDF4 missing, scipy.io.netcdf is used'\
-                'instead of netCDF4')
-    from scipy.io.netcdf import netcdf_file as Dataset
-    netcdf4=False
-try: import params as p
-except:
-    logger.error('params.py not found')
-    sys.exit(1)
 
-
-def read_params(params_file):
-    """ Read parameters from parameters file and store it in p.\n
-    This program is not used in skim_simulator."""
-    import imp
-    with open(params_file, 'r') as f:
-        p = imp.load_source('p', '',f)
-    return p
 
 def write_params(params, pfile):
     """ Write parameters that have been selected to run swot_simulator. """
@@ -52,19 +26,20 @@ def write_params(params, pfile):
             if not key[0:2] == '__':
                 f.write('{} = {}\n'.format(key, params.__dict__[key]))
 
+
 def read_coordinates(nfile,  nlon, nlat, twoD=True):
     ''' General routine to read coordinates in a netcdf file. \n
     Inputs are file name, longitude name, latitude name. \n
     Outputs are longitudes and latitudes (2D arrays).'''
 
-## - Open Netcdf file
+    # - Open Netcdf file
     try:
         fid = Dataset(nfile, 'r')
     except IOError:
         logger.error('There was an error opening the file {}'.format(nfile))
         sys.exit(1)
 
-## - Read 1d or 2d coordinates
+    # - Read 1d or 2d coordinates
     try:
         vartmp = fid.variables[nlat]
     except:
@@ -75,7 +50,7 @@ def read_coordinates(nfile,  nlon, nlat, twoD=True):
     except:
         logger.error('Coordinates {} not found in file {}'.format(nlon, nfile))
         sys.exit(1)
-    if  len(vartmp.shape) == 1:
+    if len(vartmp.shape) == 1:
         lon_tmp = numpy.array(fid.variables[nlon][:]).squeeze()
         lat_tmp = numpy.array(fid.variables[nlat][:]).squeeze()
         if twoD:
@@ -87,14 +62,12 @@ def read_coordinates(nfile,  nlon, nlat, twoD=True):
         lon = numpy.array(fid.variables[nlon][:, :]).squeeze()
         lat = numpy.array(fid.variables[nlat][:, :]).squeeze()
         if not twoD:
-            lon = lon[0,:]
-            lat = lat[:,0]
+            lon = lon[0, :]
+            lat = lat[:, 0]
     else:
         logger.warn('unknown dimension for lon and lat')
     fid.close()
     return lon, lat
-
-
 
 
 def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
@@ -103,31 +76,31 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
     of the variables, time=time to read a specific time, depth=depth to read a
     specific depth, model_nan=nan value '''
 
-## - Open Netcdf file
+    # - Open Netcdf file
     try:
         fid = Dataset(nfile, 'r')
     except IOError:
         logger.error('There was an error opening the file {}'.format(nfile))
         sys.exit(1)
-    #fid = Dataset(file, 'r')
 
-## - Check dimension of variable
-    try : vartmp = fid.variables[var]
+    # - Check dimension of variable
+    try:
+        vartmp = fid.variables[var]
     except:
         logger.error('Variable {} not found in file {}'.format(var, nfile))
         sys.exit(1)
-## - Read variable
+    # - Read variable
     if index is None:
         if len(vartmp.shape) == 1:
             T = numpy.array(fid.variables[var][:]).squeeze()
-        elif len(vartmp.shape) == 2 :
+        elif len(vartmp.shape) == 2:
             T = numpy.array(fid.variables[var][:, :]).squeeze()
-        elif len(vartmp.shape) == 3 :
+        elif len(vartmp.shape) == 3:
             if time is None:
                 T = numpy.array(fid.variables[var][:, :, :]).squeeze()
             else:
                 T = numpy.array(fid.variables[var][time, :, :]).squeeze()
-        elif len(vartmp.shape) == 4 :
+        elif len(vartmp.shape) == 4:
             if time is None:
                 if depth is None:
                     T = numpy.array(fid.variables[var][:, :, :, :]).squeeze()
@@ -141,21 +114,21 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
         else:
             logger.error('wrong dimension in variables {}'.format(var))
             sys.exit(1)
-    else :
+    else:
             if len(vartmp.shape) == 1:
                 Ttmp = numpy.array(fid.variables[var][:]).squeeze()
                 T = Ttmp[index]
-            elif len(vartmp.shape) == 2 :
+            elif len(vartmp.shape) == 2:
                 Ttmp = numpy.array(fid.variables[var][:, :]).squeeze()
                 T = Ttmp[index]
-            elif len(vartmp.shape) == 3 :
+            elif len(vartmp.shape) == 3:
                 if time is None:
                     U = numpy.array(fid.variables[var][:, :, :]).squeeze()
                     T = U[:, index]
                 else:
                     U = numpy.array(fid.variables[var][time, :, :]).squeeze()
                     T = U[index]
-            elif len(vartmp.shape) == 4 :
+            elif len(vartmp.shape) == 4:
                 if time is None:
                     if depth is None:
                         U = numpy.array(fid.variables[var][:, :, :,
@@ -173,30 +146,24 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
                     U = numpy.array(fid.variables[var][time, depth, :,
                                                        :]).squeeze()
                     T = U[index]
+            else:
+                logger.error('Wrong dimension')
+                sys.exit(1)
 
-            #print 'Unsupported number of dimensions'
-            #sys.exit()
     fid.close()
-## - Mask value that are NaN
-    if not model_nan is None:
+    # - Mask value that are NaN
+    if model_nan is not None:
         T[numpy.where(T == model_nan)] = numpy.nan
     return T
+
 
 class Sat_SKIM():
     ''' Sat_SKIM class: to read and write data that has been
     created by SKIM simulator '''
-    def __init__(self,
-                file=None,
-                lon=None,
-                lat=None,
-                lon_nadir=None,
-                lat_nadir=None,
-                time=None,
-                cycle=None,
-                al_cycle=None,
-                x_al=None,
-                timeshift=None):
-        self.file = file
+    def __init__(self, ifile=None, lon=None, lat=None, lon_nadir=None,
+                 lat_nadir=None, time=None, cycle=None, al_cycle=None,
+                 x_al=None, timeshift=None):
+        self.file = ifile
         self.lon = lon
         self.lat = lat
         self.lon_nadir = lon_nadir
@@ -214,12 +181,9 @@ class Sat_SKIM():
         Variables are longitude, latitude, number of days in a cycle,
         distance crossed in a cycle, time, along track and across track
         distances are stored.'''
-## - Open Netcdf file in write mode
-        if netcdf4:
-          fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
-        else:
-          fid = Dataset(self.file, 'w')
-        ## - Create Global attribute
+        # - Open Netcdf file in write mode
+        fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
+        # - Create Global attribute
         fid.title = 'SKIM swath simulated by SKIM simulator'
         fid.keywords = 'check keywords'  # Check keywords
         fid.Conventions = "CF-1.6"
@@ -249,19 +213,19 @@ class Sat_SKIM():
         fid.references = ""
         fid.cycle = "{0:d}".format(int(self.al_cycle))
         fid.track = "{} th pass".format(self.ipass)
-        ## - Create dimensions
-        #if (not os.path.isfile(self.file)):
+        # - Create dimensions
+        # if (not os.path.isfile(self.file)):
         dimsample = 'sample'
         maxpos = numpy.argmax(numpy.array(p.list_shift))
         nsample = numpy.shape(self.lon[maxpos + 1])[0]
         fid.createDimension(dimsample, nsample)
-        #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
+        # fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
         dimcycle = 'cycle'
         fid.createDimension(dimcycle, 1)
         nbeam = len(self.list_pos)
         dimnbeam = 'nbeam'
         fid.createDimension(dimnbeam, nbeam)
-## - Create and write Variables
+        # - Create and write Variables
         vtime = fid.createVariable('time', 'f8', (dimsample, dimnbeam))
         vtime.axis = "T"
         vtime.units = "seconds since the beginning of the sampling"
@@ -284,7 +248,7 @@ class Sat_SKIM():
         vlon_nadir.long_name = "Longitude at nadir"
         vlon_nadir.standard_name = "longitude"
         vlon_nadir.units = "degrees_east"
-        vlat = fid.createVariable('lat', 'f4', (dimsample,dimnbeam))
+        vlat = fid.createVariable('lat', 'f4', (dimsample, dimnbeam))
         vlat.axis = "Y"
         vlat.long_name = "Latitude"
         vlat.standard_name = "latitude"
@@ -297,11 +261,12 @@ class Sat_SKIM():
         vx_al = fid.createVariable('x_al', 'f4', (dimsample, dimnbeam))
         vx_al.units = "km"
         vx_al.long_name = "Along track distance from the nadir"
-        #vx_al_tot = fid.createVariable('x_al_total', 'f4', (dimsample, dimnbeam))
-        #vx_al_tot.units = "km"
-        #vx_al_tot.long_name = "Along track distance from the beginning of "\
-        #                      "the pass projected on nadir"
-        vx_ac = fid.createVariable('x_ac', 'f4', (dimsample,dimnbeam))
+        # vx_al_tot = fid.createVariable('x_al_total', 'f4', (dimsample,
+        #                                dimnbeam))
+        # vx_al_tot.units = "km"
+        # vx_al_tot.long_name = "Along track distance from the beginning of "\
+        #                       "the pass projected on nadir"
+        vx_ac = fid.createVariable('x_ac', 'f4', (dimsample, dimnbeam))
         vx_ac.units = "km"
         vx_ac.long_name = "Across track distance from the nadir"
         vx_al_nadir = fid.createVariable('x_al_nadir', 'f4', (dimsample,))
@@ -312,7 +277,8 @@ class Sat_SKIM():
         vangle.units = "rad"
         vangle.long_name = "Angle of the beam refered to the across track"\
                            " direction"
-        vrangle = fid.createVariable('radial_angle', 'f4', (dimsample, dimnbeam))
+        vrangle = fid.createVariable('radial_angle', 'f4',
+                                     (dimsample, dimnbeam))
         vrangle.units = "rad"
         vrangle.long_name = "Radial angle refered to (longitude towards east,"\
                             " latitude toward north)"
@@ -328,13 +294,12 @@ class Sat_SKIM():
                 vlon[:, i - 1] = self.lon[i][:nsample]
                 vlat[:, i - 1] = self.lat[i][:nsample]
                 vx_al[:, i - 1] = self.x_al[i][:nsample]
-                #vx_al_tot[:, i - 1] = self.x_al[i][:nsample] + self.x_al_tot[i][:nsample]
                 vx_ac[:, i - 1] = self.x_ac[i][:nsample]
                 vangle[:, i - 1] = self.beam_angle[i][:nsample]
                 vrangle[:, i - 1] = self.radial_angle[i][:nsample]
-        vcycle = fid.createVariable('cycle', 'f4', (dimcycle,))
-        valcycle = fid.createVariable('al_cycle', 'f4', (dimcycle,))
-        vtimeshift = fid.createVariable('timeshift', 'f4', (dimcycle,))
+        vcycle = fid.createVariable('cycle', 'f4', (dimcycle, ))
+        valcycle = fid.createVariable('al_cycle', 'f4', (dimcycle, ))
+        vtimeshift = fid.createVariable('timeshift', 'f4', (dimcycle, ))
         vcycle[:] = self.cycle
         vcycle.units = "second"
         vcycle.long_name = "seconds during a cycle"
@@ -344,18 +309,18 @@ class Sat_SKIM():
         vtimeshift[:] = self.timeshift
         vtimeshift.units = "day"
         vtimeshift.long_name = "Shift time to match model time"
-        vlistpos = fid.createVariable('beam_position', 'f4', (dimnbeam,))
+        vlistpos = fid.createVariable('beam_position', 'f4', (dimnbeam, ))
         vlistpos[:] = self.list_pos
         vlistpos.units = ""
         vlistpos.long_name = "Beam position"
-        vlistangle = fid.createVariable('beam_angle', 'f4', (dimnbeam,))
+        vlistangle = fid.createVariable('beam_angle', 'f4', (dimnbeam, ))
         vlistangle[:] = self.list_angle
         vlistangle.units = ""
         vlistangle.long_name = "Beam angle"
-        vincl = fid.createVariable('inclination', 'f4', (dimsample,))
+        vincl = fid.createVariable('inclination', 'f4', (dimsample, ))
         vincl.units = "rad"
         vincl.long_name = "Track inclination at nadir"
-        #vincl[:] = numpy.array(self.angle)[0,:nsample]
+        # vincl[:] = numpy.array(self.angle)[0,:nsample]
         vincl[:] = self.angle[:nsample]
         fid.close()
         return None
@@ -369,14 +334,11 @@ class Sat_SKIM():
         projected with the radial angle), selected
         errors (instrument, uss bias, radial uss) and velocity with errors. \n
         '''
-## - Open netcdf file in write mode
-        if netcdf4:
-          fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
-        else:
-          fid = Dataset(self.file, 'w')
+        # - Open netcdf file in write mode
+        fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
         fid.description = "Ouptut from SKIM simulator"
         try:
-            fid.corresponding_grid=self.gridfile
+            fid.corresponding_grid = self.gridfile
         except:
             pass
         fid.title = 'SKIM-like data simulated by SKIM simulator'
@@ -410,13 +372,13 @@ class Sat_SKIM():
         fid.track = "{} th pass".format(self.ipass)
         dimsample = 'sample'
         fid.createDimension(dimsample, numpy.shape(self.lon[0])[0])
-        #fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
+        # fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
         dimcycle = 'cycle'
         fid.createDimension(dimcycle, 1)
         nbeam = len(p.list_pos)
         dimnbeam = 'nbeam'
         fid.createDimension(dimnbeam, nbeam)
-## - Create and write Variables
+        # - Create and write Variables
         vtime = fid.createVariable('time', 'f8', (dimsample, dimnbeam))
         vtime.axis = "T"
         vtime.units = "seconds since the beginning of the sampling"
@@ -439,7 +401,7 @@ class Sat_SKIM():
         vlon_nadir.long_name = "Longitude at nadir"
         vlon_nadir.standard_name = "longitude"
         vlon_nadir.units = "degrees_east"
-        vlat = fid.createVariable('lat', 'f4', (dimsample,dimnbeam))
+        vlat = fid.createVariable('lat', 'f4', (dimsample, dimnbeam))
         vlat.axis = "Y"
         vlat.long_name = "Latitude"
         vlat.standard_name = "latitude"
@@ -465,16 +427,16 @@ class Sat_SKIM():
             longname_std = "Standard deviation of uss on a {} km"\
                              "radius".format(p.footprint_std)
         longname = {"instr": "Instrumental error",
-                  "ur_model": "Radial velocity interpolated from model",
-                  "u_model": "Zonal velocity interpolated from model",
-                  "v_model": "Meridional velocity interpolated from model",
-                  "ur_obs": "Observed radial velocity (Ur_model+errors)",
-                  "index": "Equivalent model output number in list of file",
-                  "ur_uss": "Stokes drift radial velocity bias",
-                  "uss_err": "Stokes drift radial velocity bias_corrected",
-                  "nadir_err": "Nadir error",
-                  "std_uss": longname_std,
-                  "errdcos": "Weight for uss_err computation"}
+                    "ur_model": "Radial velocity interpolated from model",
+                    "u_model": "Zonal velocity interpolated from model",
+                    "v_model": "Meridional velocity interpolated from model",
+                    "ur_obs": "Observed radial velocity (Ur_model+errors)",
+                    "index": "Equivalent model output number in list of file",
+                    "ur_uss": "Stokes drift radial velocity bias",
+                    "uss_err": "Stokes drift radial velocity bias_corrected",
+                    "nadir_err": "Nadir error",
+                    "std_uss": longname_std,
+                    "errdcos": "Weight for uss_err computation"}
         unit = {"instr": "m/s", "ur_model": "m/s", "ur_obs": "m/s",
                 "index": " ", "ur_uss": "m/s", "uss_err": "m/s",
                 "uss_err": "m/s", "nadir_err": "m/s", "u_model": "m/s",
@@ -484,34 +446,33 @@ class Sat_SKIM():
         for key, value in kwargs.items():
             if value is not None:
                 nvar_nadir = '{}_nadir'.format(key)
-                var_nadir = fid.createVariable(nvar_nadir, 'f4', (dimsample,),
+                var_nadir = fid.createVariable(nvar_nadir, 'f4', (dimsample, ),
                                                fill_value=-1.36e9)
                 nvar = '{}'.format(key)
-                var = fid.createVariable(nvar, 'f4',
-                                         (dimsample,dimnbeam),
+                var = fid.createVariable(nvar, 'f4', (dimsample, dimnbeam),
                                          fill_value=-1.36e9)
                 try:
                     var.units = unit[str(key)]
                     var_nadir.units = unit[str(key)]
                 except:
-                    var.units=''
-                    var_nadir.units=''
+                    var.units = ''
+                    var_nadir.units = ''
                 try:
                     var.long_name = longname[str(key)]
                     var_nadir.long_name = longname[str(key)]
                 except:
-                    var.long_name=str(key)
-                    var_nadir.long_name=str(key)
+                    var.long_name = str(key)
+                    var_nadir.long_name = str(key)
                 for i in range(len(value)):
                     if value[i].any():
                         value_tmp = value[i][:]
-                        vmin = numpy.nanmin(value_tmp)
-                        vmax = numpy.nanmax(value_tmp)
+                        # vmin = numpy.nanmin(value_tmp)
+                        # vmax = numpy.nanmax(value_tmp)
                         mask = numpy.isnan(value_tmp)
                         value_tmp[numpy.where(mask)] = -1.36e9
-                        mask_ind = numpy.where(value_tmp <-1e7)
+                        mask_ind = numpy.where(value_tmp < -1e7)
                         value_tmp[mask_ind] = -1.36e9
-                        mask_ind = numpy.where(value_tmp >1e7)
+                        mask_ind = numpy.where(value_tmp > 1e7)
                         value_tmp[mask_ind] = -1.36e9
                         mask_ind = numpy.where(value_tmp == numpy.PINF)
                         value_tmp[mask_ind] = -1.36e9
@@ -526,7 +487,7 @@ class Sat_SKIM():
                 # try:    var.missing_value = p.model_nan
                 # except: var.missing_value = 0.
                 # fid.setncattr('missing_value','-9999.f')
-        ###############TODO set range values
+        # TODO set range values
         fid.close()
         return None
 
@@ -535,56 +496,58 @@ class Sat_SKIM():
         (longitude, latitude, number of days in a cycle, crossed distance
         during a cycle, time, along track and across track position).'''
 
-## - Open Netcdf file
-        try :
+        # - Open Netcdf file
+        try:
             fid = Dataset(self.file, 'r')
         except IOError:
-            logger.error('There was an error opening the file '+self.file)
+            logger.error('There was an error opening the file '
+                         '{}'.format(self.file))
             sys.exit(1)
-        #fid = Dataset(self.file, 'r')
+        # fid = Dataset(self.file, 'r')
         time = []
         lon = []
         lat = []
-        cycle = []
-        x_al = []
-        listvar={'time':time, 'lon': lon, 'lat': lat,}
+        # cycle = []
+        # x_al = []
+        listvar = {'time': time, 'lon': lon, 'lat': lat, }
         self.lon = []
         self.lat = []
         self.time = []
-## - Read variables in listvar and return them
+        # - Read variables in listvar and return them
         for stringvar in listvar:
             var = fid.variables['{}{}'.format(stringvar, '_nadir')]
             listvar[stringvar].append(numpy.array(var[:]).squeeze())
             var = fid.variables[stringvar]
             for i in range(len(p.list_pos)):
                 listvar[stringvar].append(numpy.array(var[:, i]).squeeze())
-            #exec('self.'+stringvar+' = listvar[stringvar]')
             setattr(self, stringvar, listvar[stringvar])
-## - Read variables in arguments
+        # - Read variables in arguments
         for key, value in kwargs.items():
             var = fid.variables[key]
             value = numpy.array(fid.variables[key][:]).squeeze()
-            #value[value == var.fill_value] = numpy.nan
+            # value[value == var.fill_value] = numpy.nan
             setattr(self, key, value)
         self.pos = numpy.array(fid.variables['beam_position'][:])
-        if (numpy.all(numpy.abs(self.pos - numpy.array(p.list_pos,
-                dtype = numpy.float32)) > 0.0001)):
-            logger.error('List of beam positions has changed,'\
+        _dpos = numpy.abs(self.pos - numpy.array(p.list_pos,
+                                                 dtype=numpy.float32))
+        if (numpy.all(_dpos) > 0.0001):
+            logger.error('List of beam positions has changed,'
                          ' reprocess the grids')
             sys.exit(1)
         self.angle = numpy.array(fid.variables['beam_angle'][:])
-        if (numpy.all(numpy.abs(self.angle - numpy.array(p.list_angle,
-               dtype = numpy.float32)) > 0.0001)):
-            logger.error('List of beam angles has changed,'\
+        _dangle = numpy.abs(self.angle - numpy.array(p.list_angle,
+                                                     dtype=numpy.float32))
+        if (numpy.all(_dangle) > 0.0001):
+            logger.error('List of beam angles has changed,'
                          ' reprocess the grids')
             sys.exit(1)
         self.radial_angle = numpy.array(fid.variables['radial_angle'][:])
         try:
-            self.corresponding_grid=fid.corresponding_grid
+            self.corresponding_grid = fid.corresponding_grid
         except:
             pass
         try:
-            self.incl=numpy.array(fid.variables['inclination'][:]).squeeze()
+            self.incl = numpy.array(fid.variables['inclination'][:]).squeeze()
         except:
             print('inclination variable not found')
         fid.close()
@@ -599,17 +562,9 @@ class NEMO():
     Argument file is mandatory, other arguments have default
     values var='sossheig', lon='nav_lon', lat='nav_lat', depth='depth',
     time='time. \n'''
-    def __init__(self,
-                file=None,
-                varu='vomecrtx',
-                lonu='nav_lonu',
-                latu='nav_latu',
-                varv='vozocrty',
-                lonv='nav_lonv',
-                latv='nav_latv',
-                time='time',
-                depth='depth',
-                ):
+    def __init__(self, p, ifile=None, varu='vomecrtx', lonu='nav_lonu',
+                 latu='nav_latu', varv='vozocrty', lonv='nav_lonv',
+                 latv='nav_latv', time='time', depth='depth'):
         self.nvar = varu
         self.nlon = lonu
         self.nlat = latu
@@ -617,7 +572,8 @@ class NEMO():
         self.nlon = lonv
         self.nlat = latv
         self.ntime = time
-        self.nfile = file
+        self.nfile = ifile
+        self.p = p
         self.ndepth = depth
         self.model_nan = getattr(p, 'model_nan', 0)
         p.model_nan = self.model_nan
@@ -625,8 +581,7 @@ class NEMO():
     def read_var(self, index=None):
         '''Read variables from NEMO file \n
         Argument is index=index to load part of the variable.'''
-        vel_factor = getattr(p, 'vel_factor', 1)
-        p.vel_factor = vel_factor
+        vel_factor = self.p.vel_factor
         self.vvaru = read_var(self.nfile, self.nvaru, index=index, time=0,
                               depth=0, model_nan=self.model_nan)*vel_factor
         self.vvarv = read_var(self.nfile, self.nvarv, index=index, time=0,
@@ -636,11 +591,11 @@ class NEMO():
     def read_coordinates(self, index=None):
         '''Read coordinates from NEMO file \n
         Argument is index=index to load part of the variable.'''
-        if p.grid == 'regular':
+        if self.p.grid == 'regular':
             lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
-                                        twoD=False)
+                                          twoD=False)
             lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
-                                        twoD=False)
+                                          twoD=False)
         else:
             lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu)
             lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv)
@@ -656,16 +611,18 @@ class NEMO():
         Return minimum, maximum longitude and minimum, maximum latitude'''
         self.read_coordinates()
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
-            self.vlonu[numpy.where(self.vlonu > 180.)] = self.vlonu[numpy.where(self.vlonu > 180.)] - 360
+            _ind = numpy.where(self.vlonu > 180.)
+            self.vlonu[_ind] = self.vlonu[_ind] - 360
             lon1 = (numpy.min(self.vlon) + 360) % 360
             lon2 = (numpy.max(self.vlon) + 360) % 360
             if lon1 == lon2:
-              lon1 = 0
-              lon2 = 360
+                lon1 = 0
+                lon2 = 360
         else:
             lon1 = numpy.min(self.vlon)
             lon2 = numpy.max(self.vlon)
         return [lon1, lon2, numpy.min(self.vlat), numpy.max(self.vlat)]
+
 
 class ROMS():
     '''Class to read ROMS data \n
@@ -679,17 +636,9 @@ class ROMS():
     is True (coordinates in degree). \n
     If units is False (coordinates in km), specify left
     low corner of the domain (lon0, lat0) in params file.'''
-    def __init__(self,
-                file=None,
-                varu='u',
-                varv='v',
-                depth='depth',
-                time='time',
-                lonu='lon_u',
-                latu='lat_u',
-                lonv='lon_v',
-                latv='lat_v',
-                ):
+    def __init__(self, p, ifile=None, varu='u', varv='v', depth='depth',
+                 time='time', lonu='lon_u', latu='lat_u', lonv='lon_v',
+                 latv='lat_v'):
         self.nvaru = varu
         self.nlonu = lonu
         self.nlatu = latu
@@ -697,7 +646,8 @@ class ROMS():
         self.nlonv = lonv
         self.nlatv = latv
         self.ntime = time
-        self.nfile = file
+        self.nfile = ifile
+        self.p = p
         self.ndepth = depth
         self.model_nan = getattr(p, 'model_nan', 0)
         p.model_nan = self.model
@@ -705,19 +655,17 @@ class ROMS():
     def read_var(self, index=None):
         '''Read variables from ROMS file\n
         Argument is index=index to load part of the variable.'''
-        vel_factor = getattr(p, 'vel_factor', 1.)
-        p.vel_factor = vel_factor
+        vel_factor = self.p.vel_factor
         self.vvaru = read_var(self.nfile, self.nvaru, index=index, time=0,
-                              depth=0, model_nan=self.model_nan) *vel_factor
+                              depth=0, model_nan=self.model_nan) * vel_factor
         self.vvarv = read_var(self.nfile, self.nvarv, index=index, time=0,
                               depth=0, model_nan=self.model_nan) * vel_factor
         return None
 
-
     def read_coordinates(self, index=None):
         '''Read coordinates from ROMS file \n
         Argument is index=index to load part of the variable.'''
-        if p.grid == 'regular':
+        if self.p.grid == 'regular':
             lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
                                           twoD=False)
             lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
@@ -736,15 +684,14 @@ class ROMS():
         Return minimum, maximum longitude and minimum, maximum latitude'''
         self.read_coordinates()
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlon) > 359.):
-            self.vlonu[numpy.where(self.vlonu > 180.)] = self.vlonu[
-                       numpy.where(self.vlonu > 180.)] - 360
+            ind = numpy.where(self.vlonu > 180.)
+            self.vlonu[ind] = self.vlonu[ind] - 360
             lon1 = (numpy.min(self.vlonu) + 360) % 360
             lon2 = (numpy.max(self.vlonu) + 360) % 360
         else:
             lon1 = numpy.min(self.vlonu)
             lon2 = numpy.max(self.vlonu)
         return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
-
 
 
 class NETCDF_MODEL():
@@ -754,47 +701,38 @@ class NETCDF_MODEL():
     Argument file is mandatory, arguments var, lon, lat
     are specified in params file. \n
     '''
-    def __init__(self,
-                file=None,
-                varu='u',
-                lonu='lon_u',
-                latu='lat_u',
-                varv='v',
-                lonv='lon_v',
-                latv='lat_v',
-                depth=0,
-                time=0,
-                ):
+    def __init__(self, p, ifile=None, varu='u', lonu='lon_u', latu='lat_u',
+                 varv='v', lonv='lon_v', latv='lat_v', depth=0, time=0):
         self.nvaru = varu
         self.nlonu = lonu
         self.nlatu = latu
         self.nvarv = varv
         self.nlonv = lonv
         self.nlatv = latv
-        self.nfile = file
+        self.nfile = ifile
         self.depth = depth
         self.time = time
+        self.p = p
         self.model_nan = getattr(p, 'model_nan', 0)
         p.model_nan = self.model_nan
 
     def read_var(self, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        vel_factor = getattr(p, 'vel_factor', 1.)
-        p.vel_factor = vel_factor
+        vel_factor = self.p.vel_factor
         self.vvarv = read_var(self.nfile, self.nvarv, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
         self.vvaru = read_var(self.nfile, self.nvaru, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
-        #self.vvar[numpy.where(numpy.isnan(self.vvar))]=0
+        # self.vvar[numpy.where(numpy.isnan(self.vvar))]=0
         return None
 
     def read_coordinates(self, index=None):
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        if p.grid=='regular':
+        if self.p.grid == 'regular':
             lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
                                           twoD=False)
             lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
@@ -813,14 +751,15 @@ class NETCDF_MODEL():
         Return minimum, maximum longitude and minimum, maximum latitude'''
         self.read_coordinates()
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
-            self.vlonu[numpy.where(self.vlonu > 180.)] = self.vlonu[
-                       numpy.where(self.vlonu > 180.)] - 360
+            _ind = numpy.where(self.vlonu > 180.)
+            self.vlonu[_ind] = self.vlonu[_ind] - 360
             lon1 = (numpy.min(self.vlonu) + 360) % 360
             lon2 = (numpy.max(self.vlonu) + 360) % 360
         else:
             lon1 = numpy.min(self.vlonu)
             lon2 = numpy.max(self.vlonu)
         return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
+
 
 class WW3():
     '''Class to read ww3 netcdf data.\n
@@ -829,24 +768,16 @@ class WW3():
     Argument file is mandatory, arguments var, lon, lat
     are specified in params file. \n
     '''
-    def __init__(self, p,
-                file=None,
-                varu='ucur',
-                lonu='longitude',
-                latu='latitude',
-                varv='vcur',
-                lonv='longitude',
-                latv='latitude',
-                depth=0,
-                time=0,
-                ):
+    def __init__(self, p, ifile=None, varu='ucur', lonu='longitude',
+                 latu='latitude', varv='vcur', lonv='longitude',
+                 latv='latitude', depth=0, time=0):
         self.nvaru = varu
         self.nlonu = lonu
         self.nlatu = latu
         self.nvarv = varv
         self.nlonv = lonv
         self.nlatv = latv
-        self.nfile = file
+        self.nfile = ifile
         self.depth = depth
         self.time = time
         self.p = p
@@ -857,11 +788,7 @@ class WW3():
     def read_var(self, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        try:
-            vel_factor = self.p.vel_factor
-        except:
-            vel_factor = 1.
-            self.p.vel_factor = 1.
+        vel_factor = self.p.vel_factor
         self.vvarv = read_var(self.nfile, self.nvarv, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
@@ -873,7 +800,7 @@ class WW3():
     def read_coordinates(self, index=None):
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        if self.p.grid=='regular':
+        if self.p.grid == 'regular':
             lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
                                           twoD=False)
             lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
@@ -892,11 +819,11 @@ class WW3():
         Return minimum, maximum longitude and minimum, maximum latitude'''
         self.read_coordinates()
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
-            self.vlonu[numpy.where(self.vlonu > 180.)]=self.vlonu[numpy.where(self.vlonu > 180.)] - 360
+            _ind = numpy.where(self.vlonu > 180.)
+            self.vlonu[_ind] = self.vlonu[_ind] - 360
             lon1 = (numpy.min(self.vlonu) + 360) % 360
             lon2 = (numpy.max(self.vlonu) + 360) % 360
         else:
             lon1 = numpy.min(self.vlonu)
             lon2 = numpy.max(self.vlonu)
         return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
-
