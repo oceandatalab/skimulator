@@ -31,7 +31,7 @@ From a global or regional OGCM configuration, the software generates
 
 Proposed SKIM orbits
 ---------------------
-The software uses as an input the ground-tracks of the satellite orbit. 
+The software uses as an input the ground-tracks of the satellite orbit.
 
 +---------------------+--------------+--------------+------------+-------------+-----------+
 |                     | Repeat Cycle | Repeat Cycle | Sub-cycles | Inclination | Elevation |
