@@ -4,48 +4,83 @@
 
 import netCDF4
 import numpy
-from matplotlib import python
-import skimsimulator.rw_date as rw
+from matplotlib import pyplot
+import skimsimulator.rw_data as rw
 import glob
-from mpl_toolkits.basemop import Basemap
+import cartopy
 import os
-
-import params as p
 
 # Initialize color
 listcolor = ['c', 'y', 'b', 'g', 'k', 'r', 'c', 'y']
 
 # List files
-indatapath = f'{p.filesgrid}_*'
-listfile = glob.glob(indatapath)
-listfile = listfile.sort()
-outdatadir = 'images'
+indatadir = '/mnt/data/project/'
+indatadir = '/tmp/key/project/'
+indatadir = os.path.join(indatadir, 'skim', 'skim_output')
+config="WW3_GS_6b108az"
+filesgrid = os.path.join(indatadir, '{}_grid'.format(config))
+ipass = 59
+indatapath = '{}_p{:03d}.nc'.format(filesgrid, ipass)
+outdatadir = '../'
+modelbox = [-90, -70., 32., 40.]
+#modelbox = [270, 290., 32., 40.]
 
 # Prepare figure
 pyplot.figure(figsize=(10, 15))
-m = Basemap(llcrnrlon = modelbox[0],
-            llcrnrlat = modelbox[1],
-            urcrnrlon = modelbox[2],
-            urcrnrlat = modelbox[3],
-            resolution = 'h',
-            projection = 'cyl',
-            lon_0 = (modelbox[1]-modelbox[0])/2,
-            lat_0 - (modelbox[3]-modelbox[2]))
-m.drawcoastlines
-m.fillcontinents(color='#FFE485', lake_color='aqua')
-m.drawmeridians(numpy.arange(int(modelbox[0]), int(modelbox[1])+1,
-                (modelbox[1]-modelbox[0])/5.),labels = [0,0,0,2])
-m.drawparrallels(numpy.arange(int(modelbox[2]), int(modelbox[3])+1,
-                (modelbox[3]-modelbox[2])/5.),labels = [2,0,0,0])
-for ifile in listfile[1]:
-    data = netCDF4.Dataset(ifile, 'r')
-    lon = data['lon'][:]
-    lon[lon > 180] = lon[lon > 180] - 360
-    lat = data['lat'][:, 0]
-    lon_nadir = data['lon_nadir'][:]
-    lon_nadir[lon_nadir > 180] = lon_nadir[lon_nadir > 180] - 360
-    lat_nadir = data['lat_nadir'][:]
-    m.plot(lon_nadir, lat_nadir, 'k+')
-    for i in range(numpy.shape(lon)[1]):
-        m.plot(lon[:, i], lat[:, i], f'{listcolor[i]}+')
+projection = cartopy.crs.Mercator()
+transform = cartopy.crs.PlateCarree()
+projection = transform
+ax1 = pyplot.subplot(121, projection=projection)
+#ax.coastlines()
+ax1.add_feature(cartopy.feature.OCEAN, zorder=1)
+ax1.add_feature(cartopy.feature.LAND, zorder=1, edgecolor='black')
+#ax.set_extent([modelbox[0], modelbox[1],  modelbox[2], modelbox[3]],
+#              projection)
+ax1.set_extent([-74., -70., 34, 37], projection)
+gl = ax1.gridlines(crs=transform, draw_labels=True, color='gray',
+             linestyle='--', alpha=0.5)
+gl.xlabels_top = False
+gl.ylabels_left = False
+ax1.set_title('(a) 6 beams configuration')
+
+data = netCDF4.Dataset(indatapath, 'r')
+lon = data['lon'][:]
+lon[lon > 180] = lon[lon > 180] - 360
+lat = data['lat'][:]
+lon_nadir = data['lon_nadir'][:]
+lon_nadir[lon_nadir > 180] = lon_nadir[lon_nadir > 180] - 360
+lat_nadir = data['lat_nadir'][:]
+pyplot.plot(lon_nadir, lat_nadir, 'k+', transform=transform)
+for i in range(numpy.shape(lon)[1]):
+    style_color = '{}+'.format(listcolor[i])
+    pyplot.plot(lon[:, i], lat[:, i], style_color,
+                transform=cartopy.crs.PlateCarree())
+ax2 = pyplot.subplot(122,  projection=projection)
+#ax.coastlines()
+ax2.add_feature(cartopy.feature.OCEAN, zorder=1)
+ax2.add_feature(cartopy.feature.LAND, zorder=1, edgecolor='black')
+#ax.set_extent([modelbox[0], modelbox[1],  modelbox[2], modelbox[3]],
+#              projection)
+config="WW3_GS_8b105az"
+filesgrid = os.path.join(indatadir, '{}_grid'.format(config))
+indatapath = '{}_p{:03d}.nc'.format(filesgrid, ipass)
+print(indatapath)
+ax2.set_extent([-74., -70., 34, 37], projection)
+gl = ax2.gridlines(crs=transform, draw_labels=True, color='gray',
+             linestyle='--', alpha=0.5)
+gl.xlabels_top = False
+gl.ylabels_left = False
+ax2.set_title('(b) 8 beams configuration')
+data = netCDF4.Dataset(indatapath, 'r')
+lon = data['lon'][:]
+lon[lon > 180] = lon[lon > 180] - 360
+lat = data['lat'][:]
+lon_nadir = data['lon_nadir'][:]
+lon_nadir[lon_nadir > 180] = lon_nadir[lon_nadir > 180] - 360
+lat_nadir = data['lat_nadir'][:]
+pyplot.plot(lon_nadir, lat_nadir, 'k+', transform=transform)
+for i in range(numpy.shape(lon)[1]):
+    style_color = '{}+'.format(listcolor[i])
+    pyplot.plot(lon[:, i], lat[:, i], style_color,
+                transform=cartopy.crs.PlateCarree())
 pyplot.savefig(os.path.join(outdatadir, 'Fig2.png'))
