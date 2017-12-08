@@ -17,7 +17,7 @@ secinday = 86400.
 # # SKIM INSTRUMENT CARACTERISTICS ##
 # ###################################
 # - Satellite elevation (m)
-sat_elev = 693*10**3
+sat_elev = 699*10**3
 # - Baseline (m)
 B = 10
 # (in Hz)

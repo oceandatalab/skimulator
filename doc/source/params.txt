@@ -34,7 +34,7 @@ makesgrid = True or False
 # 	 (If modelbox is None, the whole domain of the model is considered)
 modelbox =  None or [yourlon_min, yourlon_max, yourlat_min, yourlat_max]
 #------- Rotation speed of the antenna (in tr/min)
-rotation_speed = 3.396739
+rotation_speed = 3.396739 or 5.20833
 #------- List of position of beams:
 list_pos = (0, 72*math.pi/180., 144*math.pi/180., 216*math.pi / 180.,
             288*math.pi/180., 0, math.pi)
@@ -42,6 +42,8 @@ list_pos = (0, 72*math.pi/180., 144*math.pi/180., 216*math.pi / 180.,
 list_angle = (12, 12, 12, 12, 12, 6, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
 list_shift = (1, 2, 4, 5, 7, 3, 6)
+#------- Cycle duration
+cycle = 0.0096
 # ------ Shift longitude of the orbit file if no pass is in the domain 
 #        (in degree): Default value is None (no shift)
 shift_lon = 0
@@ -117,6 +119,10 @@ rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat')]
+# Multplication factor for instrument noise data to compensate for faster time
+# cycle
+rms_instr_factor = 2.5
+
 # ------- Stoke drift velocity [beam 12, beam 6]
 uss = True
 # ------- Path to list of stoke drift files
@@ -130,7 +136,6 @@ bias_std = 0.09
 errdcos = None if formula is False or list of coefficient if formula is True
 # ------- Set footprint size in km to compute uss std
 footprint_std = 0 if formula is False or around 400 if Formula is True
-
 
 ## -- Geophysical error
 ## ----------------------
