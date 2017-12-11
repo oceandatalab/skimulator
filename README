@@ -56,15 +56,6 @@ Open a canopy terminal (``Tools - Canopy Terminal``)
    > sudo python setup.py install --record record_files.txt
    > cat record_files.txt | xargs sudo rm -rf
 
-Running
---------
-Run the SKIM simulator:
-
-.. code-block:: python
-
-   > python run.py [your params file]
-
-
 Orbits data
 -----------
 Reference orbits data are available online:
@@ -74,6 +65,16 @@ Reference orbits data are available online:
    $ cd [yourpath]/skimsimulator/data
    $ wget "https://oceandatalab.com/files/skim/orbits.tar.xz"
    $ tar xJf orbits.tar.xz
+
+
+Running
+--------
+Run the SKIM simulator:
+
+.. code-block:: python
+
+   > python run.py [your params file]
+
 
 
 Documentation

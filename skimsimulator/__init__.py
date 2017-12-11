@@ -31,13 +31,14 @@
 
 # - Set module version to package version:
 
-import skimsimulator.package_version
-__version__ = package_version.version
-__author__  = package_version.author
-__date__    = package_version.date
-__email__   = package_version.email
-__url__     = package_version.url
-del package_version
+__version__ = '$1.00: Original version $'
+__author__ = 'Lucile Gaultier <lucile.gaultier@oceandatalab.com>'
+__date__ = '2017-03-01'
+__email__ = 'lucile.gaultier@oceandatalab.com'
+__url__ = ''
+__description__ = ('SKIM Simulator')
+__author_email__ = ('lucile.gaultier@oceandatalab.com')
+__keywords__ = ()
 
 # - If you're importing this module in testing mode, or you're running
 #  pydoc on this module via the command line, import user-specific
@@ -56,14 +57,14 @@ __python_version__ = sys.version[:3]
 # - Import numerical array formats
 try:
     import numpy
-except:
+except ImportError:
     print(''' Numpy is not available on this platform,
           ''')
 
 # - Import scientific librairies
 try:
     import scipy
-except:
+except ImportError:
     print("""Scipy is not available on this platform,
           """)
 
@@ -71,7 +72,7 @@ except:
 # - Import netcdf reading librairies
 try:
     import netCDF4
-except:
+except ImportError:
     print(''' netCDF4 is not available on this machine,
-          only netcdf3 can be read ''')
+          ''')
     # reading and writing netcdf functions in rw_data.py won't work'''

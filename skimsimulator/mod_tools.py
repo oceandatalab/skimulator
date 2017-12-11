@@ -1,14 +1,34 @@
 ''' Spectral  and algebra tools  for swot simulator. \n
 Contains the following functions:
+- load_python_file: load and parse parameter file \n
 - gen_signal1d: compute 1d random error from spectrum \n
 - gen_signal2d: compute 2d random error from spectrum \n
 - rotationmat3d: rotate data  \n
 - spher2cart: convert spherical to cartesian coordinates \n
 - cart2spher: convert cartesian to spherical coordinates \n
+- cart2spher: convert cartesian to spherical coordinates for vectors \n
+- proj_radial: projection on radial direction \n
 - update_progress: Progress bar'''
 import numpy
 import math
 import sys
+import os
+
+
+def load_python_file(file_path):
+    """Load a file and parse it as a Python module."""
+    if not os.path.exists(file_path):
+        raise IOError('File not found: {}'.format(file_path))
+
+    full_path = os.path.abspath(file_path)
+    python_filename = os.path.basename(full_path)
+    module_name, _ = os.path.splitext(python_filename)
+    module_dir = os.path.dirname(full_path)
+    if module_dir not in sys.path:
+        sys.path.append(module_dir)
+
+    module = __import__(module_name, globals(), locals(), [], 0)
+    return module
 
 
 def gen_coeff_signal1d(f, PS, nc):
@@ -38,7 +58,8 @@ def gen_coeff_signal2d(f, PS, nc):
     '''Generate nc random coefficient from a spectrum PS
     with frequencies f. \n
     Inputs are: frequency [f], spectrum [PS], number of realisation [nc]
-    Return Amplitude, phase and frequency in 2D (frx, fry) of nc realisations'''
+    Return Amplitude, phase and frequency in 2D (frx, fry) of nc
+    realisations'''
 
     # ''' Compute nc random vectors in an annular
     # (radius is between (min(f), max(f)) '''
@@ -53,7 +74,7 @@ def gen_coeff_signal2d(f, PS, nc):
 
     # ''' Compute coefficients corresponding to random vectors '''
     logPS = numpy.log10(PS)
-    logPSr = numpy.interp(numpy.log10(fr), logf, logPS)
+    logPSr = numpy.interp(logfr, logf, logPS)
     PSr = 10.**logPSr
     A = numpy.sqrt(0.5*PSr*2*math.pi*(f2 - f1)/(nc))
 
@@ -69,7 +90,7 @@ def rotationmat3D(theta, axis):
     The rotation matrix correspond to a rotation of angle theta
     with respect to axis axis. \n
     Return the rotation matrix.'''
-    mat = numpy.eye(3, 3)
+    # mat = numpy.eye(3, 3)
     axis = axis / math.sqrt(numpy.dot(axis, axis))
     a = math.cos(theta/2.)
     b, c, d = -axis*math.sin(theta/2.)
@@ -101,10 +122,11 @@ def cart2sphervect(x, y, z):
     lat = numpy.arcsin(z/norm) * 180./math.pi
     lon = numpy.arctan(y/x) % (2*math.pi)
     if (x < 0).any():
-        lon[x < 0] = (numpy.arctan(y [x < 0]/x[x < 0]) % (2*math.pi)
+        lon[x < 0] = (numpy.arctan(y[x < 0] / x[x < 0]) % (2*math.pi)
                       + x[x < 0] / x[x < 0]*math.pi)
     lon = lon * 180/math.pi
     return lon % 360, lat
+
 
 def cart2spher(x, y, z):
     ''' Convert cartesian coordinates to spherical coordinates. \n
@@ -114,16 +136,18 @@ def cart2spher(x, y, z):
     lat = numpy.arcsin(z/norm) * 180./math.pi
     if (x < 0):
         lon = (numpy.arctan(y/x) % (2*math.pi)
-                      + max(numpy.sign(x), 0)*math.pi)
+               + max(numpy.sign(x), 0)*math.pi)
     else:
         lon = numpy.arctan(y/x) % (2*math.pi)
 
     lon = lon * 180/math.pi
     return lon % 360, lat
 
+
 def proj_radial(u, v, radial_angle):
     ur = u * numpy.cos(radial_angle) + v * numpy.sin(radial_angle)
     return ur
+
 
 def update_progress(progress, arg1, arg2):
     '''Creation of a progress bar: print on screen the progress of the run'''
