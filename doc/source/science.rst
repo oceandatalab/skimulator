@@ -124,7 +124,9 @@ Simulation of errors
 
 Instrumental errors
 ````````````
-
+The instrumental error corresponds to the geometric doppler. For now a random
+noise has been implemented. The amplitude of the noise depends on the beam
+angle and the azimuth.
 .. _Fig4:
 
 .. figure:: ../images/Fig4.png
@@ -135,19 +137,31 @@ Instrumental errors
 
 Stoke drift remaining bias
 ````````````````````````
+The geophysical noise contains only the bias on the doppler due to the Stoke
+drift. The stoke drift is provided to the simulator, we retrieve the
+corresponding radial Stoke componant measured by SKIM and correct it using
+nearest negihbours in all azimuth. The corrected variable is called the Stoke 
+drift remaing bias. Near the coast, not all azimuth are
+available and thus the drift remaining bias is higher than in the open ocean.
 .. _Fig5:
 
 .. figure:: ../images/Fig5.png
-   :alt: Model current Intrumental noise 
+   :alt: Model current geophysical noise
 
-   FIG. 5: Model interpolated currents and the corresponding stoke drift remaining bias.
+   FIG. 5: Model interpolated currents and the corresponding geophysical noise
+           (for now, it contains only stoke drift remaining bias).
+
+Total error
+```````````
+All previous errors are added to compute the total error. 
 
 .. _Fig6:
 
 .. figure:: ../images/Fig6.png
-   :alt: Model current Intrumental noise 
+   :alt: Model current with noise
 
-   FIG. 6: Model interpolated currents and the corresponding stoke drift remaining bias.
+   FIG. 5: Model interpolated currents and the corresponding total noise
+           (instrumental + geophysical).
 
 Simulation of errors for the nadir altimeter
 ============================================

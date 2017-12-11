@@ -4,6 +4,8 @@ FIG. 1: 5-day worth of SKIM simulated data in a global configuration with the sc
 
 import netCDF4
 import numpy
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot
 import skimsimulator.rw_data as rw
 import glob
@@ -11,7 +13,9 @@ import cartopy
 import os
 
 # List files
-outdatadir = os.path.join('/mnt/data/project/', 'skim', 'skim_output')
+outdatadir = '/tmp/key'
+outdatadir = '/mnt/data/project/'
+outdatadir = os.path.join(outdatadir, 'skim', 'skim_output')
 config="WW3_GLOB_6b108az"
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
 indatapath = '{}_*'.format(filesgrid)
