@@ -4,6 +4,8 @@
 
 import netCDF4
 import numpy
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot
 import skimsimulator.rw_data as rw
 import glob
