@@ -27,22 +27,17 @@ indatapath = '{}c01_p{:03d}.nc'.format(filesgrid, ipass)
 listfile = glob.glob(indatapath)
 listfile = sorted(listfile)
 outdatadir = '../'
-modelbox = [-90, -70., 32., 40.]
-scale = 8
-#modelbox = [270, 290., 32., 40.]
+modelbox = [-73, -71.0, 34.0, 36.0]
+scale = 11
 
 # Prepare figure
 pyplot.figure(figsize=(10, 15))
-projection = cartopy.crs.Mercator()
+projection = cartopy.crs.PlateCarree()
 transform = cartopy.crs.PlateCarree()
 projection = transform
 ax1 = pyplot.subplot(111, projection=projection)
-#ax.coastlines()
-ax1.add_feature(cartopy.feature.OCEAN, zorder=1)
 ax1.add_feature(cartopy.feature.LAND, zorder=1, edgecolor='black')
-#ax.set_extent([modelbox[0], modelbox[1],  modelbox[2], modelbox[3]],
-#              projection)
-ax1.set_extent([-74., -70., 34, 37], projection)
+ax1.set_extent(modelbox, projection)
 gl = ax1.gridlines(crs=transform, draw_labels=True, color='gray',
              linestyle='--', alpha=0.5)
 gl.xlabels_top = False
@@ -55,20 +50,19 @@ lon = data['lon'][:]
 lon[lon > 180] = lon[lon > 180] - 360
 lat = data['lat'][:]
 ur = data['ur_model'][:]
-angle = datag['radial_angle'][:]
-ur = data['ur_instr'][:]
-urnoise = ur + urinstr
+corrangle = datag['radial_angle'][:]
+ur_noise = data['uss_err'][:] + data['instr'][:]
+urnoise = ur + ur_noise
 uur = ur * numpy.cos(corrangle)
 vur = ur * numpy.sin(corrangle)
 uurnoise = urnoise * numpy.cos(corrangle)
 vurnoise = urnoise * numpy.sin(corrangle)
 for i in range(numpy.shape(lon)[1]):
     style_color = '{}+'.format(listcolor[i])
-    pyplot.plot(lon[:, i], lat[:, i], style_color,
-                transform=cartopy.crs.PlateCarree())
-    corrangle = angle[:, i]
-    pyplot.quiver(lon[:, i], lat[:, i], uur[:, i], vur[:, i], color='red',
-                  scale=scale, transform=transform)
+    #pyplot.plot(lon[:, i], lat[:, i], style_color,
+    #            transform=cartopy.crs.PlateCarree())
     pyplot.quiver(lon[:, i], lat[:, i], uurnoise[:, i], vurnoise[:, i],
                   color='green', scale=scale, transform=transform)
-pyplot.savefig(os.path.join(outdatadir, 'Fig3.png'))
+    pyplot.quiver(lon[:, i], lat[:, i], uur[:, i], vur[:, i], color='red',
+                  scale=scale, transform=transform, alpha=0.5)
+pyplot.savefig(os.path.join(outdatadir, 'Fig6.png'))
