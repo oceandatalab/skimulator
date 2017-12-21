@@ -1,9 +1,16 @@
-For non-commercial use of this software
-=======================================
-The license is the following one:
-- GPLv2.0 (see doc/GPLv2-LICENSE.txt)
+skimsimulator: simulates SKIM-like data from an OGCM model
+Copyright (C) 2017- OceanDataLab
 
-For commercial use of this software
-===================================
-Send an email to contact@oceandatalab.com in which you describe how this
-software is used in your product.
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
