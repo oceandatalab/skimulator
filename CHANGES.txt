@@ -5,3 +5,10 @@ Changelog for skimsimulator
 ----------
 2017/05/15
 First beta version, undocumented
+
+1.0
+-----
+2017/12/20
+First public release
+* Packaging improved
+* Documentation

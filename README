@@ -73,7 +73,7 @@ Run the SKIM simulator:
 
 .. code-block:: python
 
-   > python run.py [your params file]
+   > skimsimulator [your params file]
 
 
 

@@ -52,12 +52,12 @@ The software uses as an input the ground-tracks of the satellite orbit.
 |             | Repeat Cycle | Repeat Cycle | Sub-cycles | Inclination | Elevation |
 |             | (days)       | (Orbits)     | (days)     |             | (km)      |
 +=============+==============+==============+============+=============+===========+
-| sentinel 1  |       12     |     175      |   6        |    90.18     |  698     |
+| sentinel 1  |       12     |     175      |   6        |    90.18    |  698     |
 +-------------+--------------+--------------+------------+-------------+-----------+
 
 The ground-track coordinates corresponding to these orbits are given as input
 ASCII files of 3 columns (longitude, latitude, time) for one complete cycle
-sampled at every  ~5~km. The first ascending node has been arbitrarily set to
+sampled at every  ~5 km. The first ascending node has been arbitrarily set to
 270 degree of longitude, but the user can shift the orbit by any value in
 longitude.
 
@@ -88,8 +88,6 @@ passes are even numbers.
    FIG. 2: scheme of the SKIM geometry with 4 beams at 12 degrees and 1 beam at
            6 degree for figure a and 5 beams at 12 degrees and 2 beams at 6
            degree for figure b.
-
-
 
 Interpolation of currents and Stoke drift on the SWOT grid and nadir track
 --------------------------------------------------------------------------
@@ -165,7 +163,7 @@ All previous errors are added to compute the total error.
 
 Simulation of errors for the nadir altimeter
 ============================================
-Two main components of the nadir altimetry error budget are simulated : the
+Two main components of the nadir altimetry error budget are simulated: the
  altimeter noise and residual wet-tropospheric errors. For the altimeter noise,
 the noise follow a spectrum of error consistent with global estimates from the
 Jason-2 altimeter. The wet-tropospheric residual errors are generated using the
@@ -338,13 +336,12 @@ which follows the 1d spectrum computed from the current altimeters. You have
 to set (:ref:`nadir <params-error>`) to True to compute this error. The second
 error is the path delay due to the wet troposphere and this error is computed
 with the residual path delay error in the swath. The observed SSH (SSH_obs) is
-computing by adding these two errors to the SSH interpolated from the model
- (SSH_model).
+computing by adding these two errors to the SSH interpolated from the model (SSH_model).
 
 Getting started 
 ----------------
 All information regarding the installation and running of the software are in
-the :ref:`README` file. An example of a :ref:`parms.txt <params>` file is given
+the :ref:`README <README>` file. An example of a :ref:`parms.txt <params>` file is given
 below.
 
 Once you have installed skimsimulator, you can print help by typing in a python
@@ -374,12 +371,12 @@ Example of Params.txt for SKIM-like data
 .. _params-file:
 
 .. literalinclude:: params.py
-   :lines: 1-23
+   :lines: 1-19
 
 .. _params-swotswath:
 
 .. literalinclude:: params.py
-   :lines: 25-51
+   :lines: 20-51
 
 .. _params-model:
 
