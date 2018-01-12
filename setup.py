@@ -62,7 +62,7 @@ with open(readme_file, 'rt') as f:
 optional_dependencies = {'plot': ['matplotlib', ], 'carto': ['matplotlib',
                          'cartopy']}
 
-cmds = [f'skimsimulator = {__package_name__}.cli:run_script',
+cmds = ['skimsimulator = {}.cli:run_script'.format(__package_name__),
         ]
 
 setup(name='skimsimulator',
