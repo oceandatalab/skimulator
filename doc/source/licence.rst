@@ -9,6 +9,6 @@ Software licence and copyright
 
 .. _licence_long:
 
-.. include :: ../GPLv2-LICENSE.txt
+.. include :: ../../COPYING
 
 
