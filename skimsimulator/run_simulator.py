@@ -455,7 +455,7 @@ def load_sgrid(sgridfile, p):
     '''Load SKIM swath and Nadir data for file sgridfile '''
 
     # Load SKIM swath file
-    sgrid = rw_data.Sat_SKIM(file=sgridfile)
+    sgrid = rw_data.Sat_SKIM(ifile=sgridfile)
     cycle = 0
     x_al = []
     al_cycle = 0
@@ -993,7 +993,7 @@ def save_SKIM(cycle, sgrid, err, p, time=(), vindice=(), ur_model=(),
               u_model=(), v_model=(), std_uss=(), errdcos=()):
     file_output = (p.file_output + '_c' + str(cycle+1).zfill(2) + '_p'
                    + str(sgrid.ipass).zfill(3) + '.nc')
-    OutputSKIM = rw_data.Sat_SKIM(file=file_output, lon=sgrid.lon,
+    OutputSKIM = rw_data.Sat_SKIM(ifile=file_output, lon=sgrid.lon,
                                   lat=sgrid.lat, time=sgrid.time,
                                   x_al=sgrid.x_al, cycle=sgrid.cycle)
     OutputSKIM.gridfile = sgrid.gridfile

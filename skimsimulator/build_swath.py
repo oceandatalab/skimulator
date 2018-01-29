@@ -175,7 +175,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     x_al = x_al_lr
     lon = lon % 360
     # Save orbit data in Sat_SKIM object
-    orb = rw_data.Sat_SKIM(file='{}.nc'.format(os.path.basename(orbitfile)))
+    orb = rw_data.Sat_SKIM(ifile='{}.nc'.format(os.path.basename(orbitfile)))
     orb.x_al = x_al
     orb.time = stime
     orb.lon = lon
@@ -235,7 +235,7 @@ def orbit2swath(modelbox, p, orb):
                                       'selected pass: ' + str(ipass+1), None)
             # Initialize SKIM grid, grid variables
             filesgrid = p.filesgrid + '_p' + str(ipass+1).zfill(3) + '.nc'
-            sgrid = rw_data.Sat_SKIM(file=filesgrid)
+            sgrid = rw_data.Sat_SKIM(ifile=filesgrid)
             sgrid.x_al = x_al[ind]
             x_al_nad = x_al[ind]
             x_al_nad = x_al_nad[0::nbeam]
