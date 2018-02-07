@@ -109,7 +109,7 @@ def run_simulator(p):
         #                  + '(p, file=p.indatadir+os.sep+list_file[0])')
         model_data_ctor = getattr(rw_data, model)
         filename = os.path.join(p.indatadir, list_file[0])
-        model_data = model_data_ctor(p, file=filename)
+        model_data = model_data_ctor(p, ifile=filename)
     # if no modelbox is specified (modelbox=None), the domain of the input
     # data is taken as a modelbox
     # coordinates from the region defined by modelbox are selected
@@ -629,19 +629,19 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                     nfile += 1
                     filetime = ifile - time_offset
                 filename = os.path.join(p.indatadir, list_file[nfile])
-                model_step = rw_data.WW3(p, file=filename, varu=p.varu,
+                model_step = rw_data.WW3(p, ifile=filename, varu=p.varu,
                                          varv=p.varv, time=filetime)
                 if p.uss is True:
                     filename = os.path.join(p.indatadir, list_file_uss[nfile])
-                    uss_step = rw_data.WW3(p, file=filename, varu='uuss',
+                    uss_step = rw_data.WW3(p, ifile=filename, varu='uuss',
                                            varv='vuss', time=filetime)
             else:
                 model_step_ctor = getattr(rw_data, model_data.model)
-                model_step = model_step_ctor(file=os.path.join(p.indatadir,
+                model_step = model_step_ctor(ifile=os.path.join(p.indatadir,
                                              list_file[ifile]), varu=p.varu,
                                              varv=p.varv)
                 if p.uss is True:
-                    model_step = model_step_ctor(file=os.path.join(p.indatadir,
+                    model_step = model_step_ctor(ifile=os.path.join(p.indatadir,
                                                  list_file_uss[ifile]),
                                                  varu='uuss', varv='vuss')
             if p.grid == 'regular':
