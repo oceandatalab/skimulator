@@ -213,7 +213,7 @@ def orbit2swath(modelbox, p, orb):
     # - Computation of SKIM grid and storage by passes
     logger.info('\n Compute SKIM grid')
     # Detect first pass that is in the subdomain
-    ipass0 = 1
+    ipass0 = 0
     # Compute rotating beams
     omega = p.rotation_speed * 2 * math.pi / 60.
     # Number of beam to lighten:
