@@ -28,8 +28,15 @@ Contains the following functions:
 - update_progress: Progress bar'''
 import numpy
 import math
+import logging
+import multiprocessing
 import sys
 import os
+import types
+import datetime
+
+# Define logger level for debug purposes
+logger = logging.getLogger(__name__)
 
 
 def load_python_file(file_path):
@@ -46,6 +53,52 @@ def load_python_file(file_path):
 
     module = __import__(module_name, globals(), locals(), [], 0)
     return module
+
+
+def initialize_parameters(p):
+    p.shift_lon = getattr(p, 'shift_lon', None)
+    p.shift_time = getattr(p, 'p.shift_time', None)
+    if p.shift_time is None:
+        p.timeshift = 0
+    p.timeshift = getattr(p, 'p.timeshift', 0)
+    if p.shift_time is None:
+        p.timeshift = 0
+    model = getattr(p, 'model', 'NETCDF_MODEL')
+    p.model = model
+    p.model_nan = getattr(p, 'model_nan', 0)
+    p.vel_factor = getattr(p, 'vel_factor', 1.)
+    p.nadir = getattr(p, 'nadir', True)
+    p.grid = getattr(p, 'grid', 'regular')
+    p.rms_instr_factor = getattr(p, 'rms_instr_factor', 1)
+    p.cycle = getattr(p, 'cycle', 0.0368)
+    p.formula = getattr(p, 'formula', False)
+    p.footprint_std = getattr(p, 'footprint_std', 0)
+    p.order_orbit_col = getattr(p, 'order_orbit_col', None)
+    p.ice_mask = getattr(p, 'ice_mask', True)
+    p.proc_count = getattr(p, 'proc_number', 1)
+    return None
+
+
+def check_path(p):
+    if os.path.isdir(p.dir_setup) is False:
+        logger.error('Data directory {} not found'.format(p.dir_setup))
+        sys.exit(1)
+    if os.path.isdir(p.indatadir) is False:
+        logger.error('Input directory {} not found'.format(p.indatadir))
+        sys.exit(1)
+    if os.path.isdir(p.outdatadir) is False:
+        logger.warn('Output directory {} did not exist and was '
+                    'created'.format(p.dir_setup))
+        os.makedirs(p.outdatadir)
+    filesat_path = os.path.join(p.dir_setup, p.filesat)
+    if os.path.isfile(filesat_path) is False:
+        logger.error('Orbit file {} not found'.format(filesat_path))
+        sys.exit(1)
+    if p.file_input is not None:
+        if os.path.isfile(p.file_input) is False:
+            logger.error('Model file list {} not found'.format(p.file_input))
+            sys.exit(1)
+    return None
 
 
 def gen_coeff_signal1d(f, PS, nc):
@@ -153,7 +206,7 @@ def cart2spher(x, y, z):
     lat = numpy.arcsin(z/norm) * 180./math.pi
     if (x < 0):
         lon = (numpy.arctan(y/x) % (2*math.pi)
-               + max(numpy.sign(x), 0)*math.pi)
+               + max(-numpy.sign(x), 0)*math.pi)
     else:
         lon = numpy.arctan(y/x) % (2*math.pi)
 
@@ -164,6 +217,62 @@ def cart2spher(x, y, z):
 def proj_radial(u, v, radial_angle):
     ur = u * numpy.cos(radial_angle) + v * numpy.sin(radial_angle)
     return ur
+
+
+def todict(p):
+    result = {}
+    for attr in dir(p):
+        value = getattr(p, attr)
+        if (isinstance(value, types.ModuleType)
+            or isinstance(value, types.MethodType)
+            or isinstance(value, types.FunctionType)
+            or attr.startswith('__')):
+            continue
+        result[attr] = value
+    return result
+
+
+def fromdict(result):
+    p = type('swotparam', (object,), result)
+    return p
+
+
+def update_progress_multiproc(status, info):
+    """Creation of progress bar: print on screen progress of run, optimized
+    for parrallelised tasks"""
+    pid = info[0]
+    grid_name = info[1]
+    if isinstance(grid_name, str):
+        ipass = grid_name[-6:-3]
+    else:
+        ipass = '{:03d}'.format(grid_name)
+
+    cycle = info[2]
+
+    count = len(status.keys())
+    sys.stdout.write(_term_move_up() * count)
+    now = datetime.datetime.now().strftime('%H:%M:%S')
+    for pid in status:
+        if grid_name in status[pid]['grids']:
+            if cycle is None:
+                # Grid has been completely processed
+                status[pid]['done'] += 1
+                status[pid]['extra'] = '{}|> pass: {} ....... DONE'.format(now, ipass)
+            else:
+                # Just update extra info
+                status[pid]['extra'] = '{}|> pass: {}, cycle: {:04d}'.format(now, ipass,
+                                                               cycle)
+
+    bar_size = 20
+    for pid, proc_state in status.items():
+        done = math.floor(bar_size * proc_state['done'] / proc_state['total'])
+        todo = bar_size - done
+        proc_elems = ['\n[']
+        proc_elems.extend(['#'] * int(math.ceil(done)))
+        proc_elems.extend([' '] * int(math.ceil(todo)))
+        proc_elems.extend(['] {}'.format(proc_state['extra'])])
+        sys.stdout.write(''.join(proc_elems))
+        sys.stdout.flush()
 
 
 def update_progress(progress, arg1, arg2):

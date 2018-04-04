@@ -341,7 +341,7 @@ computing by adding these two errors to the SSH interpolated from the model (SSH
 Getting started 
 ----------------
 All information regarding the installation and running of the software are in
-the :ref:`README <README>` file. An example of a :ref:`parms.txt <params>` file is given
+the :ref:`README <README>` file. An example of a :ref:`params.txt <params>` file is given
 below.
 
 Once you have installed skimsimulator, you can print help by typing in a python
