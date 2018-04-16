@@ -6,7 +6,7 @@ Changelog for skimsimulator
 2018/04/01
 - Parallelisation
 
-_fix bugs (issues with numpy 14.2, interpolation at 0E, radial velocity)
+_ Fix bugs (issues with numpy 14.2, interpolation at 0E, radial velocity)
 
 1.0
 -----

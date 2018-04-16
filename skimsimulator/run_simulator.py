@@ -51,6 +51,7 @@ import numpy
 import math
 import glob
 import sys
+import time
 import logging
 import skimsimulator.build_swath as build_swath
 import skimsimulator.rw_data as rw_data
@@ -231,9 +232,6 @@ def run_simulator(p):
     #   Remove the grid from the list of model files
     if p.file_input:
         list_file.remove(list_file[0])
-    #   Initialize progress bar variables
-    # istep = 0
-    # ntot = 1
 
     # - Loop on SKIM grid files
     jobs = []
@@ -296,7 +294,7 @@ def worker_method_skim():
     _args = list(args)[0]
     msg_queue = _args.pop()
     sgridfile = _args[0]
-    sgridfile, p2, listsgridfile, list_file, modelbox, model_data, modeltime, err, errnad = _args[1:]
+    p2, listsgridfile, list_file, modelbox, model_data, modeltime, err, errnad = _args[1:]
     p = mod_tools.fromdict(p2)
     #   Load SKIM grid files (Swath and nadir)
     sgrid = load_sgrid(sgridfile, p)
@@ -478,6 +476,7 @@ def worker_method_skim():
     modelbox[1] = (modelbox[1] + 360) % 360
     del sgrid
     msg_queue.put((os.getpid(), sgridfile, None))
+
 
 def load_error(p):
     '''Initialize random coefficients that are used to compute

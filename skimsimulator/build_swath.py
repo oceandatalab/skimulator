@@ -44,14 +44,12 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     '''
     # - Load SKIM orbit ground track
     logger.info('Load data from orbit file')
-    bnorbit = os.path.basename(orbitfile)
-    if ((bnorbit == 'orbs1a.txt') | (bnorbit == 'orbs1a_test.txt')
-         | (bnorbit == 'orbits1_ifremer')
-         | (bnorbit == 'orbits1_ifremer_test')):
-        volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(0, 1, 2),
+    if p.order_orbit_col is None:
+        volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(1, 2, 0),
                                              unpack=True)
     else:
-        volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(1, 2, 0),
+        ncols = p.order_orbit_col
+        volon, volat, votime = numpy.loadtxt(orbitfile, usecols=ncols,
                                              unpack=True)
     # - If orbit is at low resolution, interpolate at cycle (s) resolution
     cycle = p.cycle
@@ -264,7 +262,6 @@ def make_skim_grid(_proc_count, jobs):
 
     pool.close()
     pool.join()
-
 
 
 def worker_method_grid():
