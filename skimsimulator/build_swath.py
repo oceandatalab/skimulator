@@ -45,7 +45,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     # - Load SKIM orbit ground track
     logger.info('Load data from orbit file')
     if p.order_orbit_col is None:
-        volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(1, 2, 0),
+        volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(0, 1, 2),
                                              unpack=True)
     else:
         ncols = p.order_orbit_col
@@ -56,9 +56,15 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     votime = votime * const.secinday
     # macrocycle is fixed or depend on number of beam
     logger.info('Interpolate orbit at {} seconds'.format(cycle))
+    votime2 = votime + 0
     if numpy.mean(votime[1:] - votime[:-1]) != cycle:
         x, y, z = mod_tools.spher2cart(volon, volat)
         time_hr = numpy.arange(0., votime[-1], cycle)
+        #jobs = []
+        #jobs.append([votime, , time_hr, x])
+        #jobs.append([votime, time_hr, y])
+        #jobs.append([votime, time_hr, z])
+        # worker
         f = interpolate.interp1d(votime, x)
         x_hr = f(time_hr)
         f = interpolate.interp1d(votime, y)
@@ -67,9 +73,10 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         z_hr = f(time_hr)
         lon_hr = numpy.zeros(len(x_hr)) + numpy.nan
         lat_hr = numpy.zeros(len(x_hr)) + numpy.nan
-        for ii in range(len(x_hr)):
-            lon_hr[ii], lat_hr[ii] = mod_tools.cart2spher(x_hr[ii], y_hr[ii],
-                                                          z_hr[ii])
+        #for ii in range(len(x_hr)):
+        #    lon_hr[ii], lat_hr[ii] = mod_tools.cart2spher(x_hr[ii], y_hr[ii],
+        #                                                  z_hr[ii])
+        lon_hr, lat_hr = mod_tools.cart2sphervect(x_hr, y_hr, z_hr)
         # Cut orbit if too long
         ind = numpy.where((time_hr < const.satcycle * const.secinday))
         volon = lon_hr[ind]
@@ -222,7 +229,7 @@ def orbit2swath(modelbox, p, orb):
     jobs = []
     p2 = mod_tools.todict(p)
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
-        jobs.append([ipass, p2, passtime, stime, x_al, x_al_nad, tcycle, al_cycle, lon, lat, lonnad, latnad, timenad, nbeam, orb.timeshift])
+        jobs.append([ipass, p2, passtime, stime, x_al, tcycle, al_cycle, lon, lat, nbeam, orb.timeshift])
     make_skim_grid(p.proc_count, jobs)
     mod_tools.update_progress(1,  'All swaths have been processed', ' ')
     return None
@@ -268,9 +275,8 @@ def worker_method_grid():
     _args = list(args)[0]
     msg_queue = _args.pop()
     ipass = _args[0]
-    p2, passtime, stime, x_al, x_ac, tcycle, al_cycle, nhalfswath, lon, lat, timeshift = _args[1:]
+    p2, passtime, stime, x_al, tcycle, al_cycle, lon, lat, nbeam, timeshift = _args[1:] %orb.timeshift
     p = mod_tools.fromdict(p2)
-    p2, passtime, stime, x_al, x_al_nad, tcycle, al_cycle, lon, lat, lonnad, latnad, timenad, nbeam, timeshift = _args[1:] %orb.timeshift
    # Detect indices corresponding to the pass
     if ipass == numpy.shape(passtime)[0]-1:
         ind = numpy.where((stime >= passtime[ipass]))[0]

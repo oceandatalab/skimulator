@@ -52,6 +52,7 @@ import math
 import glob
 import sys
 import time
+import datetime
 import logging
 import skimsimulator.build_swath as build_swath
 import skimsimulator.rw_data as rw_data
@@ -77,6 +78,7 @@ def run_simulator(p):
     timestart = datetime.datetime.now()
     mod_tools.initialize_parameters(p)
     mod_tools.check_path(p)
+    model = p.model
     '''
     p.timeshift = getattr(p, 'timeshift', 0)
     if p.shift_time is None:
