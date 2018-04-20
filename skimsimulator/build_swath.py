@@ -59,7 +59,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     votime2 = votime + 0
     if numpy.mean(votime[1:] - votime[:-1]) != cycle:
         x, y, z = mod_tools.spher2cart(volon, volat)
-        time_hr = numpy.arange(0., votime[-1], cycle)
+        time_hr = numpy.arange(0., votime[-1], cycle) # Interpolate at 0.5 ## TODO
         #jobs = []
         #jobs.append([votime, , time_hr, x])
         #jobs.append([votime, time_hr, y])
@@ -170,7 +170,8 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
             stime_lr[indp] = votime[i]
             indp += 1
 
-    # - Interpolate orbit at delta_al km resolution (default is delta_al=1)
+    # - Interpolate orbit at cycle resolution (default is cycle=0.0096)
+    #### TODO
     # Detect gap in time in stime (to detect step in x_al, lon and lat)
     dstime = stime_lr[:] - numpy.roll(stime_lr[:], 1)
     ind = numpy.where(dstime > 3*(votime[1] - votime[0]))
@@ -220,16 +221,20 @@ def orbit2swath(modelbox, p, orb):
     logger.info('\n Compute SKIM grid')
     # Detect first pass that is in the subdomain
     ipass0 = 0
-    # Compute rotating beams
-    omega = p.rotation_speed * 2 * math.pi / 60.
-    # Number of beam to lighten:
-    nbeam = len(p.list_shift) + 1
+    # Check that list of position, shift and angle have the same
+    # dimension
+    if len(p.list_pos) != len(p.list_shift) or \
+          len(p.list_pos) != len(p.list_angle) or \
+          len(p.list_angle) != len(p.list_shift):
+        logger.error('Wrong length in list_pos, list_shift'
+                     'or list_angle')
+        sys.exit(1)
     # Loop on all passes after the first pass detected (note that ipass is
     # actually stored as ipass + 1 to have the first pass at 1 and ascending
     jobs = []
     p2 = mod_tools.todict(p)
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
-        jobs.append([ipass, p2, passtime, stime, x_al, tcycle, al_cycle, lon, lat, nbeam, orb.timeshift])
+        jobs.append([ipass, p2, passtime, stime, x_al, tcycle, al_cycle, lon, lat, orb.timeshift])
     make_skim_grid(p.proc_count, jobs)
     mod_tools.update_progress(1,  'All swaths have been processed', ' ')
     return None
@@ -271,13 +276,18 @@ def make_skim_grid(_proc_count, jobs):
     pool.join()
 
 
-def worker_method_grid():
+def worker_method_grid(*args, **kwargs):
     _args = list(args)[0]
     msg_queue = _args.pop()
     ipass = _args[0]
-    p2, passtime, stime, x_al, tcycle, al_cycle, lon, lat, nbeam, timeshift = _args[1:] %orb.timeshift
+    p2, passtime, stime, x_al, tcycle, al_cycle, lon, lat, timeshift = _args[1:]
+
     p = mod_tools.fromdict(p2)
-   # Detect indices corresponding to the pass
+    # Compute rotating beams
+    omega = p.rotation_speed * 2 * math.pi / 60.
+    # Number of beam to lighten:
+    nbeam = len(p.list_shift) + 1
+    # Detect indices corresponding to the pass
     if ipass == numpy.shape(passtime)[0]-1:
         ind = numpy.where((stime >= passtime[ipass]))[0]
     else:
@@ -316,14 +326,6 @@ def worker_method_grid():
                                              * math.pi / 180.)
                                              / (lonnad[1:] - lonnad[:-1]))
         inclination_angle[0] = inclination_angle[1]
-        # Check that list of position, shift and angle have the same
-        # dimension
-        if len(p.list_pos) != len(p.list_shift) or \
-              len(p.list_pos) != len(p.list_angle) or \
-              len(p.list_angle) != len(p.list_shift):
-            logger.error('Wrong length in list_pos, list_shift'
-                         'or list_angle')
-            sys.exit(1)
         # Loop on beam to construct cycloid
         for angle, shift, beam in zip(p.list_pos, p.list_shift,
                                       p.list_angle):
@@ -381,3 +383,4 @@ def worker_method_grid():
             os.remove(filesgrid)
         sgrid.write_swath(p)
     msg_queue.put((os.getpid(), ipass, None))
+    return None

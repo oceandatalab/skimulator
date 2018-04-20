@@ -300,3 +300,10 @@ def update_progress(progress, arg1, arg2):
     sys.stdout.write(text)
     sys.stdout.flush()
     return progress
+
+
+def _term_move_up():  # pragma: no cover
+    """Borrowed from https://github.com/tqdm/tqdm/blob/master/tqdm/_tqdm.py
+    MIT 2016 (c) [PR #96] on behalf of Google Inc.
+    MIT 2013 (c) Noam Yorav-Raphael, original author."""
+    return '' if (os.name == 'nt') and (colorama is None) else '\x1b[A'
