@@ -57,11 +57,13 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     # macrocycle is fixed or depend on number of beam
     logger.info('Interpolate orbit at {} seconds'.format(cycle))
     votime2 = votime + 0
-    if numpy.mean(votime[1:] - votime[:-1]) != cycle:
+    # - If orbit is at low resolution, interpolate at 0.5 s resolution
+    hr_step = 0.5
+    if numpy.mean(votime[1:] - votime[:-1]) > hr_step:
         x, y, z = mod_tools.spher2cart(volon, volat)
-        time_hr = numpy.arange(0., votime[-1], cycle) # Interpolate at 0.5 ## TODO
+        time_hr = numpy.arange(0., votime[-1], hr_step)
         #jobs = []
-        #jobs.append([votime, , time_hr, x])
+        #jobs.append([votime, time_hr, x])
         #jobs.append([votime, time_hr, y])
         #jobs.append([votime, time_hr, z])
         # worker
@@ -77,7 +79,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         #    lon_hr[ii], lat_hr[ii] = mod_tools.cart2spher(x_hr[ii], y_hr[ii],
         #                                                  z_hr[ii])
         lon_hr, lat_hr = mod_tools.cart2sphervect(x_hr, y_hr, z_hr)
-        # Cut orbit if too long
+        # Cut orbit if more than an orbit cycle
         ind = numpy.where((time_hr < const.satcycle * const.secinday))
         volon = lon_hr[ind]
         volat = lat_hr[ind]
@@ -171,16 +173,74 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
             indp += 1
 
     # - Interpolate orbit at cycle resolution (default is cycle=0.0096)
-    #### TODO
     # Detect gap in time in stime (to detect step in x_al, lon and lat)
     dstime = stime_lr[:] - numpy.roll(stime_lr[:], 1)
     ind = numpy.where(dstime > 3*(votime[1] - votime[0]))
     index = numpy.hstack([0, ind[0]])
-    # nindex = numpy.shape(index)[0]
-    lon = lon_lr
-    lat = lat_lr
-    stime = stime_lr
-    x_al = x_al_lr
+    nindex = numpy.shape(index)[0]
+    # Initialize along track distance, time and coordinates at cycle
+    # resolution
+    if nindex > 1:
+        dgap = numpy.zeros((nindex))
+        for i in range(1, nindex):
+            dgap[i] = stime_lr[index[i]] - stime_lr[max(index[i] - 1, 0)]
+        Ninterp = (int((stime_lr[-1] - stime_lr[0] - sum(dgap))
+                   / float(p.cycle)) + 1)
+        x_al = numpy.zeros((Ninterp))
+        stime = numpy.zeros((Ninterp))
+        lon = numpy.zeros((Ninterp))
+        lat = numpy.zeros((Ninterp))
+        imin = 0
+        imax = 0
+        for i in range(0, nindex - 1):
+            imax = imin + int((stime_lr[index[i+1]-1] - stime_lr[index[i]])
+                              / float(p.cycle)) + 1
+            if imax <= (imin + 1):
+                x_al[imin] = x_al_lr[index[i]]
+                stime[imin] = stime_lr[index[i]]
+                lon[imin] = lon_lr[index[i]]
+                lat[imin] = lat_lr[index[i]]
+            else:
+                slicei = slice(index[i], index[i + 1])
+                stime[imin: imax] = numpy.arange(stime_lr[index[i]],
+                                                 stime_lr[index[i+1] - 1],
+                                                 p.cycle)
+                x_al[imin: imax] = numpy.interp(stime[imin: imax],
+                                                stime_lr[slicei],
+                                                x_al_lr[slicei])
+                loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(
+                                        lon_lr[slicei])))
+                lon[imin: imax] = numpy.interp(stime[imin: imax],
+                                               stime_lr[slicei],
+                                               loncirc)
+                lat[imin: imax] = numpy.interp(stime[imin: imax],
+                                               stime_lr[slicei],
+                                               lat_lr[slicei])
+            imin = imax
+        stime[imin:] = numpy.arange(stime_lr[index[-1]], stime_lr[index[-1]]
+                                   + (Ninterp - imin)*p.cycle, p.cycle)
+        x_al[imin:] = numpy.interp(stime[imin:], stime_lr[index[-1]:],
+                                    x_al_lr[index[-1]:])
+        loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(
+                                lon_lr[index[-1]:])))
+        lon[imin:] = numpy.interp(stime[imin:], stime_lr[index[-1]:], loncirc)
+        lat[imin:] = numpy.interp(stime[imin:], stime_lr[index[-1]:],
+                                  lat_lr[index[-1]:])
+    else:
+        Ninterp = int((x_al_lr[-2] - x_al_lr[0]) / float(p.delta_al)) + 1
+        x_al = numpy.zeros((Ninterp))
+        stime = numpy.zeros((Ninterp))
+        lon = numpy.zeros((Ninterp))
+        lat = numpy.zeros((Ninterp))
+        x_al = numpy.arange(x_al_lr[0], x_al_lr[-2], p.delta_al)
+        stime = numpy.interp(x_al, x_al_lr[:-1], stime_lr[:-1])
+        loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_lr[:-1])))
+        lon = numpy.interp(x_al, x_al_lr[:-1], loncirc)
+        lat = numpy.interp(x_al, x_al_lr[:-1], lat_lr[:-1])
+    #lon = lon_lr
+    #lat = lat_lr
+    #stime = stime_lr
+    #x_al = x_al_lr
     lon = lon % 360
     # Save orbit data in Sat_SKIM object
     orb = rw_data.Sat_SKIM(ifile='{}.nc'.format(os.path.basename(orbitfile)))
