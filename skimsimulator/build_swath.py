@@ -56,16 +56,17 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     votime = votime * const.secinday
     # macrocycle is fixed or depend on number of beam
     logger.info('Interpolate orbit at {} seconds'.format(cycle))
-    votime2 = votime + 0
+    # votime2 = votime + 0
     # - If orbit is at low resolution, interpolate at 0.5 s resolution
     hr_step = 0.5
     if numpy.mean(votime[1:] - votime[:-1]) > hr_step:
         x, y, z = mod_tools.spher2cart(volon, volat)
         time_hr = numpy.arange(0., votime[-1], hr_step)
-        #jobs = []
-        #jobs.append([votime, time_hr, x])
-        #jobs.append([votime, time_hr, y])
-        #jobs.append([votime, time_hr, z])
+        # Parallelisation of this loop?
+        # jobs = []
+        # jobs.append([votime, time_hr, x])
+        # jobs.append([votime, time_hr, y])
+        # jobs.append([votime, time_hr, z])
         # worker
         f = interpolate.interp1d(votime, x)
         x_hr = f(time_hr)
@@ -75,9 +76,6 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         z_hr = f(time_hr)
         lon_hr = numpy.zeros(len(x_hr)) + numpy.nan
         lat_hr = numpy.zeros(len(x_hr)) + numpy.nan
-        #for ii in range(len(x_hr)):
-        #    lon_hr[ii], lat_hr[ii] = mod_tools.cart2spher(x_hr[ii], y_hr[ii],
-        #                                                  z_hr[ii])
         lon_hr, lat_hr = mod_tools.cart2sphervect(x_hr, y_hr, z_hr)
         # Cut orbit if more than an orbit cycle
         ind = numpy.where((time_hr < const.satcycle * const.secinday))
@@ -184,14 +182,15 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         dgap = numpy.zeros((nindex))
         for i in range(1, nindex):
             dgap[i] = stime_lr[index[i]] - stime_lr[max(index[i] - 1, 0)]
-        Ninterp = (int((stime_lr[-1] - stime_lr[0] - sum(dgap))
-                   / float(p.cycle)) + 1)
+        Ninterp = int(((stime_lr[-1] - stime_lr[0] - sum(dgap))
+                      / float(p.cycle)) + 1)
         x_al = numpy.zeros((Ninterp))
         stime = numpy.zeros((Ninterp))
         lon = numpy.zeros((Ninterp))
         lat = numpy.zeros((Ninterp))
         imin = 0
         imax = 0
+        substract_point = 0
         for i in range(0, nindex - 1):
             imax = imin + int((stime_lr[index[i+1]-1] - stime_lr[index[i]])
                               / float(p.cycle)) + 1
@@ -202,6 +201,13 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
                 lat[imin] = lat_lr[index[i]]
             else:
                 slicei = slice(index[i], index[i + 1])
+                nofp = (stime_lr[index[i+1] - 1]-stime_lr[index[i]]) / p.cycle
+                if (nofp).is_integer():
+                    imax = imax - 1
+                    substract_point += 1
+                stime[imin: imax] = numpy.arange(stime_lr[index[i]],
+                                                 stime_lr[index[i+1] - 1],
+                                                 p.cycle)
                 stime[imin: imax] = numpy.arange(stime_lr[index[i]],
                                                  stime_lr[index[i+1] - 1],
                                                  p.cycle)
@@ -217,12 +223,15 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
                                                stime_lr[slicei],
                                                lat_lr[slicei])
             imin = imax
+        if substract_point > 0:
+            substract_point = 1
         stime[imin:] = numpy.arange(stime_lr[index[-1]], stime_lr[index[-1]]
-                                   + (Ninterp - imin)*p.cycle, p.cycle)
+                                    + (Ninterp - imin)*p.cycle
+                                    - p.cycle * substract_point, p.cycle)
         x_al[imin:] = numpy.interp(stime[imin:], stime_lr[index[-1]:],
-                                    x_al_lr[index[-1]:])
+                                   x_al_lr[index[-1]:])
         loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(
-                                lon_lr[index[-1]:])))
+                                                          lon_lr[index[-1]:])))
         lon[imin:] = numpy.interp(stime[imin:], stime_lr[index[-1]:], loncirc)
         lat[imin:] = numpy.interp(stime[imin:], stime_lr[index[-1]:],
                                   lat_lr[index[-1]:])
@@ -237,10 +246,6 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_lr[:-1])))
         lon = numpy.interp(x_al, x_al_lr[:-1], loncirc)
         lat = numpy.interp(x_al, x_al_lr[:-1], lat_lr[:-1])
-    #lon = lon_lr
-    #lat = lat_lr
-    #stime = stime_lr
-    #x_al = x_al_lr
     lon = lon % 360
     # Save orbit data in Sat_SKIM object
     orb = rw_data.Sat_SKIM(ifile='{}.nc'.format(os.path.basename(orbitfile)))
@@ -294,7 +299,8 @@ def orbit2swath(modelbox, p, orb):
     jobs = []
     p2 = mod_tools.todict(p)
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
-        jobs.append([ipass, p2, passtime, stime, x_al, tcycle, al_cycle, lon, lat, orb.timeshift])
+        jobs.append([ipass, p2, passtime, stime, x_al, tcycle, al_cycle, lon,
+                     lat, orb.timeshift])
     make_skim_grid(p.proc_count, jobs)
     mod_tools.update_progress(1,  'All swaths have been processed', ' ')
     return None

@@ -62,6 +62,8 @@ import skimsimulator.const as const
 import multiprocessing
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
+# logger = multiprocessing.log_to_stderr()
+# logger.setLevel(logging.DEBUG)
 
 # - Define global variables for progress bars
 istep = 0
@@ -120,7 +122,7 @@ def run_simulator(p):
     # - Extract data on modelbox
     # TODO: do only this step if modelbox is defined? Do it later?
     if p.file_input is not None:
-        model_data.read_coordinates()
+        model_data.read_coordinates(p)
         # Select model data in the region modelbox
         if p.grid == 'regular':
             if modelbox[0] < modelbox[1]:
@@ -239,11 +241,11 @@ def run_simulator(p):
     jobs = []
     p2 = mod_tools.todict(p)
     for sgridfile in listsgridfile:
-        jobs.append([sgridfile, p2, listsgridfile, list_file, modelbox, model_data, modeltime, err, errnad])
+        jobs.append([sgridfile, p2, listsgridfile, list_file, list_file_uss,
+                     modelbox, model_data, modeltime, err, errnad])
     make_skim_data(p.proc_count, jobs)
 
-    progress = mod_tools.update_progress(1,
-                                         'All passes have been processed',
+    __ = mod_tools.update_progress(1, 'All passes have been processed',
                                          '')
     # - Write Selected parameters in a txt file
     timestop = datetime.datetime.now()
@@ -271,10 +273,9 @@ def make_skim_data(_proc_count, jobs):
     status = {}
     for n, w in enumerate(pool._pool):
         status[w.pid] = {'done': 0, 'total': 0, 'grids': None, 'extra': ''}
-        total = min(chunk_size, (len(jobs) - n * chunk_size))
         proc_jobs = jobs[n::proc_count]
         status[w.pid]['grids'] = [j[0] for j in proc_jobs]
-        status[w.pid]['total'] = total
+        status[w.pid]['total'] = len(proc_jobs)
     sys.stdout.write('\n' * proc_count)
     tasks = pool.map_async(worker_method_skim, jobs, chunksize=chunk_size)
     sys.stdout.flush()
@@ -282,21 +283,22 @@ def make_skim_data(_proc_count, jobs):
         if not msg_queue.empty():
             msg = msg_queue.get()
             mod_tools.update_progress_multiproc(status, msg)
-        time.sleep(0.5)
+        time.sleep(0.1)
 
     while not msg_queue.empty():
         msg = msg_queue.get()
         mod_tools.update_progress_multiproc(status, msg)
 
+    sys.stdout.flush()
     pool.close()
     pool.join()
 
 
-def worker_method_skim():
+def worker_method_skim(*args, **kwargs):
     _args = list(args)[0]
     msg_queue = _args.pop()
     sgridfile = _args[0]
-    p2, listsgridfile, list_file, modelbox, model_data, modeltime, err, errnad = _args[1:]
+    p2, listsgridfile, list_file, list_file_uss, modelbox, model_data, modeltime, err, errnad = _args[1:]
     p = mod_tools.fromdict(p2)
     #   Load SKIM grid files (Swath and nadir)
     sgrid = load_sgrid(sgridfile, p)
@@ -316,7 +318,7 @@ def worker_method_skim():
     ncycle = int(rcycle)
     #  Loop on all cycles
     for cycle in range(0, ncycle+1):
-        #if ifile > (p.nstep*p.timestep + 1):
+        # if ifile > (p.nstep*p.timestep + 1):
         #    break
         # Create SKIM-like data
         msg_queue.put((os.getpid(), sgridfile, cycle + 1))
@@ -427,7 +429,7 @@ def worker_method_skim():
                                              rms_instr, errdcos,
                                              radial_angle, p,
                                              progress_bar=True)
-                ur_true, u_true, v_true, vindice, time, progress = create
+                ur_true, u_true, v_true, vindice, time = create
                 mask_tmp = numpy.isnan(err.ur_uss)
             # Append variables for each beam
             if p.instr is True:
@@ -448,11 +450,13 @@ def worker_method_skim():
             errdcos_tot, err_uss2 = compute_errdcos(p, sgrid, mask,
                                                     err_uss)
         # Compute directly bias if formula is False
-        if p.uss is True and p.formula is False:
-            err_uss2 = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
-            # errdcos_tot.append(errdcos)
-            # err_uss.append(err.err_uss)
-            # , err_uss)
+        # if p.uss is True and p.formula is False:
+        #    err_uss2 = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
+        #    # errdcos_tot.append(errdcos)
+        #    # err_uss.append(err.err_uss)
+        #    # , err_uss)
+        # err_uss2 should be deleted, spectrum will provide stoke error
+        err_uss2 = err_uss
         for i in range(1, len(p.list_pos) + 1):
             make_err = build_error.make_vel_error
             ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
@@ -600,7 +604,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     global istep
     global ntot
     #   Initialiaze errors and velocity
-    progress = 0
     err.instr = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
     err.ur_uss = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
     std_uss = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
@@ -640,10 +643,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
         time_offset = 0
         # At each step, look for the corresponding time in the satellite data
         for ifile in index_filemodel[0]:
-            perc = float(istep)/float(ntot * ntotfile)
-            strpass = 'pass: {}'.format(sgrid.ipass)
-            strcycle = 'model file: {}, cycle: {}'.format(ifile, cycle + 1)
-            progress = mod_tools.update_progress(perc, strpass, strcycle)
             # If there are satellite data, Get true velcoity from model
             if numpy.shape(index_filemodel)[1] > 0:
                 # number of file to be processed used in the progress bar
@@ -683,17 +682,18 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                              list_file[ifile]), varu=p.varu,
                                              varv=p.varv)
                 if p.uss is True:
-                    model_step = model_step_ctor(ifile=os.path.join(p.indatadir,
+                    model_step = model_step_ctor(ifile=os.path.join(
+                                                 p.indatadir,
                                                  list_file_uss[ifile]),
                                                  varu='uuss', varv='vuss')
             if p.grid == 'regular':
-                model_step.read_var()
+                model_step.read_var(p)
                 u_model_tmp = model_step.vvaru[model_data.model_index_latu, :]
                 u_model = u_model_tmp[:, model_data.model_index_lonu]
                 v_model_tmp = model_step.vvarv[model_data.model_index_latv, :]
                 v_model = v_model_tmp[:, model_data.model_index_lonv]
                 if p.uss is True:
-                    uss_step.read_var()
+                    uss_step.read_var(p)
                     u_uss_mod_tmp = uss_step.vvaru[model_data.model_index_latu,
                                                    :]
                     u_uss_mod = u_uss_mod_tmp[:, model_data.model_index_lonu]
@@ -701,11 +701,11 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                                    :]
                     v_uss_mod = v_uss_mod_tmp[:, model_data.model_index_lonv]
             else:
-                model_step.read_var(index=None)
+                model_step.read_var(p, index=None)
                 u_model = model_step.vvaru[model_data.model_indexu]
                 v_model = model_step.vvarv[model_data.model_indexv]
                 if p.uss is True:
-                    uss_step.read_var(index=None)
+                    uss_step.read_var(p, index=None)
                     u_uss_mod = uss_step.vvaru[model_data.model_indexu]
                     v_uss_mod = uss_step.vvarv[model_data.model_indexv]
             # - Interpolate Model data on a SKIM grid and/or along the
@@ -878,17 +878,13 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
         istep += 1
     else:
         istep += 1
-        progress = mod_tools.update_progress(float(istep)/float(ntotfile*ntot),
-                                             'pass: {}'.format(sgrid.ipass),
-                                             'no model file provided, cycle: '
-                                             '{}'.format(cycle+1))
     ur_true = mod_tools.proj_radial(u_true, v_true, radial_angle)
     if p.uss is not True:
         u_uss = None
         v_uss = None
     err.make_error(ur_true, p, radial_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss), std_local=std_uss, errdcos=errdcos)
-    return ur_true, u_true, v_true, vindice, time, progress
+    return ur_true, u_true, v_true, vindice, time
 
 
 def compute_errdcos(p, sgrid, mask, err_uss):

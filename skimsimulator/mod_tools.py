@@ -26,10 +26,10 @@ Contains the following functions:
 - cart2spher: convert cartesian to spherical coordinates for vectors \n
 - proj_radial: projection on radial direction \n
 - update_progress: Progress bar'''
+
 import numpy
 import math
 import logging
-import multiprocessing
 import sys
 import os
 import types
@@ -224,9 +224,9 @@ def todict(p):
     for attr in dir(p):
         value = getattr(p, attr)
         if (isinstance(value, types.ModuleType)
-            or isinstance(value, types.MethodType)
-            or isinstance(value, types.FunctionType)
-            or attr.startswith('__')):
+             or isinstance(value, types.MethodType)
+             or isinstance(value, types.FunctionType)
+             or attr.startswith('__')):
             continue
         result[attr] = value
     return result
@@ -257,11 +257,12 @@ def update_progress_multiproc(status, info):
             if cycle is None:
                 # Grid has been completely processed
                 status[pid]['done'] += 1
-                status[pid]['extra'] = '{}|> pass: {} ....... DONE'.format(now, ipass)
+                status[pid]['extra'] = '{}|> pass: {} ....... DONE'.format(
+                                                                    now, ipass)
             else:
                 # Just update extra info
-                status[pid]['extra'] = '{}|> pass: {}, cycle: {:04d}'.format(now, ipass,
-                                                               cycle)
+                status[pid]['extra'] = '{}|> pass: {}, cycle: {:04d}'.format(
+                                                             now, ipass, cycle)
 
     bar_size = 20
     for pid, proc_state in status.items():
@@ -277,7 +278,7 @@ def update_progress_multiproc(status, info):
 
 def update_progress(progress, arg1, arg2):
     '''Creation of a progress bar: print on screen the progress of the run'''
-    barLength = 30  # Modify this to change the length of the progress bar
+    barLength = 20  # Modify this to change the length of the progress bar
     status = ""
     if isinstance(progress, int):
         progress = float(progress)
@@ -292,11 +293,11 @@ def update_progress(progress, arg1, arg2):
         status = "Done...\r\n"
     block = int(round(barLength*progress))
     if arg1 and arg2:
-        text = "\rPercent: [{0}] {1}%, {2}, {3}".format("#"*block + "-"*(barLength-block), "%.2f" % (progress*100), arg1 + ', ' + arg2, status)
+        text = "\r[{0}] {1}%, {2}, {3}".format("#"*block + "-"*(barLength-block), "%.2f" % (progress*100), arg1 + ', ' + arg2, status)
     elif arg1:
-        text = "\rPercent: [{0}] {1}%, {2}, {3}".format("#"*block + "-"*(barLength-block), "%.2f" % (progress*100), arg1, status)
+        text = "\r[{0}] {1}%, {2}, {3}".format("#"*block + "-"*(barLength-block), "%.2f" % (progress*100), arg1, status)
     else:
-        text = "\rPercent: [{0}] {1}%, {2} ".format("#"*block + "-"*(barLength-block), "%.2f" % (progress*100), status)
+        text = "\r[{0}] {1}%, {2} ".format("#"*block + "-"*(barLength-block), "%.2f" % (progress*100), status)
     sys.stdout.write(text)
     sys.stdout.flush()
     return progress
@@ -306,4 +307,5 @@ def _term_move_up():  # pragma: no cover
     """Borrowed from https://github.com/tqdm/tqdm/blob/master/tqdm/_tqdm.py
     MIT 2016 (c) [PR #96] on behalf of Google Inc.
     MIT 2013 (c) Noam Yorav-Raphael, original author."""
+    colorama = None
     return '' if (os.name == 'nt') and (colorama is None) else '\x1b[A'

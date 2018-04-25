@@ -561,7 +561,7 @@ class Sat_SKIM():
         self.radial_angle = numpy.array(fid.variables['radial_angle'][:])
         try:
             self.corresponding_grid = fid.corresponding_grid
-        except:
+        except AttributeError:
             pass
         try:
             self.incl = numpy.array(fid.variables['inclination'][:]).squeeze()
@@ -797,15 +797,14 @@ class WW3():
         self.nfile = ifile
         self.depth = depth
         self.time = time
-        self.p = p
         self.model_nan = getattr(p, 'model_nan', 0.)
         p.model_nan = self.model_nan
         logger.debug('Nan Values {}, {}'.format(p.model_nan, self.model_nan))
 
-    def read_var(self, index=None):
+    def read_var(self, p, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        vel_factor = self.p.vel_factor
+        vel_factor = p.vel_factor
         self.vvarv = read_var(self.nfile, self.nvarv, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
@@ -814,10 +813,10 @@ class WW3():
                               model_nan=self.model_nan) * vel_factor
         return None
 
-    def read_coordinates(self, index=None):
+    def read_coordinates(self, p, index=None):
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        if self.p.grid == 'regular':
+        if p.grid == 'regular':
             lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
                                           twoD=False)
             lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
