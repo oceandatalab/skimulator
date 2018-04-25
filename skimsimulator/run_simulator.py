@@ -51,15 +51,19 @@ import numpy
 import math
 import glob
 import sys
+import time
+import datetime
 import logging
 import skimsimulator.build_swath as build_swath
 import skimsimulator.rw_data as rw_data
 import skimsimulator.build_error as build_error
 import skimsimulator.mod_tools as mod_tools
 import skimsimulator.const as const
-
+import multiprocessing
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
+# logger = multiprocessing.log_to_stderr()
+# logger.setLevel(logging.DEBUG)
 
 # - Define global variables for progress bars
 istep = 0
@@ -73,25 +77,15 @@ def run_simulator(p):
     as a skimsimulator.output file to store all used parameter.
     '''
     # - Initialize some parameters values
-    p.shift_lon = getattr(p, 'shift_lon', None)
-    p.shift_time = getattr(p, 'p.shift_time', None)
-    model = getattr(p, 'model', 'NETCDF_MODEL')
-    p.model = model
-    p.model_nan = getattr(p, 'model_nan', 0)
-    p.vel_factor = getattr(p, 'vel_factor', 1.)
-    p.nadir = getattr(p, 'nadir', True)
-    p.grid = getattr(p, 'grid', 'regular')
-    p.rms_instr_factor = getattr(p, 'rms_instr_factor', 1)
-    p.cycle = getattr(p, 'cycle', 0.0368)
-    p.formula = getattr(p, 'formula', False)
-    p.footprint_std = getattr(p, 'footprint_std', 0)
+    timestart = datetime.datetime.now()
+    mod_tools.initialize_parameters(p)
+    mod_tools.check_path(p)
+    model = p.model
+    '''
     p.timeshift = getattr(p, 'timeshift', 0)
     if p.shift_time is None:
         p.timeshift = 0
-
-    # - Progress bar variables are global
-    global istep
-    global ntot
+    '''
 
     # - Read list of user model files """
     if p.file_input is not None:
@@ -105,8 +99,7 @@ def run_simulator(p):
     # - Read model input coordinates '''
     # If a list of model files are specified, read model file coordinates
     if p.file_input:
-        # model_data = eval('rw_data.' + model
-        #                  + '(p, file=p.indatadir+os.sep+list_file[0])')
+
         model_data_ctor = getattr(rw_data, model)
         filename = os.path.join(p.indatadir, list_file[0])
         model_data = model_data_ctor(p, ifile=filename)
@@ -116,9 +109,9 @@ def run_simulator(p):
     if p.modelbox is not None:
         modelbox = numpy.array(p.modelbox, dtype='float')
         # Use convert to 360 data
-        modelbox[0] = (modelbox[0]+360) % 360
+        modelbox[0] = (modelbox[0] + 360) % 360
         if modelbox[1] != 360:
-            modelbox[1] = (modelbox[1]+360) % 360
+            modelbox[1] = (modelbox[1] + 360) % 360
     else:
         if p.file_input is not None:
             modelbox = model_data.calc_box()
@@ -129,7 +122,7 @@ def run_simulator(p):
     # - Extract data on modelbox
     # TODO: do only this step if modelbox is defined? Do it later?
     if p.file_input is not None:
-        model_data.read_coordinates()
+        model_data.read_coordinates(p)
         # Select model data in the region modelbox
         if p.grid == 'regular':
             if modelbox[0] < modelbox[1]:
@@ -243,199 +236,252 @@ def run_simulator(p):
     #   Remove the grid from the list of model files
     if p.file_input:
         list_file.remove(list_file[0])
-    #   Initialize progress bar variables
-    istep = 0
-    ntot = 1
 
     # - Loop on SKIM grid files
+    jobs = []
+    p2 = mod_tools.todict(p)
     for sgridfile in listsgridfile:
-        #   Load SKIM grid files (Swath and nadir)
-        sgrid = load_sgrid(sgridfile, p)
-        # duplicate SKIM grids to assure that data are not modified and are
-        # saved properly
-        sgrid_tmp = load_sgrid(sgridfile, p)
-        sgrid.gridfile = sgridfile
-        # Convert cycle in days
-        sgrid.cycle /= 86400.
-        sgrid_tmp.cycle /= 86400.
-        sgrid_tmp.indi = None
-        # Select model data around the swath to reduce interpolation cost in
-        # griddata ### TODO comment to be removed?
-        # - Generate SKIM like data
-        # Compute number of cycles needed to cover all nstep model timesteps
-        rcycle = (p.timestep * p.nstep)/float(sgrid.cycle)
-        ncycle = int(rcycle)
-        #  Loop on all cycles
-        for cycle in range(0, ncycle+1):
-            if ifile > (p.nstep*p.timestep + 1):
-                break
-            # Create SKIM-like data
-            if p.file_input is None:
-                model_data = []
-            # Initialize all list of variables (each beam is appended to the
-            # list)
-            # Initialize velocity, indices and mask to empty lists
-            ur_true_all = []
-            u_true_all = []
-            v_true_all = []
-            vindice_all = []
-            ur_obs = []
-            mask = []
-            # Initialize noise to None if this noise is not computed
-            # (so that the variable is not written in the netcdf)
-            err_instr = None
-            err_uss = None
-            std_uss = None
-            ur_uss = None
-            errdcos_tot = None
-            # Initialize noises to empty lists if the noise is set to True
-            if p.instr is True:
-                err_instr = []
-            if p.uss is True:
-                err_uss = []
-                std_uss = []
-                ur_uss = []
-                errdcos_tot = []
-            # Loop over the beams
-            for i in range(len(p.list_pos) + 1):
-                sgrid_tmp.lon = sgrid.lon[i]
-                sgrid_tmp.lat = sgrid.lat[i]
-                sgrid_tmp.time = sgrid.time[i]
-                # If nadir, compute a different noise, not implemented so far,
-                # Initialize at zero.
-                if i == 0:
-                    ur_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
-                    u_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
-                    v_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
-                    vindice = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
-                    err.ur_obs = numpy.full(numpy.shape(sgrid_tmp.lon),
-                                            numpy.nan)
-                    err.instr = numpy.full(numpy.shape(sgrid_tmp.lon),
-                                           numpy.nan)
-                    mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
-                                          numpy.nan)
-                    if p.uss is True:
-                        err.ur_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
-                                                numpy.nan)
-                        err.err_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
-                                                 numpy.nan)
-                        err.std_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
-                                                 numpy.nan)
-                    # If the footprint of the std is defined, find the cycles
-                    # loacated in the area of the footprint to compute the std
-                    # later. Only use when the approximation with errdcos is
-                    # used.
-                    if (p.uss is True and p.footprint_std is not None
-                          and p.footprint_std != 0 and sgrid_tmp.indi is None
-                          and p.formula is True):
-                        sgrid_tmp.indi = numpy.zeros((numpy.shape(
-                                                     sgrid_tmp.lon)[0], 2))
-                        sgrid_tmp.indj = numpy.zeros((numpy.shape(
-                                                     sgrid_tmp.lon)[0], 2))
-                        for ib in range(len(sgrid_tmp.lon)):
-                            ilon = sgrid_tmp.lon[ib]
-                            ilat = sgrid_tmp.lat[ib]
-                            _dist = (((model_data.lon2D-ilon)
-                                     * numpy.cos(model_data.lat2D))**2
-                                     + (model_data.lat2D - ilat)**2)
-                            footprint_std = p.footprint_std / const.deg2km
-                            indi, indj = numpy.where(_dist < footprint_std)
-                            if indi.any() and indj.any():
-                                sgrid_tmp.indi[ib, 0] = indi[0]
-                                sgrid_tmp.indi[ib, 1] = indi[-1]
-                                sgrid_tmp.indj[ib, 0] = indj[0]
-                                sgrid_tmp.indj[ib, 1] = indj[-1]
-                            else:
-                                sgrid_tmp.indi[ib-1, :]
+        jobs.append([sgridfile, p2, listsgridfile, list_file, list_file_uss,
+                     modelbox, model_data, modeltime, err, errnad])
+    make_skim_data(p.proc_count, jobs)
 
-                                sgrid_tmp.indi[ib, 0] = sgrid_tmp.indi[ib-1, 0]
-                                sgrid_tmp.indi[ib, 1] = sgrid_tmp.indi[ib-1, 1]
-                                sgrid_tmp.indj[ib, 0] = sgrid_tmp.indj[ib-1, 0]
-                                sgrid_tmp.indj[ib, 1] = sgrid_tmp.indj[ib-1, 1]
-                # Interpolate the velocity and compute the noise for each beam
-                else:
-                    # Stoke drift bias impact factor
-                    Gvar = p.G[i - 1]
-                    # Instrument noise file
-                    rms_instr = p.rms_instr[i - 1]
-                    # Geometrical error errdcos
-                    errdcos = 1
-                    # If the formula is used and errdcos is constant for each
-                    # beam. Rough temporary approximation, should not be used.
-                    if p.errdcos is not None and p.uss is True:
-                        errdcos = p.errdcos[i - 1]
-                    # Read radial angle for projection on lon, lat reference
-                    radial_angle = sgrid.radial_angle[:, i - 1]
-                    ##############################
-                    # Compute SKIM like data data
-                    shape_all = (numpy.shape(listsgridfile)[0] * rcycle
-                                 * (len(p.list_pos) + 1))
-                    create = create_SKIMlikedata(cycle, shape_all, list_file,
-                                                 list_file_uss, modelbox,
-                                                 sgrid_tmp, model_data,
-                                                 modeltime, err, Gvar,
-                                                 rms_instr, errdcos,
-                                                 radial_angle, p,
-                                                 progress_bar=True)
-                    ur_true, u_true, v_true, vindice, time, progress = create
-                    mask_tmp = numpy.isnan(err.ur_uss)
-                # Append variables for each beam
-                if p.instr is True:
-                    err_instr.append(err.instr)
-                if p.uss is True:
-                    ur_uss.append(err.ur_uss)
-                    std_uss.append(err.std_uss)
-                    err_uss.append(err.err_uss)
-                ur_true_all.append(ur_true)
-                u_true_all.append(u_true)
-                v_true_all.append(v_true)
-                vindice_all.append(vindice)
-                mask.append(mask_tmp)
-                # ur_obs.append(err.ur_obs)
-            # Compute uss bias
-            #   Compute errdcos if Formula is True
-            if p.uss is True and p.errdcos is None and p.formula is True:
-                errdcos_tot, err_uss2 = compute_errdcos(p, sgrid, mask,
-                                                        err_uss)
-            # Compute directly bias if formula is False
-            if p.uss is True and p.formula is False:
-                err_uss2 = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
-                # errdcos_tot.append(errdcos)
-                # err_uss.append(err.err_uss)
-                # , err_uss)
-            for i in range(1, len(p.list_pos) + 1):
-                make_err = build_error.make_vel_error
-                ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
-                                    err_uss=err_uss2[i])
-                ur_obs.append(ur_obs_i)
-            #   Save outputs in a netcdf file
-            if ((~numpy.isnan(numpy.array(vindice_all))).any()
-                  or not p.file_input):
-                sgrid.ncycle = cycle
-                save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
-                          ur_model=ur_true_all, ur_obs=ur_obs, std_uss=std_uss,
-                          err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss2,
-                          u_model=u_true_all, v_model=v_true_all,
-                          errdcos=errdcos_tot)
-            del time
-            # if p.file_input: del index
-        if p.file_input:
-            model_data.vlonu = (model_data.vlonu + 360) % 360
-            model_data.vlonv = (model_data.vlonv + 360) % 360
-
-        modelbox[0] = (modelbox[0] + 360) % 360
-        modelbox[1] = (modelbox[1] + 360) % 360
-        del sgrid
-    if progress != 1:
-        progress = mod_tools.update_progress(1,
-                                             'All passes have been processed',
-                                             '')
+    __ = mod_tools.update_progress(1, 'All passes have been processed',
+                                         '')
     # - Write Selected parameters in a txt file
+    timestop = datetime.datetime.now()
+    timestop = timestop.strftime('%Y%m%dT%H%M%SZ')
+    timestart = timestart.strftime('%Y%m%dT%H%M%SZ')
     rw_data.write_params(p, os.path.join(p.outdatadir,
                                          'skim_simulator.output'))
     logger.info("\n Simulated skim files have been written in "
                 "{}".format(p.outdatadir))
     logger.info("----------------------------------------------------------")
+
+
+def make_skim_data(_proc_count, jobs):
+    """ Compute SWOT-like data for all grids and all cycle, """
+    # - Set up parallelisation parameters
+    proc_count = min(len(jobs), _proc_count)
+
+    manager = multiprocessing.Manager()
+    msg_queue = manager.Queue()
+    pool = multiprocessing.Pool(proc_count)
+    # Add the message queue to the list of arguments for each job
+    # (it will be removed later)
+    [j.append(msg_queue) for j in jobs]
+    chunk_size = int(math.ceil(len(jobs) / proc_count))
+    status = {}
+    for n, w in enumerate(pool._pool):
+        status[w.pid] = {'done': 0, 'total': 0, 'grids': None, 'extra': ''}
+        proc_jobs = jobs[n::proc_count]
+        status[w.pid]['grids'] = [j[0] for j in proc_jobs]
+        status[w.pid]['total'] = len(proc_jobs)
+    sys.stdout.write('\n' * proc_count)
+    tasks = pool.map_async(worker_method_skim, jobs, chunksize=chunk_size)
+    sys.stdout.flush()
+    while not tasks.ready():
+        if not msg_queue.empty():
+            msg = msg_queue.get()
+            mod_tools.update_progress_multiproc(status, msg)
+        time.sleep(0.1)
+
+    while not msg_queue.empty():
+        msg = msg_queue.get()
+        mod_tools.update_progress_multiproc(status, msg)
+
+    sys.stdout.flush()
+    pool.close()
+    pool.join()
+
+
+def worker_method_skim(*args, **kwargs):
+    _args = list(args)[0]
+    msg_queue = _args.pop()
+    sgridfile = _args[0]
+    p2, listsgridfile, list_file, list_file_uss, modelbox, model_data, modeltime, err, errnad = _args[1:]
+    p = mod_tools.fromdict(p2)
+    #   Load SKIM grid files (Swath and nadir)
+    sgrid = load_sgrid(sgridfile, p)
+    # duplicate SKIM grids to assure that data are not modified and are
+    # saved properly
+    sgrid_tmp = load_sgrid(sgridfile, p)
+    sgrid.gridfile = sgridfile
+    # Convert cycle in days
+    sgrid.cycle /= 86400.
+    sgrid_tmp.cycle /= 86400.
+    sgrid_tmp.indi = None
+    # Select model data around the swath to reduce interpolation cost in
+    # griddata ### TODO comment to be removed?
+    # - Generate SKIM like data
+    # Compute number of cycles needed to cover all nstep model timesteps
+    rcycle = (p.timestep * p.nstep)/float(sgrid.cycle)
+    ncycle = int(rcycle)
+    #  Loop on all cycles
+    for cycle in range(0, ncycle+1):
+        # if ifile > (p.nstep*p.timestep + 1):
+        #    break
+        # Create SKIM-like data
+        msg_queue.put((os.getpid(), sgridfile, cycle + 1))
+        if p.file_input is None:
+            model_data = []
+        # Initialize all list of variables (each beam is appended to the
+        # list)
+        # Initialize velocity, indices and mask to empty lists
+        ur_true_all = []
+        u_true_all = []
+        v_true_all = []
+        vindice_all = []
+        ur_obs = []
+        mask = []
+        # Initialize noise to None if this noise is not computed
+        # (so that the variable is not written in the netcdf)
+        err_instr = None
+        err_uss = None
+        std_uss = None
+        ur_uss = None
+        errdcos_tot = None
+        # Initialize noises to empty lists if the noise is set to True
+        if p.instr is True:
+            err_instr = []
+        if p.uss is True:
+            err_uss = []
+            std_uss = []
+            ur_uss = []
+            errdcos_tot = []
+        # Loop over the beams
+        for i in range(len(p.list_pos) + 1):
+            sgrid_tmp.lon = sgrid.lon[i]
+            sgrid_tmp.lat = sgrid.lat[i]
+            sgrid_tmp.time = sgrid.time[i]
+            # If nadir, compute a different noise, not implemented so far,
+            # Initialize at zero.
+            if i == 0:
+                ur_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
+                u_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
+                v_true = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
+                vindice = numpy.full(numpy.shape(sgrid_tmp.lon), numpy.nan)
+                err.ur_obs = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                        numpy.nan)
+                err.instr = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                       numpy.nan)
+                mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                      numpy.nan)
+                if p.uss is True:
+                    err.ur_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                            numpy.nan)
+                    err.err_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                             numpy.nan)
+                    err.std_uss = numpy.full(numpy.shape(sgrid_tmp.lon),
+                                             numpy.nan)
+                # If the footprint of the std is defined, find the cycles
+                # loacated in the area of the footprint to compute the std
+                # later. Only use when the approximation with errdcos is
+                # used.
+                if (p.uss is True and p.footprint_std is not None
+                      and p.footprint_std != 0 and sgrid_tmp.indi is None
+                      and p.formula is True):
+                    sgrid_tmp.indi = numpy.zeros((numpy.shape(
+                                                 sgrid_tmp.lon)[0], 2))
+                    sgrid_tmp.indj = numpy.zeros((numpy.shape(
+                                                 sgrid_tmp.lon)[0], 2))
+                    for ib in range(len(sgrid_tmp.lon)):
+                        ilon = sgrid_tmp.lon[ib]
+                        ilat = sgrid_tmp.lat[ib]
+                        _dist = (((model_data.lon2D-ilon)
+                                 * numpy.cos(model_data.lat2D))**2
+                                 + (model_data.lat2D - ilat)**2)
+                        footprint_std = p.footprint_std / const.deg2km
+                        indi, indj = numpy.where(_dist < footprint_std)
+                        if indi.any() and indj.any():
+                            sgrid_tmp.indi[ib, 0] = indi[0]
+                            sgrid_tmp.indi[ib, 1] = indi[-1]
+                            sgrid_tmp.indj[ib, 0] = indj[0]
+                            sgrid_tmp.indj[ib, 1] = indj[-1]
+                        else:
+                            sgrid_tmp.indi[ib-1, :]
+
+                            sgrid_tmp.indi[ib, 0] = sgrid_tmp.indi[ib-1, 0]
+                            sgrid_tmp.indi[ib, 1] = sgrid_tmp.indi[ib-1, 1]
+                            sgrid_tmp.indj[ib, 0] = sgrid_tmp.indj[ib-1, 0]
+                            sgrid_tmp.indj[ib, 1] = sgrid_tmp.indj[ib-1, 1]
+            # Interpolate the velocity and compute the noise for each beam
+            else:
+                # Stoke drift bias impact factor
+                Gvar = p.G[i - 1]
+                # Instrument noise file
+                rms_instr = p.rms_instr[i - 1]
+                # Geometrical error errdcos
+                errdcos = 1
+                # If the formula is used and errdcos is constant for each
+                # beam. Rough temporary approximation, should not be used.
+                if p.errdcos is not None and p.uss is True:
+                    errdcos = p.errdcos[i - 1]
+                # Read radial angle for projection on lon, lat reference
+                radial_angle = sgrid.radial_angle[:, i - 1]
+                ##############################
+                # Compute SKIM like data data
+                shape_all = (numpy.shape(listsgridfile)[0] * rcycle
+                             * (len(p.list_pos) + 1))
+                create = create_SKIMlikedata(cycle, shape_all, list_file,
+                                             list_file_uss, modelbox,
+                                             sgrid_tmp, model_data,
+                                             modeltime, err, Gvar,
+                                             rms_instr, errdcos,
+                                             radial_angle, p,
+                                             progress_bar=True)
+                ur_true, u_true, v_true, vindice, time = create
+                mask_tmp = numpy.isnan(err.ur_uss)
+            # Append variables for each beam
+            if p.instr is True:
+                err_instr.append(err.instr)
+            if p.uss is True:
+                ur_uss.append(err.ur_uss)
+                std_uss.append(err.std_uss)
+                err_uss.append(err.err_uss)
+            ur_true_all.append(ur_true)
+            u_true_all.append(u_true)
+            v_true_all.append(v_true)
+            vindice_all.append(vindice)
+            mask.append(mask_tmp)
+            # ur_obs.append(err.ur_obs)
+        # Compute uss bias
+        #   Compute errdcos if Formula is True
+        if p.uss is True and p.errdcos is None and p.formula is True:
+            errdcos_tot, err_uss2 = compute_errdcos(p, sgrid, mask,
+                                                    err_uss)
+        # Compute directly bias if formula is False
+        # if p.uss is True and p.formula is False:
+        #    err_uss2 = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
+        #    # errdcos_tot.append(errdcos)
+        #    # err_uss.append(err.err_uss)
+        #    # , err_uss)
+        # err_uss2 should be deleted, spectrum will provide stoke error
+        err_uss2 = err_uss
+        for i in range(1, len(p.list_pos) + 1):
+            make_err = build_error.make_vel_error
+            ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
+                                err_uss=err_uss2[i])
+            ur_obs.append(ur_obs_i)
+        #   Save outputs in a netcdf file
+        if ((~numpy.isnan(numpy.array(vindice_all))).any()
+              or not p.file_input):
+            sgrid.ncycle = cycle
+            save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
+                      ur_model=ur_true_all, ur_obs=ur_obs, std_uss=std_uss,
+                      err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss2,
+                      u_model=u_true_all, v_model=v_true_all,
+                      errdcos=errdcos_tot)
+        del time
+        # if p.file_input: del index
+
+    if p.file_input:
+        model_data.vlonu = (model_data.vlonu + 360) % 360
+        model_data.vlonv = (model_data.vlonv + 360) % 360
+
+    modelbox[0] = (modelbox[0] + 360) % 360
+    modelbox[1] = (modelbox[1] + 360) % 360
+    del sgrid
+    msg_queue.put((os.getpid(), sgridfile, None))
 
 
 def load_error(p):
@@ -558,7 +604,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     global istep
     global ntot
     #   Initialiaze errors and velocity
-    progress = 0
     err.instr = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
     err.ur_uss = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
     std_uss = numpy.full(numpy.shape(sgrid.lon)[0], numpy.nan)
@@ -598,10 +643,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
         time_offset = 0
         # At each step, look for the corresponding time in the satellite data
         for ifile in index_filemodel[0]:
-            perc = float(istep)/float(ntot * ntotfile)
-            strpass = 'pass: {}'.format(sgrid.ipass)
-            strcycle = 'model file: {}, cycle: {}'.format(ifile, cycle + 1)
-            progress = mod_tools.update_progress(perc, strpass, strcycle)
             # If there are satellite data, Get true velcoity from model
             if numpy.shape(index_filemodel)[1] > 0:
                 # number of file to be processed used in the progress bar
@@ -641,17 +682,18 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                              list_file[ifile]), varu=p.varu,
                                              varv=p.varv)
                 if p.uss is True:
-                    model_step = model_step_ctor(ifile=os.path.join(p.indatadir,
+                    model_step = model_step_ctor(ifile=os.path.join(
+                                                 p.indatadir,
                                                  list_file_uss[ifile]),
                                                  varu='uuss', varv='vuss')
             if p.grid == 'regular':
-                model_step.read_var()
+                model_step.read_var(p)
                 u_model_tmp = model_step.vvaru[model_data.model_index_latu, :]
                 u_model = u_model_tmp[:, model_data.model_index_lonu]
                 v_model_tmp = model_step.vvarv[model_data.model_index_latv, :]
                 v_model = v_model_tmp[:, model_data.model_index_lonv]
                 if p.uss is True:
-                    uss_step.read_var()
+                    uss_step.read_var(p)
                     u_uss_mod_tmp = uss_step.vvaru[model_data.model_index_latu,
                                                    :]
                     u_uss_mod = u_uss_mod_tmp[:, model_data.model_index_lonu]
@@ -659,11 +701,11 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                                                    :]
                     v_uss_mod = v_uss_mod_tmp[:, model_data.model_index_lonv]
             else:
-                model_step.read_var(index=None)
+                model_step.read_var(p, index=None)
                 u_model = model_step.vvaru[model_data.model_indexu]
                 v_model = model_step.vvarv[model_data.model_indexv]
                 if p.uss is True:
-                    uss_step.read_var(index=None)
+                    uss_step.read_var(p, index=None)
                     u_uss_mod = uss_step.vvaru[model_data.model_indexu]
                     v_uss_mod = uss_step.vvarv[model_data.model_indexv]
             # - Interpolate Model data on a SKIM grid and/or along the
@@ -836,17 +878,13 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
         istep += 1
     else:
         istep += 1
-        progress = mod_tools.update_progress(float(istep)/float(ntotfile*ntot),
-                                             'pass: {}'.format(sgrid.ipass),
-                                             'no model file provided, cycle: '
-                                             '{}'.format(cycle+1))
     ur_true = mod_tools.proj_radial(u_true, v_true, radial_angle)
     if p.uss is not True:
         u_uss = None
         v_uss = None
     err.make_error(ur_true, p, radial_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss), std_local=std_uss, errdcos=errdcos)
-    return ur_true, u_true, v_true, vindice, time, progress
+    return ur_true, u_true, v_true, vindice, time
 
 
 def compute_errdcos(p, sgrid, mask, err_uss):

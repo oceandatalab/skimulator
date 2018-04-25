@@ -17,7 +17,7 @@ along with skimsimulator.  If not, see <http://www.gnu.org/licenses/>.
 """
 import sys
 import skimsimulator.mod_tools as mod_tools
-import argparse
+# import argparse
 import logging
 logger = logging.getLogger()
 handler = logging.StreamHandler()

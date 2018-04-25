@@ -1,14 +1,25 @@
 Changelog for skimsimulator
 ===========================
 
+1.1
+----
+2018/04/01
+- Parallelisation
+
+_ Fix bugs (issues with numpy 14.2, interpolation at 0E, radial velocity)
+
+1.0
+-----
+2017/12/20
+
+- First public release
+
+- Packaging improved
+
+- Documentation
+
 1.0 beta 1
 ----------
 2017/05/15
 First beta version, undocumented
 
-1.0
------
-2017/12/20
-First public release
-* Packaging improved
-* Documentation

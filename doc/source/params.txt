@@ -14,12 +14,13 @@ outdatadir = '[yourpath_to_outputs]/'
 # ------ Orbit file:
 satname = [chosenorbit]
 filesat = os.path.join(dir_setup, [chosenorbit])
-# ------ Name of the configuration (to build output files names) 
+# ------ Name of the configuration (to build output files names)
 config = [yourconfigname]
+# ------ Number of processors for parallelisation purposes
 
-# -----------------------# 
-# SKIM swath parameters 
-# -----------------------# 
+# -----------------------#
+# SKIM swath parameters
+# -----------------------#
 
 .. _params-skimswath:
 

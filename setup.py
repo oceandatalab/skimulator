@@ -18,12 +18,11 @@ along with skimsimulator.  If not, see <http://www.gnu.org/licenses/>.
 
 """Build and install the SKIM Simulator for Ocean Science package."""
 
-# from distutils.core import setup
-from setuptools import setup, find_packages
 import os
 import sys
 import shutil
 import logging
+from setuptools import setup, find_packages
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
