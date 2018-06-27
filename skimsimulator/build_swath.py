@@ -208,9 +208,6 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
                 stime[imin: imax] = numpy.arange(stime_lr[index[i]],
                                                  stime_lr[index[i+1] - 1],
                                                  p.cycle)
-                stime[imin: imax] = numpy.arange(stime_lr[index[i]],
-                                                 stime_lr[index[i+1] - 1],
-                                                 p.cycle)
                 x_al[imin: imax] = numpy.interp(stime[imin: imax],
                                                 stime_lr[slicei],
                                                 x_al_lr[slicei])
@@ -236,16 +233,16 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         lat[imin:] = numpy.interp(stime[imin:], stime_lr[index[-1]:],
                                   lat_lr[index[-1]:])
     else:
-        Ninterp = int((x_al_lr[-2] - x_al_lr[0]) / float(p.delta_al)) + 1
-        x_al = numpy.zeros((Ninterp))
-        stime = numpy.zeros((Ninterp))
-        lon = numpy.zeros((Ninterp))
-        lat = numpy.zeros((Ninterp))
-        x_al = numpy.arange(x_al_lr[0], x_al_lr[-2], p.delta_al)
-        stime = numpy.interp(x_al, x_al_lr[:-1], stime_lr[:-1])
+        Ninterp = int(((stime_lr[-2] - stime_lr[0]) / float(p.cycle)) + 1)
+        stime = numpy.arange(stime_lr[0], stime_lr[-2], p.cycle)
+        x_al = numpy.interp(stime, stime_lr[:-1], x_al_lr[:-1])
         loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_lr[:-1])))
-        lon = numpy.interp(x_al, x_al_lr[:-1], loncirc)
-        lat = numpy.interp(x_al, x_al_lr[:-1], lat_lr[:-1])
+        lon = numpy.interp(stime, stime_lr[:-1], loncirc)
+        lat = numpy.interp(stime, stime_lr[:-1], lat_lr[:-1])
+        #x_al = numpy.arange(x_al_lr[0], x_al_lr[-2], p.delta_al)
+        #stime = numpy.interp(x_al, x_al_lr[:-1], stime_lr[:-1])
+        #lon = numpy.interp(x_al, x_al_lr[:-1], loncirc)
+        #lat = numpy.interp(x_al, x_al_lr[:-1], lat_lr[:-1])
     lon = lon % 360
     # Save orbit data in Sat_SKIM object
     orb = rw_data.Sat_SKIM(ifile='{}.nc'.format(os.path.basename(orbitfile)))
