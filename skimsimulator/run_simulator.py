@@ -98,7 +98,7 @@ def run_simulator(p):
         list_file_uss = None
     # - Read model input coordinates '''
     # If a list of model files are specified, read model file coordinates
-    if p.file_input:
+    if p.file_input is not None:
 
         model_data_ctor = getattr(rw_data, model)
         filename = os.path.join(p.indatadir, list_file[0])
@@ -203,6 +203,8 @@ def run_simulator(p):
             else:
                 model_data.lon2D = model_data.vlonu
                 model_data.lat2D = model_data.vlatu
+    else:
+        model_data = []
 
     # avoid issue with 0=360 for global modelbox
     if modelbox[1] == 0:
@@ -474,7 +476,7 @@ def worker_method_skim(*args, **kwargs):
         del time
         # if p.file_input: del index
 
-    if p.file_input:
+    if p.file_input is not None:
         model_data.vlonu = (model_data.vlonu + 360) % 360
         model_data.vlonv = (model_data.vlonv + 360) % 360
 
