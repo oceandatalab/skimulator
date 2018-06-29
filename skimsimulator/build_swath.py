@@ -221,7 +221,8 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
                                                lat_lr[slicei])
             imin = imax
         if substract_point > 0:
-            substract_point = 1
+            substract_point = 0
+        print(substract_point)
         stime[imin:] = numpy.arange(stime_lr[index[-1]], stime_lr[index[-1]]
                                     + (Ninterp - imin)*p.cycle
                                     - p.cycle * substract_point, p.cycle)

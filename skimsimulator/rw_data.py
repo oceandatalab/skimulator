@@ -729,44 +729,44 @@ class NETCDF_MODEL():
         self.nfile = ifile
         self.depth = depth
         self.time = time
-        self.p = p
         self.model_nan = getattr(p, 'model_nan', 0)
         p.model_nan = self.model_nan
+        logger.debug('Nan Values {}, {}'.format(p.model_nan, self.model_nan))
 
-    def read_var(self, index=None):
+    def read_var(self, p, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        vel_factor = self.p.vel_factor
-        self.vvarv = read_var(self.nfile, self.nvarv, index=index,
+        vel_factor = p.vel_factor
+        self.vvarv = read_var(self.nfile[1], self.nvarv, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
-        self.vvaru = read_var(self.nfile, self.nvaru, index=index,
+        self.vvaru = read_var(self.nfile[0], self.nvaru, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
         # self.vvar[numpy.where(numpy.isnan(self.vvar))]=0
         return None
 
-    def read_coordinates(self, index=None):
+    def read_coordinates(self, p, index=None):
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        if self.p.grid == 'regular':
-            lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
+        if p.grid == 'regular':
+            lonu, latu = read_coordinates(self.nfile[0], self.nlonu, self.nlatu,
                                           twoD=False)
-            lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
+            lonv, latv = read_coordinates(self.nfile[1], self.nlonv, self.nlatv,
                                           twoD=False)
         else:
-            lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu)
-            lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv)
+            lonu, latu = read_coordinates(self.nfile[0], self.nlonu, self.nlatu)
+            lonv, latv = read_coordinates(self.nfile[1], self.nlonv, self.nlatv)
         self.vlatu = latu
         self.vlonu = (lonu + 360) % 360
         self.vlatv = latv
         self.vlonv = (lonv + 360) % 360
         return None
 
-    def calc_box(self):
+    def calc_box(self, p):
         '''Calculate subdomain coordinates from netcdf file
         Return minimum, maximum longitude and minimum, maximum latitude'''
-        self.read_coordinates()
+        self.read_coordinates(p)
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
             _ind = numpy.where(self.vlonu > 180.)
             self.vlonu[_ind] = self.vlonu[_ind] - 360
@@ -805,10 +805,10 @@ class WW3():
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
         vel_factor = p.vel_factor
-        self.vvarv = read_var(self.nfile, self.nvarv, index=index,
+        self.vvarv = read_var(self.nfile[1], self.nvarv, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
-        self.vvaru = read_var(self.nfile, self.nvaru, index=index,
+        self.vvaru = read_var(self.nfile[0], self.nvaru, index=index,
                               time=self.time, depth=self.depth,
                               model_nan=self.model_nan) * vel_factor
         return None
@@ -817,9 +817,9 @@ class WW3():
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
         if p.grid == 'regular':
-            lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
+            lonu, latu = read_coordinates(self.nfile[0], self.nlonu, self.nlatu,
                                           twoD=False)
-            lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
+            lonv, latv = read_coordinates(self.nfile[1], self.nlonv, self.nlatv,
                                           twoD=False)
         else:
             lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu)
@@ -830,10 +830,10 @@ class WW3():
         self.vlonv = (lonv + 360) % 360
         return None
 
-    def calc_box(self):
+    def calc_box(self, p):
         '''Calculate subdomain coordinates from netcdf file
         Return minimum, maximum longitude and minimum, maximum latitude'''
-        self.read_coordinates()
+        self.read_coordinates(p)
         if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
             _ind = numpy.where(self.vlonu > 180.)
             self.vlonu[_ind] = self.vlonu[_ind] - 360

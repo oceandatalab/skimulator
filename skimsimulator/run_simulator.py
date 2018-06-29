@@ -101,8 +101,17 @@ def run_simulator(p):
     if p.file_input is not None:
 
         model_data_ctor = getattr(rw_data, model)
-        filename = os.path.join(p.indatadir, list_file[0])
-        model_data = model_data_ctor(p, ifile=filename)
+        _filename = list_file[0].split(',')
+        if len(_filename) > 1:
+            filename_u = os.path.join(p.indatadir, _filename[0])
+            filename_v = os.path.join(p.indatadir, _filename[1])
+        else:
+            filename_u = os.path.join(p.indatadir, _filename[0])
+            filename_v = os.path.join(p.indatadir, _filename[0])
+        #filename = os.path.join(p.indatadir, list_file[0])
+        model_data = model_data_ctor(p, ifile=(filename_u, filename_v),
+                                     lonu=p.lonu, lonv=p.lonv, latu=p.latu,
+                                     latv=p.latv)
     # if no modelbox is specified (modelbox=None), the domain of the input
     # data is taken as a modelbox
     # coordinates from the region defined by modelbox are selected
@@ -114,7 +123,7 @@ def run_simulator(p):
             modelbox[1] = (modelbox[1] + 360) % 360
     else:
         if p.file_input is not None:
-            modelbox = model_data.calc_box()
+            modelbox = model_data.calc_box(p)
         else:
             logger.error('modelbox should be provided if no model file is'
                          'provided')
@@ -461,8 +470,12 @@ def worker_method_skim(*args, **kwargs):
         err_uss2 = err_uss
         for i in range(1, len(p.list_pos) + 1):
             make_err = build_error.make_vel_error
-            ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
-                                err_uss=err_uss2[i])
+            if err_uss is not None:
+                ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
+                                    err_uss=er_uss2)
+            else:
+                ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
+                                    err_uss=None)
             ur_obs.append(ur_obs_i)
         #   Save outputs in a netcdf file
         if ((~numpy.isnan(numpy.array(vindice_all))).any()
@@ -664,30 +677,29 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
             # if output from ww3, time dimension is >1 (hourly outputs,
             # one file per month): conversion of ifile into file number
             # and record number
-            if model_data.model == 'WW3':
+            filetime = ifile - time_offset
+            # read next file when the time dimension is reached
+            if filetime >= (time_offset + p.dim_time):
+                time_offset += p.dim_time
+                nfile += 1
                 filetime = ifile - time_offset
-                # read next file when the time dimension is reached
-                if filetime >= (time_offset + p.dim_time[nfile]):
-                    time_offset += p.dim_time[nfile]
-                    nfile += 1
-                    filetime = ifile - time_offset
-                filename = os.path.join(p.indatadir, list_file[nfile])
-                model_step = rw_data.WW3(p, ifile=filename, varu=p.varu,
-                                         varv=p.varv, time=filetime)
-                if p.uss is True:
-                    filename = os.path.join(p.indatadir, list_file_uss[nfile])
-                    uss_step = rw_data.WW3(p, ifile=filename, varu='uuss',
-                                           varv='vuss', time=filetime)
+            _tmpfilename = list_file[nfile].split(',')
+            if len(_tmpfilename) > 1:
+                filename_u = os.path.join(p.indatadir, _tmpfilename[0])
+                filename_v = os.path.join(p.indatadir, _tmpfilename[1])
             else:
-                model_step_ctor = getattr(rw_data, model_data.model)
-                model_step = model_step_ctor(ifile=os.path.join(p.indatadir,
-                                             list_file[ifile]), varu=p.varu,
-                                             varv=p.varv)
-                if p.uss is True:
-                    model_step = model_step_ctor(ifile=os.path.join(
-                                                 p.indatadir,
-                                                 list_file_uss[ifile]),
-                                                 varu='uuss', varv='vuss')
+                filename_u = os.path.join(p.indatadir, _tmpfilename[0])
+                filename_v = os.path.join(p.indatadir, _tmpfilename[0])
+
+            model_step_ctor = getattr(rw_data, model_data.model)
+            model_step = model_step_ctor(p, ifile=(filename_u, filename_v),
+                                         varu=p.varu,
+                                         varv=p.varv, time=filetime)
+            if p.uss is True:
+                model_step = model_step_ctor(ifile=os.path.join(
+                                             p.indatadir,
+                                             list_file_uss[ifile]),
+                                             varu='uuss', varv='vuss')
             if p.grid == 'regular':
                 model_step.read_var(p)
                 u_model_tmp = model_step.vvaru[model_data.model_index_latu, :]
@@ -876,7 +888,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                     std_uss_local = (numpy.ones(numpy.shape(ind_time[0]))
                                      * numpy.nanstd(numpy.sqrt(
                                      u_uss_mod**2 + v_uss_mod**2)))
-            std_uss[ind_time[0]] = + std_uss_local
+                std_uss[ind_time[0]] = + std_uss_local
         istep += 1
     else:
         istep += 1
