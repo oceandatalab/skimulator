@@ -221,11 +221,20 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
                                                lat_lr[slicei])
             imin = imax
         if substract_point > 0:
-            substract_point = 0
-        print(substract_point)
-        stime[imin:] = numpy.arange(stime_lr[index[-1]], stime_lr[index[-1]]
-                                    + (Ninterp - imin)*p.cycle
-                                    - p.cycle * substract_point, p.cycle)
+            substract_point = 1
+        _tmp = numpy.arange(stime_lr[index[-1]], stime_lr[index[-1]]
+                            + (Ninterp - imin)*p.cycle
+                            - p.cycle * substract_point, p.cycle)
+        if len(_tmp) > len(stime[imin:]):
+            _tmp2 = _tmp[:-1]
+        elif len(_tmp) < len(stime[imin:]):
+            logger.error('damnit, there is a bug, contact me')
+        else:
+            _tmp2 = _tmp
+
+        stime[imin:] = _tmp2 #numpy.arange(stime_lr[index[-1]], stime_lr[index[-1]]
+                              #      + (Ninterp - imin)*p.cycle
+                               #     - p.cycle * substract_point, p.cycle)
         x_al[imin:] = numpy.interp(stime[imin:], stime_lr[index[-1]:],
                                    x_al_lr[index[-1]:])
         loncirc = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(
