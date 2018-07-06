@@ -248,6 +248,8 @@ def update_progress_multiproc(status, info):
         ipass = '{:03d}'.format(grid_name)
 
     cycle = info[2]
+    if cycle is not None and cycle < 0:
+        return False
 
     count = len(status.keys())
     sys.stdout.write(_term_move_up() * count)
@@ -274,6 +276,7 @@ def update_progress_multiproc(status, info):
         proc_elems.extend(['] {}'.format(proc_state['extra'])])
         sys.stdout.write(''.join(proc_elems))
         sys.stdout.flush()
+    return True
 
 
 def update_progress(progress, arg1, arg2):
