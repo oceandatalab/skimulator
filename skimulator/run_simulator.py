@@ -696,7 +696,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
             if filetime >= (time_offset + p.dim_time):
                 time_offset += p.dim_time
                 nfile += 1
-                filetime = ifile - time_offset
+                filetime = (ifile - time_offset)%p.dim_time
             _tmpfilename = list_file[nfile].split(',')
             if len(_tmpfilename) > 1:
                 filename_u = os.path.join(p.indatadir, _tmpfilename[0])
