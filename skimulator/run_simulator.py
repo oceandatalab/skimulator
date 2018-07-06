@@ -254,19 +254,22 @@ def run_simulator(p):
     for sgridfile in listsgridfile:
         jobs.append([sgridfile, p2, listsgridfile, list_file, list_file_uss,
                      modelbox, model_data, modeltime, err, errnad])
-    make_skim_data(p.proc_count, jobs)
+    ok = make_skim_data(p.proc_count, jobs)
 
-    __ = mod_tools.update_progress(1, 'All passes have been processed',
-                                         '')
     # - Write Selected parameters in a txt file
     timestop = datetime.datetime.now()
     timestop = timestop.strftime('%Y%m%dT%H%M%SZ')
     timestart = timestart.strftime('%Y%m%dT%H%M%SZ')
     rw_data.write_params(p, os.path.join(p.outdatadir,
                                          'skim_simulator.output'))
-    logger.info("\n Simulated skim files have been written in "
-                "{}".format(p.outdatadir))
-    logger.info("----------------------------------------------------------")
+    if ok is True:
+        __ = mod_tools.update_progress(1, 'All passes have been processed', '')
+        logger.info("\n Simulated skim files have been written in "
+                    "{}".format(p.outdatadir))
+        logger.info(''.join(['-'] * 61))
+        sys.exit(0)
+    logger.error('\nERROR: At least one of the outputs was not saved.')
+    sys.exit(1)
 
 
 def make_skim_data(_proc_count, jobs):
@@ -290,10 +293,13 @@ def make_skim_data(_proc_count, jobs):
     sys.stdout.write('\n' * proc_count)
     tasks = pool.map_async(worker_method_skim, jobs, chunksize=chunk_size)
     sys.stdout.flush()
+    ok = True
     while not tasks.ready():
         if not msg_queue.empty():
             msg = msg_queue.get()
-            mod_tools.update_progress_multiproc(status, msg)
+            _ok = mod_tools.update_progress_multiproc(status, msg)
+            ok = ok and _ok
+
         time.sleep(0.1)
 
     while not msg_queue.empty():
@@ -303,6 +309,7 @@ def make_skim_data(_proc_count, jobs):
     sys.stdout.flush()
     pool.close()
     pool.join()
+    return ok
 
 
 def worker_method_skim(*args, **kwargs):
@@ -327,6 +334,7 @@ def worker_method_skim(*args, **kwargs):
     # Compute number of cycles needed to cover all nstep model timesteps
     rcycle = (p.timestep * p.nstep)/float(sgrid.cycle)
     ncycle = int(rcycle)
+
     #  Loop on all cycles
     for cycle in range(0, ncycle+1):
         # if ifile > (p.nstep*p.timestep + 1):
@@ -417,7 +425,6 @@ def worker_method_skim(*args, **kwargs):
                             sgrid_tmp.indj[ib, 1] = sgrid_tmp.indj[ib-1, 1]
             # Interpolate the velocity and compute the noise for each beam
             else:
-                # Stoke drift bias impact factor
                 Gvar = p.G[i - 1]
                 # Instrument noise file
                 rms_instr = p.rms_instr[i - 1]
@@ -440,7 +447,11 @@ def worker_method_skim(*args, **kwargs):
                                              rms_instr, errdcos,
                                              radial_angle, p,
                                              progress_bar=True)
-                ur_true, u_true, v_true, vindice, time = create
+                try:
+                   ur_true, u_true, v_true, vindice, time = create
+                except:
+                    msg_queue.put((os.getpid(), sgridfile, -1))
+
                 mask_tmp = numpy.isnan(err.ur_uss)
             # Append variables for each beam
             if p.instr is True:
@@ -481,11 +492,14 @@ def worker_method_skim(*args, **kwargs):
         if ((~numpy.isnan(numpy.array(vindice_all))).any()
               or not p.file_input):
             sgrid.ncycle = cycle
-            save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
+            try:
+                save_SKIM(cycle, sgrid, err, p, time=time, vindice=vindice_all,
                       ur_model=ur_true_all, ur_obs=ur_obs, std_uss=std_uss,
                       err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss2,
                       u_model=u_true_all, v_model=v_true_all,
                       errdcos=errdcos_tot)
+            except:
+                msg_queue.put((os.getpid(), sgridfile, -1))
         del time
         # if p.file_input: del index
 
