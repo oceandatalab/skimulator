@@ -344,13 +344,13 @@ All information regarding the installation and running of the software are in
 the :ref:`README <README>` file. An example of a :ref:`params.txt <params>` file is given
 below.
 
-Once you have installed skimsimulator, you can print help by typing in a python
+Once you have installed skimulator, you can print help by typing in a python
 or ipython window:
 
 .. code-block:: python
 
-   >>>import skimsimulator.M
-   >>>help(skimsimulator.M)
+   >>>import skimulator.M
+   >>>help(skimulator.M)
 
 with M the name of the module.
 
@@ -358,7 +358,7 @@ To run the example, type in any terminal:
 
 .. code-block:: python
 
-   >> skimsimulator ./example/params_example.py
+   >> skimulator ./example/params_example.py
 
 for the SKIM simulator.
 

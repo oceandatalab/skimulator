@@ -1,28 +1,28 @@
 """
 Copyright (C) 2017-2018 OceanDataLab
-This file is part of skimsimulator.
+This file is part of skimulator.
 
-skimsimulator is free software: you can redistribute it and/or modify
+skimulator is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-skimsimulator is distributed in the hope that it will be useful,
+skimulator is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with skimsimulator.  If not, see <http://www.gnu.org/licenses/>.
+along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 """
 import os
 import sys
 import numpy
 import math
 from scipy import interpolate
-import skimsimulator.mod_tools as mod_tools
-import skimsimulator.const as const
-import skimsimulator.rw_data as rw_data
+import skimulator.mod_tools as mod_tools
+import skimulator.const as const
+import skimulator.rw_data as rw_data
 import multiprocessing
 import time
 import logging

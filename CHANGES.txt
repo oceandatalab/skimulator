@@ -1,4 +1,4 @@
-Changelog for skimsimulator
+Changelog for skimulator
 ===========================
 
 1.1

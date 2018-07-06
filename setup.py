@@ -1,19 +1,19 @@
 """
 Copyright (C) 2017-2018 OceanDataLab
-This file is part of skimsimulator.
+This file is part of skimulator.
 
-skimsimulator is free software: you can redistribute it and/or modify
+skimulator is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-skimsimulator is distributed in the hope that it will be useful,
+skimulator is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with skimsimulator.  If not, see <http://www.gnu.org/licenses/>.
+along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 """Build and install the SKIM Simulator for Ocean Science package."""
@@ -34,7 +34,7 @@ if not 3 == sys.version_info[0]:
     logger.error('This package is only available for Python 3.x')
     sys.exit(1)
 
-__package_name__ = 'skimsimulator'
+__package_name__ = 'skimulator'
 project_dir = os.path.dirname(__file__)
 git_exe = shutil.which('git')
 git_dir = os.path.join(project_dir, '.git')
@@ -61,10 +61,10 @@ with open(readme_file, 'rt') as f:
 optional_dependencies = {'plot': ['matplotlib', ], 'carto': ['matplotlib',
                          'cartopy']}
 
-cmds = ['skimsimulator = {}.cli:run_script'.format(__package_name__),
+cmds = ['skimulator = {}.cli:run_script'.format(__package_name__),
         ]
 
-setup(name='skimsimulator',
+setup(name='skimulator',
       version=metadata['__version__'],
       description=metadata['__description__'],
       author=metadata['__author__'],

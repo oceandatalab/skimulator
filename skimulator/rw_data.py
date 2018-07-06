@@ -1,19 +1,19 @@
 """
 Copyright (C) 2017-2018 OceanDataLab
-This file is part of skimsimulator.
+This file is part of skimulator.
 
-skimsimulator is free software: you can redistribute it and/or modify
+skimulator is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-skimsimulator is distributed in the hope that it will be useful,
+skimulator is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with skimsimulator.  If not, see <http://www.gnu.org/licenses/>.
+along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 """
 '''
 Module to read and write data
@@ -26,13 +26,13 @@ Contains model classes: \n
 Contains satellite class: Sat_SKIM \n
 Contains file instrumentation class: file_instr \n
 '''
-import skimsimulator
+import skimulator
 from netCDF4 import Dataset
 import numpy
 import sys
 import time as ti
 import logging
-version = skimsimulator.__version__
+version = skimulator.__version__
 logger = logging.getLogger(__name__)
 
 
@@ -207,7 +207,7 @@ class Sat_SKIM():
         fid.summary = 'SKIM data produced'
         fid.description = "SKIM fixed swath"
         fid.Metadata_Conventions = "Unidata Dataset Discovery v1.0"
-        fid.history = 'Grid File created by skimsimulator version ' + version
+        fid.history = 'Grid File created by skimulator version ' + version
         fid.processing_level = 'L2'
         fid.standard_name_vocabulary = "CF-1.6"
         fid.creator_name = "Lucile Gaultier"
@@ -364,7 +364,7 @@ class Sat_SKIM():
         fid.summary = 'SKIM grid data produced'
         fid.description = "SKIM fixed grid"
         fid.Metadata_Conventions = "Unidata Dataset Discovery v1.0"
-        fid.history = 'Grid File created by skimsimulator version ' + version
+        fid.history = 'Grid File created by skimulator version ' + version
         fid.processing_level = 'L2'
         fid.standard_name_vocabulary = "CF-1.6"
         fid.creator_name = "Lucile Gaultier"

@@ -7,7 +7,7 @@ import numpy
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot
-import skimsimulator.rw_data as rw
+import skimulator.rw_data as rw
 import glob
 import cartopy
 import os

@@ -24,7 +24,7 @@ If you don't have python and the needed python libraries on your machine
 you can download the enthought python distribution canopy at
 <https://store.enthought.com/> and follow the installation instructions.
 
-To install skimsimulator:
+To install skimulator:
 
 -> If you have installed canopy:
 
@@ -32,7 +32,7 @@ Open a canopy terminal (``Tools - Canopy Terminal``)
 
 .. code-block:: python
 
-   > cd [yourpath]/skimsimulator/
+   > cd [yourpath]/skimulator/
    > python setup.py install
 
 ->If you have your own python and libraries:
@@ -62,7 +62,7 @@ Reference orbits data are available online:
 
 .. code-block:: console
 
-   $ cd [yourpath]/skimsimulator/data
+   $ cd [yourpath]/skimulator/data
    $ wget "https://oceandatalab.com/files/skim/orbits.tar.xz"
    $ tar xJf orbits.tar.xz
 
@@ -73,7 +73,7 @@ Run the SKIM simulator:
 
 .. code-block:: python
 
-   > skimsimulator [your params file]
+   > skimulator [your params file]
 
 
 

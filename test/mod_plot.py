@@ -7,7 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot
 import cartopy
-import skimsimulator.rw_data as rw
+import skimulator.rw_data as rw
 import params as p
 
 # Initialize color

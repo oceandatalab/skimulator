@@ -6,7 +6,7 @@ import os
 .. _params-file:
 
 # ------ Directory that contains orbit file:
-dir_setup = os.path.join([yourpath], 'skimsimulator', 'data')
+dir_setup = os.path.join([yourpath], 'skimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = '[yourpath_to_yourdata]/'
 # ------ Directory that contains your outputs:

@@ -7,12 +7,12 @@ import os
 import math
 home = expanduser("~") + '/src/'
 # ------ Directory that contains orbit file:
-dir_setup = os.path.join(home, 'skimsimulator', 'data')
+dir_setup = os.path.join(home, 'skimulator', 'data')
 # ------ Directory that contains your own inputs:
-indatadir = os.path.join(home, 'skimsimulator', 'example', 'input_fields')
+indatadir = os.path.join(home, 'skimulator', 'example', 'input_fields')
 indatadir = '/mnt/data/model/ww3_fram/' #netcdf3/'
 # ------ Directory that contains your outputs:
-outdatadir = os.path.join(home, 'skimsimulator', 'example', 'skim_output')
+outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 # ------ Orbit file:
 #filesat = os.path.join(dir_setup,'orbs1a.txt')
 filesat = os.path.join(dir_setup,'orbits1_ifremer')

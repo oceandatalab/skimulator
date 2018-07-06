@@ -1,26 +1,26 @@
 """
 Copyright (C) 2017-2018 OceanDataLab
-This file is part of skimsimulator.
+This file is part of skimulator.
 
-skimsimulator is free software: you can redistribute it and/or modify
+skimulator is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-skimsimulator is distributed in the hope that it will be useful,
+skimulator is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with skimsimulator.  If not, see <http://www.gnu.org/licenses/>.
+along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 """
 import sys
 import math
 import numpy
 from scipy.io import netcdf as nc
 from scipy.ndimage.filters import gaussian_filter
-import skimsimulator.mod_tools as mod_tools
+import skimulator.mod_tools as mod_tools
 import logging
 logger = logging.getLogger(__name__)
 

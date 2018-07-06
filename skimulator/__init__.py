@@ -5,10 +5,10 @@
 """Utilities for SKIM Science Simulator for the ocean
 
    Some useful online help commands for the package:
-   * help(skimsimulator):  Help for the package.  A list of all modules in
+   * help(skimulator):  Help for the package.  A list of all modules in
      this package is found in the "Package Contents" section of the
      help output.
-   * help(skimsimulator.M):  Details of each module "M", where "M" is the
+   * help(skimulator.M):  Details of each module "M", where "M" is the
      module's name.
 
 #-----------------------------------------------------------------------
@@ -23,20 +23,20 @@
 #
 #-----------------------------------------------------------------------
 Copyright (C) 2017-2018 OceanDataLab
-This file is part of skimsimulator.
+This file is part of skimulator.
 
-skimsimulator is free software: you can redistribute it and/or modify
+skimulator is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-skimsimulator is distributed in the hope that it will be useful,
+skimulator is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with skimsimulator.  If not, see <http://www.gnu.org/licenses/>.
+along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 """
 # -----------------------------------------------------------------------
 

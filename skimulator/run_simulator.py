@@ -30,20 +30,20 @@ pass and every cycle.
 #
 #-----------------------------------------------------------------------
 Copyright (C) 2017-2018 OceanDataLab
-This file is part of skimsimulator.
+This file is part of skimulator.
 
-skimsimulator is free software: you can redistribute it and/or modify
+skimulator is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-skimsimulator is distributed in the hope that it will be useful,
+skimulator is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with skimsimulator.  If not, see <http://www.gnu.org/licenses/>.
+along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 '''
 import os
 from scipy import interpolate
@@ -54,11 +54,11 @@ import sys
 import time
 import datetime
 import logging
-import skimsimulator.build_swath as build_swath
-import skimsimulator.rw_data as rw_data
-import skimsimulator.build_error as build_error
-import skimsimulator.mod_tools as mod_tools
-import skimsimulator.const as const
+import skimulator.build_swath as build_swath
+import skimulator.rw_data as rw_data
+import skimulator.build_error as build_error
+import skimulator.mod_tools as mod_tools
+import skimulator.const as const
 import multiprocessing
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ ifile = 0
 def run_simulator(p):
     '''Main routine to run simulator, input is the imported parameter file,
     no outputs are returned but netcdf grid and data files are written as well
-    as a skimsimulator.output file to store all used parameter.
+    as a skimulator.output file to store all used parameter.
     '''
     # - Initialize some parameters values
     timestart = datetime.datetime.now()

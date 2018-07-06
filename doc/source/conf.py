@@ -21,9 +21,9 @@ home = expanduser("~")
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('../../'+'skimsimulator'))
+sys.path.insert(0, os.path.abspath('../../'+'skimulator'))
 sys.path.insert(0, os.path.abspath('../../'))
-#sys.path.append(os.getcwd()+'/../../'+'skimsimulator')
+#sys.path.append(os.getcwd()+'/../../'+'skimulator')
 #sys.path.append(os.getcwd()+'/../../')
 #os.path.join(os.path.dirname(__file__), os.path.pardir)
 # -- General configuration ------------------------------------------------
@@ -55,7 +55,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'skimsimulator'
+project = u'skimulator'
 copyright = u'2017, Lucile Gaultier'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -189,7 +189,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'skimsimulator'
+htmlhelp_basename = 'skimulator'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -209,7 +209,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'skimsimulator.tex', 'SKIM Simulator Documentation',
+  ('index', 'skimulator.tex', 'SKIM Simulator Documentation',
    u'Lucile Gaultier', 'manual'),
 ]
 
@@ -274,7 +274,7 @@ texinfo_documents = [
 # -- Options for Epub output ----------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = u'skimsimulator'
+epub_title = u'skimulator'
 epub_author = u'Lucile Gaultier'
 epub_publisher = u'Lucile Gaultier'
 epub_copyright = u'2017, Lucile Gaultier'
