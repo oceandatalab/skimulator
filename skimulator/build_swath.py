@@ -228,7 +228,10 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         if len(_tmp) > len(stime[imin:]):
             _tmp2 = _tmp[:-1]
         elif len(_tmp) < len(stime[imin:]):
-            logger.error('damnit, there is a bug, contact me')
+            print(len(_tmp), len(stime[imin:]))
+            _tmp2 = numpy.arange(stime_lr[index[-1]], stime_lr[index[-1]]
+                                + (Ninterp - imin)*p.cycle, p.cycle)
+            #logger.error('damnit, there is a bug, contact me')
         else:
             _tmp2 = _tmp
 
