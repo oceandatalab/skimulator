@@ -559,6 +559,7 @@ class Sat_SKIM():
                          ' reprocess the grids')
             sys.exit(1)
         self.radial_angle = numpy.array(fid.variables['radial_angle'][:])
+        self.angle = numpy.array(fid.variables['angle'][:])
         try:
             self.corresponding_grid = fid.corresponding_grid
         except AttributeError:

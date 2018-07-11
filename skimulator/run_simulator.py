@@ -436,6 +436,8 @@ def worker_method_skim(*args, **kwargs):
                     errdcos = p.errdcos[i - 1]
                 # Read radial angle for projection on lon, lat reference
                 radial_angle = sgrid.radial_angle[:, i - 1]
+
+                ac_angle =  sgrid.angle[:, i - 1]
                 ##############################
                 # Compute SKIM like data data
                 shape_all = (numpy.shape(listsgridfile)[0] * rcycle
@@ -445,7 +447,7 @@ def worker_method_skim(*args, **kwargs):
                                              sgrid_tmp, model_data,
                                              modeltime, err, Gvar,
                                              rms_instr, errdcos,
-                                             radial_angle, p,
+                                             radial_angle, ac_angle, p,
                                              progress_bar=True)
                 try:
                    ur_true, u_true, v_true, vindice, time = create
@@ -624,7 +626,7 @@ def interpolate_irregular_pyresample(swath_in, var, grid_out, radius,
 def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                         sgrid, model_data, modeltime, err, Gvar, rms_instr,
                         errdcos,
-                        radial_angle, p, progress_bar=True):
+                        radial_angle, ac_angle, p, progress_bar=True):
     '''Create SKIM and nadir errors err and errnad, interpolate model velocity\
     model_data on swath and nadir track,
     compute SKIM-like and nadir-like data for cycle, SKIM grid sgrid and
@@ -911,7 +913,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     if p.uss is not True:
         u_uss = None
         v_uss = None
-    err.make_error(ur_true, p, radial_angle, Gvar, rms_instr,
+    err.make_error(ur_true, p, ac_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss), std_local=std_uss, errdcos=errdcos)
     return ur_true, u_true, v_true, vindice, time
 
