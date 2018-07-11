@@ -481,7 +481,7 @@ def worker_method_skim(*args, **kwargs):
         #    # , err_uss)
         # err_uss2 should be deleted, spectrum will provide stoke error
         err_uss2 = err_uss
-        for i in range(1, len(p.list_pos) + 1):
+        for i in range(0, len(p.list_pos) + 1):
             make_err = build_error.make_vel_error
             if err_uss is not None:
                 ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
