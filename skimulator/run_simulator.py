@@ -551,6 +551,9 @@ def load_sgrid(sgridfile, p):
 def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
     ''' Interpolation of data when grid is regular and coordinate in 1D. '''
     # To correct for IDL issues
+    ind_sort = numpy.argsort(lon_in)
+    lon_in = lon_in[ind_sort]
+    var = var[:, ind_sort]
     if numpy.max(lon_in) > 359 and numpy.min(lon_in) < 1:
         ind_in1 = numpy.where(lon_in <= 180)
         ind_in2 = numpy.where(lon_in > 180)
@@ -699,7 +702,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                 time_offset += p.dim_time
                 nfile += 1
                 filetime = (ifile - time_offset)%p.dim_time
-            nfile = int(ifile * p.timestep)
+            nfile = int(ifile /p.dim_time)
             _tmpfilename = list_file[nfile].split(',')
             if len(_tmpfilename) > 1:
                 filename_u = os.path.join(p.indatadir, _tmpfilename[0])
