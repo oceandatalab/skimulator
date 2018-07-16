@@ -428,6 +428,8 @@ def worker_method_skim(*args, **kwargs):
                 Gvar = p.G[i - 1]
                 # Instrument noise file
                 rms_instr = p.rms_instr[i - 1]
+                #Beam angle value to correct for attenuation in radial velocity
+                beam_angle = p.list_angle[i - 1]
                 # Geometrical error errdcos
                 errdcos = 1
                 # If the formula is used and errdcos is constant for each
@@ -447,7 +449,8 @@ def worker_method_skim(*args, **kwargs):
                                              sgrid_tmp, model_data,
                                              modeltime, err, Gvar,
                                              rms_instr, errdcos,
-                                             radial_angle, ac_angle, p,
+                                             radial_angle, ac_angle,
+                                             beam_angle,p,
                                              progress_bar=True)
                 try:
                    ur_true, u_true, v_true, vindice, time = create
@@ -628,8 +631,8 @@ def interpolate_irregular_pyresample(swath_in, var, grid_out, radius,
 
 def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
                         sgrid, model_data, modeltime, err, Gvar, rms_instr,
-                        errdcos,
-                        radial_angle, ac_angle, p, progress_bar=True):
+                        errdcos, radial_angle, ac_angle, beam_angle,
+                        p, progress_bar=True):
     '''Create SKIM and nadir errors err and errnad, interpolate model velocity\
     model_data on swath and nadir track,
     compute SKIM-like and nadir-like data for cycle, SKIM grid sgrid and
@@ -912,11 +915,14 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
         istep += 1
     else:
         istep += 1
+    # Radial projection
     ur_true = mod_tools.proj_radial(u_true, v_true, radial_angle)
+    # Beam angle attenuation
+    ur_true2 = ur_true * numpy.sin(numpy.deg2rad(beam_angle))
     if p.uss is not True:
         u_uss = None
         v_uss = None
-    err.make_error(ur_true, p, ac_angle, Gvar, rms_instr,
+    err.make_error(ur_true2, p, ac_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss), std_local=std_uss, errdcos=errdcos)
     return ur_true, u_true, v_true, vindice, time
 
