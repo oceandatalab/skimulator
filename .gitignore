@@ -3,7 +3,6 @@ __pycache__
 example
 *.pyc
 params.py
-*.png
 doc/build
 *~
 *.egg-info
