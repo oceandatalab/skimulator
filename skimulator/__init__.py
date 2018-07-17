@@ -1,4 +1,3 @@
-# #!/usr/bin/env python
 # =======================================================================
 #                        General Documentation
 
@@ -44,7 +43,7 @@ along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 
 # - Set module version to package version:
 
-__version__ = '$1.00: Original version $'
+__version__ = '1.0'
 __author__ = 'Lucile Gaultier <lucile.gaultier@oceandatalab.com>'
 __date__ = '2017-03-01'
 __email__ = 'lucile.gaultier@oceandatalab.com'
@@ -53,11 +52,27 @@ __description__ = ('SKIM Simulator')
 __author_email__ = ('lucile.gaultier@oceandatalab.com')
 __keywords__ = ()
 
+import os
+
+# Try to improve accuracy of the version number by reading the build number in
+# the share/VERSION.txt file if it is available
+try:
+    import pkg_resources
+    _version_path = pkg_resources.resource_filename('skimulator',
+                                                    'share/VERSION.txt')
+    if os.path.exists(_version_path):
+        with open(_version_path, 'rt') as f:
+            _commits = f.readline().strip()
+            __version__ = '{}.{}'.format(__version__, _commits)
+            _ = f.readline()  # Commit hash, useful for debug
+            __date__ = f.readline().strip()
+except ImportError:
+    pass
+
 # - If you're importing this module in testing mode, or you're running
 #  pydoc on this module via the command line, import user-specific
 #  settings to make sure any non-standard libraries are found:
 
-import os
 import sys
 if (__name__ == "__main__") or \
    ("pydoc" in os.path.basename(sys.argv[0])):
