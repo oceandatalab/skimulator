@@ -20,6 +20,7 @@ along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 
 import os
 import sys
+import errno
 import shutil
 import logging
 from setuptools import setup
@@ -39,13 +40,43 @@ project_dir = os.path.dirname(__file__)
 git_exe = shutil.which('git')
 git_dir = os.path.join(project_dir, '.git')
 has_git = (git_exe is not None and os.path.isdir(git_dir))
-# version_file = os.path.join(project_dir, 'VERSION.txt')
 readme_file = os.path.join(project_dir, 'README')
 package_dir = os.path.join(project_dir, __package_name__)
 init_file = os.path.join(package_dir, '__init__.py')
+share_dir = os.path.join(package_dir, 'share')
+version_file = os.path.join(share_dir, 'VERSION.txt')
+
+# Regenerate a version file from git history
+if has_git:
+    import subprocess
+    import datetime
+    _githash = (git_exe, 'rev-parse', '--short', 'HEAD')
+    githash = subprocess.check_output(_githash).decode('utf-8').strip()
+    gitrev = (git_exe, 'rev-list', 'HEAD', '--count')
+    commits = subprocess.check_output(gitrev).decode('utf-8').strip()
+
+    # Note: this block could be replaced by
+    #   os.makedirs(share_dir, exist_ok=True)
+    # if support for Python < 3.5 is dropped
+    if not os.path.isdir(share_dir):
+        try:
+            os.makedirs(share_dir)
+        except OSError:
+            _, e, _ = sys.exc_info()
+            if e.errno == errno.EEXIST:
+                pass
+
+    with open(version_file, 'wt') as f:
+        f.write('{}\n'.format(commits))
+        f.write('{}\n'.format(githash))
+        f.write('{}\n'.format(datetime.datetime.utcnow().strftime('%Y-%m-%d')))
 
 # - Read in the package version and author fields from the Python
 #  main __init__.py file:
+#
+# IMPORTANT: this must be done AFTER trying to generate the VERSION.txt file
+# as the __version__ variable contained in the __init__.py will not only have
+# the major and minor, but also the commit number if VERSION.txt exists.
 metadata = {}
 with open(init_file, 'rt') as f:
     exec(f.read(), metadata)
