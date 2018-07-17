@@ -6,3 +6,6 @@ params.py
 *.png
 doc/build
 *~
+*.egg-info
+dist
+skimulator/share/VERSION.txt
