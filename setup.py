@@ -22,7 +22,7 @@ import os
 import sys
 import shutil
 import logging
-from setuptools import setup, find_packages
+from setuptools import setup
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
@@ -64,7 +64,7 @@ optional_dependencies = {'plot': ['matplotlib', ], 'carto': ['matplotlib',
 cmds = ['skimulator = {}.cli:run_script'.format(__package_name__),
         ]
 
-setup(name='skimulator',
+setup(name=__package_name__,
       version=metadata['__version__'],
       description=metadata['__description__'],
       author=metadata['__author__'],
@@ -73,7 +73,7 @@ setup(name='skimulator',
       license='COPYING',
       keywords=metadata['__keywords__'],
       long_description=long_description,
-      packages=find_packages(),
+      packages=(__package_name__,),
       install_requires=requirements,
       setup_require=(),
       entry_points={'console_scripts': cmds},
