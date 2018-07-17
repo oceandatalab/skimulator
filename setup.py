@@ -95,6 +95,11 @@ optional_dependencies = {'plot': ['matplotlib', ], 'carto': ['matplotlib',
 cmds = ['skimulator = {}.cli:run_script'.format(__package_name__),
         ]
 
+# VERSION.txt must be added to the package if the file has been generated
+pkg_data = None
+if os.path.exists(version_file):
+    pkg_data = {__package_name__: ('share/VERSION.txt',)}
+
 setup(name=__package_name__,
       version=metadata['__version__'],
       description=metadata['__description__'],
@@ -109,4 +114,5 @@ setup(name=__package_name__,
       setup_require=(),
       entry_points={'console_scripts': cmds},
       extras_require=optional_dependencies,
+      package_data=pkg_data,
       )
