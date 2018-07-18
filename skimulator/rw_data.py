@@ -572,6 +572,50 @@ class Sat_SKIM():
         return None
 
 
+    def load_data(self, p, **kwargs):
+        '''Load swath variables stored in Satellite grid file sgridfile. \n
+        (longitude, latitude, number of days in a cycle, crossed distance
+        during a cycle, time, along track and across track position).'''
+
+        # - Open Netcdf file
+        try:
+            fid = Dataset(self.file, 'r')
+        except IOError:
+            logger.error('There was an error opening the file '
+                         '{}'.format(self.file))
+            sys.exit(1)
+        # fid = Dataset(self.file, 'r')
+        time = []
+        lon = []
+        lat = []
+        # cycle = []
+        # x_al = []
+        #listvar = {'time': time, 'lon': lon, 'lat': lat, }
+        #self.lon = []
+        #self.lat = []
+        #self.time = []
+        # - Read variables in listvar and return them
+        #for stringvar in listvar:
+        #    var = fid.variables['{}{}'.format(stringvar, '_nadir')]
+        #    listvar[stringvar].append(numpy.array(var[:]).squeeze())
+        #    var = fid.variables[stringvar]
+        #    for i in range(len(p.list_pos)):
+        #        listvar[stringvar].append(numpy.array(var[:, i]).squeeze())
+        #    setattr(self, stringvar, listvar[stringvar])
+        # - Read variables in arguments
+        for key, value in kwargs.items():
+            var = fid.variables[key]
+            value = numpy.array(fid.variables[key][:]).squeeze()
+            # value[value == var.fill_value] = numpy.nan
+            setattr(self, key, value)
+        try:
+            self.corresponding_grid = fid.corresponding_grid
+        except AttributeError:
+            pass
+        fid.close()
+        return None
+
+
 class NEMO():
     '''Class to read NEMO data \n
     USAGE is NEMO(file=name of file ,var= variable name,
