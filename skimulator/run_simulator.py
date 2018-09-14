@@ -62,8 +62,8 @@ import skimulator.const as const
 import multiprocessing
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
-# logger = multiprocessing.log_to_stderr()
-# logger.setLevel(logging.DEBUG)
+#logger = multiprocessing.log_to_stderr()
+#logger.setLevel(logging.DEBUG)
 
 # - Define global variables for progress bars
 istep = 0
@@ -442,19 +442,22 @@ def worker_method_skim(*args, **kwargs):
                 ac_angle =  sgrid.angle[:, i - 1]
                 ##############################
                 # Compute SKIM like data data
-                shape_all = (numpy.shape(listsgridfile)[0] * rcycle
-                             * (len(p.list_pos) + 1))
-                create = create_SKIMlikedata(cycle, shape_all, list_file,
-                                             list_file_uss, modelbox,
-                                             sgrid_tmp, model_data,
-                                             modeltime, err, Gvar,
-                                             rms_instr, errdcos,
-                                             radial_angle, ac_angle,
-                                             beam_angle,p,
-                                             progress_bar=True)
                 try:
-                   ur_true, u_true, v_true, vindice, time = create
+                    shape_all = (numpy.shape(listsgridfile)[0] * rcycle
+                                 * (len(p.list_pos) + 1))
+                    create = create_SKIMlikedata(cycle, shape_all, list_file,
+                                                 list_file_uss, modelbox,
+                                                 sgrid_tmp, model_data,
+                                                 modeltime, err, Gvar,
+                                                 rms_instr, errdcos,
+                                                 radial_angle, ac_angle,
+                                                 beam_angle,p,
+                                                 progress_bar=True)
+                    ur_true, u_true, v_true, vindice, time = create
                 except:
+                    import sys
+                    e = sys.exc_info()
+                    logger.error('bouh', exc_info=e)
                     msg_queue.put((os.getpid(), sgridfile, -1))
 
                 mask_tmp = numpy.isnan(err.ur_uss)
@@ -662,6 +665,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     timeshift = sgrid.timeshift / 86400.  # in days
     # Look for satellite data that are beween step-p.timestep/2 and
     # step+p.timestep/2
+    logger.info('create skimdata {}'.format(sgrid.file))
     if p.file_input is not None:
         # meshgrid in 2D for interpolation purposes
         if p.grid == 'irregular':
@@ -699,7 +703,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
             # if output from ww3, time dimension is >1 (hourly outputs,
             # one file per month): conversion of ifile into file number
             # and record number
-            filetime = ifile - time_offset
+            filetime = (ifile - time_offset)%p.dim_time
             # read next file when the time dimension is reached
             if filetime >= (time_offset + p.dim_time):
                 time_offset += p.dim_time
@@ -713,6 +717,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
             else:
                 filename_u = os.path.join(p.indatadir, _tmpfilename[0])
                 filename_v = os.path.join(p.indatadir, _tmpfilename[0])
+            logger.info('time file {} {} {}'.format(filetime, filename_u, filename_v))
 
             model_step_ctor = getattr(rw_data, model_data.model)
             model_step = model_step_ctor(p, ifile=(filename_u, filename_v),
