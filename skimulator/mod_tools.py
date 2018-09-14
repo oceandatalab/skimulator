@@ -57,10 +57,10 @@ def load_python_file(file_path):
 
 def initialize_parameters(p):
     p.shift_lon = getattr(p, 'shift_lon', None)
-    p.shift_time = getattr(p, 'p.shift_time', None)
+    p.shift_time = getattr(p, 'shift_time', None)
     if p.shift_time is None:
         p.timeshift = 0
-    p.timeshift = getattr(p, 'p.timeshift', 0)
+    p.timeshift = getattr(p, 'timeshift', 0)
     if p.shift_time is None:
         p.timeshift = 0
     model = getattr(p, 'model', 'NETCDF_MODEL')
