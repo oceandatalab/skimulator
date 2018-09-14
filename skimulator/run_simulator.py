@@ -665,7 +665,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     timeshift = sgrid.timeshift / 86400.  # in days
     # Look for satellite data that are beween step-p.timestep/2 and
     # step+p.timestep/2
-    logger.info('create skimdata {}'.format(sgrid.file))
     if p.file_input is not None:
         # meshgrid in 2D for interpolation purposes
         if p.grid == 'irregular':
@@ -717,7 +716,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
             else:
                 filename_u = os.path.join(p.indatadir, _tmpfilename[0])
                 filename_v = os.path.join(p.indatadir, _tmpfilename[0])
-            logger.info('time file {} {} {}'.format(filetime, filename_u, filename_v))
 
             model_step_ctor = getattr(rw_data, model_data.model)
             model_step = model_step_ctor(p, ifile=(filename_u, filename_v),

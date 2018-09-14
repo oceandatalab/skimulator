@@ -21,6 +21,7 @@ import skimulator.mod_tools as mod_tools
 import logging
 logger = logging.getLogger()
 handler = logging.StreamHandler()
+#handler = logging.FileHandler('debug.log')
 
 
 def run_script():
