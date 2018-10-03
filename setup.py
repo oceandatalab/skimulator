@@ -93,6 +93,7 @@ optional_dependencies = {'plot': ['matplotlib', ], 'carto': ['matplotlib',
                          'cartopy']}
 
 cmds = ['skimulator = {}.cli:run_script'.format(__package_name__),
+        'l2c = {}.cli:run_l2c'.format(__package_name__),
         ]
 
 # VERSION.txt must be added to the package if the file has been generated

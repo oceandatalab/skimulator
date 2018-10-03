@@ -231,8 +231,20 @@ for i in range(nbeam):
 
 rr = LA.solve(mat, vres)
 print(rr)
+#[yo, peach, roll] = rr
 #print(rr[0], numpy.arctan(rr[1], rr[2]), numpy.sqrt(rr[1]**2 + rr[2]**2))
 rot=[numpy.rad2deg(numpy.mean(ph)), numpy.rad2deg(numpy.pi/2 - numpy.mean(th))]
+residu = (rr simulé - rr) . tdop[i, j, :]
+
+
+u_residu_alt = cos(azimuth) * residu
+v_residu_alt = sin(azimuth) * residu
+ur. 
+
+
+
+
+
 
 heal.gnomview(mask,rot=rot,reso=plot_res * 3,title='CONDITIONING',max=thresh_cond)
 #plt.pcolormesh()

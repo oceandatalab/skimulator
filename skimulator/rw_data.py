@@ -174,6 +174,110 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
     return T
 
 
+def write_l2c(metadata, geolocation, **kwargs):
+    ti = datetime.datetime.now()
+    lat = geolocation['lat']
+    lon = geolocation['lon']
+    tim = geolocation['time']
+    # - Open Netcdf file in write mode
+    fid = Dataset(metatada['file'], 'w', format='NETCDF4_CLASSIC')
+    # - Create Global attribute
+    fid.title = 'SKIM L2C simulated by SKIM simulator'
+    fid.keywords = 'SKIM, Doppler'  # Check keywords
+    fid.Conventions = "CF-1.6"
+    fid.summary = 'SKIM data produced'
+    fid.description = "SKIM fixed swath"
+    fid.Metadata_Conventions = "Unidata Dataset Discovery v1.0"
+    fid.history = 'L2C File created by skimulator version ' + version
+    fid.processing_level = 'L2C'
+    fid.standard_name_vocabulary = "CF-1.6"
+    fid.creator_name = "Lucile Gaultier"
+    fid.creator_email = "lucile.gaultier@gmail.com"
+    fid.publisher_url = ""
+    fid.time_coverage_start = metadata['time_coverage_start']
+    # p.date0+"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
+    fid.time_coverage_end = metadata['time_coverage_start']
+    # p.date0 +"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
+    fid.geospatial_lat_min = "{:.2f}".format(numpy.min(lat))
+    fid.geospatial_lat_max = "{:.2f}".format(numpy.max(lat))
+    fid.geospatial_lat_units = "degrees_north"
+    fid.geospatial_lon_max = "{:.2f}".format(numpy.max(lon))
+    fid.geospatial_lon_min = "{:.2f}".format(numpy.min(lon))
+    fid.geospatial_lon_units = "degrees_east"
+    fid.project = "SKIM"
+    fid.date_created = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
+    fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
+    fid.keywords_vocabulary = ""
+    fid.references = ""
+    fid.cycle = "{0:d}".format(int(metadata['al_cycle']))
+    fid.track = "{} th pass".format(metadata['ipass'])
+    # - Create dimensions
+    # if (not os.path.isfile(self.file)):
+    dimlon = 'xal'
+    dimlat = 'xac'
+    dimtime = 'time'
+    nlon = numpy.shape(lon)[0]
+    nlat = numpy.shape(lat)[1]
+    ntime = None
+    fid.createDimension(dimlon, nlon)
+    # fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
+    fid.createDimension(dimlat, nlat)
+    fid.createDimension(dimtime, ntime)
+    # - Create and write Variables
+    vtime = fid.createVariable('time', 'f8', (dimtime))
+    vtime.axis = "T"
+    vtime.units = "seconds since the beginning of the sampling"
+    vtime.long_name = "Time"
+    vtime.standard_name = "time"
+    vtime.calendar = "gregorian"
+    vlon = fid.createVariable('lon', 'f4', (dimlon, dimlat))
+    vlon.axis = "X"
+    vlon.long_name = "Longitude"
+    vlon.standard_name = "longitude"
+    vlon.units = "degrees_east"
+    vlat = fid.createVariable('lat', 'f4', (dimlon, dimlat))
+    vlat.axis = "Y"
+    vlat.long_name = "Latitude"
+    vlat.standard_name = "latitude"
+    vlat.units = "degrees_north"
+    longname = { "u_noerr": "Error-free zonal velocity",
+                 "v_noerr": "Error-free meridional velocity",
+                "u_obs": "Observed zonal velocity",
+                "v_obs": "Observed meridional velocity",
+                "u_ac": "Observed across track velocity",
+                "v_ac": "Observed along track velocity",
+                "angle": "angle of xac with eastward vector"
+                }
+    unit = {"u_noerr": "m/s", "u_obs": "m/s", "u_ac": "m/s",
+            "v_noerr": "m/s", "v_obs": "m/s", "v_ac": "m/s",
+            "angle": "rad"
+            }
+    for key, value in kwargs.items():
+        if value is not None:
+            nvar = '{}'.format(key)
+            var = fid.createVariable(nvar, 'f4', (dimlon, dimlat),
+                                     fill_value=-1.36e9)
+            try:
+                var.units = unit[str(key)]
+            except:
+                var.units = ''
+            try:
+                var.long_name = longname[str(key)]
+            except:
+                var.long_name = str(key)
+            if value.any():
+                mask = numpy.isnan(value)
+                value[numpy.where(mask)] = -1.36e9
+                mask_ind = numpy.where(value < -1e7)
+                value[mask_ind] = -1.36e9
+                mask_ind = numpy.where(value > 1e7)
+                value[mask_ind] = -1.36e9
+                mask_ind = numpy.where(value == numpy.PINF)
+                value[mask_ind] = -1.36e9
+                var[:, :] = value
+    fid.close()
+
+
 class Sat_SKIM():
     ''' Sat_SKIM class: to read and write data that has been
     created by SKIM simulator '''
