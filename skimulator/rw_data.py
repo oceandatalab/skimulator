@@ -32,6 +32,7 @@ import numpy
 import sys
 import time as ti
 import logging
+import datetime
 version = skimulator.__version__
 logger = logging.getLogger(__name__)
 
@@ -180,7 +181,7 @@ def write_l2c(metadata, geolocation, **kwargs):
     lon = geolocation['lon']
     tim = geolocation['time']
     # - Open Netcdf file in write mode
-    fid = Dataset(metatada['file'], 'w', format='NETCDF4_CLASSIC')
+    fid = Dataset(metadata['file'], 'w', format='NETCDF4_CLASSIC')
     # - Create Global attribute
     fid.title = 'SKIM L2C simulated by SKIM simulator'
     fid.keywords = 'SKIM, Doppler'  # Check keywords
@@ -196,7 +197,7 @@ def write_l2c(metadata, geolocation, **kwargs):
     fid.publisher_url = ""
     fid.time_coverage_start = metadata['time_coverage_start']
     # p.date0+"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
-    fid.time_coverage_end = metadata['time_coverage_start']
+    fid.time_coverage_end = metadata['time_coverage_end']
     # p.date0 +"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
     fid.geospatial_lat_min = "{:.2f}".format(numpy.min(lat))
     fid.geospatial_lat_max = "{:.2f}".format(numpy.max(lat))
@@ -209,8 +210,8 @@ def write_l2c(metadata, geolocation, **kwargs):
     fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
     fid.keywords_vocabulary = ""
     fid.references = ""
-    fid.cycle = "{0:d}".format(int(metadata['al_cycle']))
-    fid.track = "{} th pass".format(metadata['ipass'])
+    fid.cycle = "{0:d}".format(int(metadata['cycle']))
+    fid.track = "{} th pass".format(metadata['pass'])
     # - Create dimensions
     # if (not os.path.isfile(self.file)):
     dimlon = 'xal'
@@ -230,16 +231,19 @@ def write_l2c(metadata, geolocation, **kwargs):
     vtime.long_name = "Time"
     vtime.standard_name = "time"
     vtime.calendar = "gregorian"
+    vtime[:] = tim
     vlon = fid.createVariable('lon', 'f4', (dimlon, dimlat))
     vlon.axis = "X"
     vlon.long_name = "Longitude"
     vlon.standard_name = "longitude"
     vlon.units = "degrees_east"
+    vlon[:, :] = lon
     vlat = fid.createVariable('lat', 'f4', (dimlon, dimlat))
     vlat.axis = "Y"
     vlat.long_name = "Latitude"
     vlat.standard_name = "latitude"
     vlat.units = "degrees_north"
+    vlat[:, :] = lat
     longname = { "u_noerr": "Error-free zonal velocity",
                  "v_noerr": "Error-free meridional velocity",
                 "u_obs": "Observed zonal velocity",
