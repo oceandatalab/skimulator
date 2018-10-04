@@ -921,11 +921,11 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, list_file_uss, modelbox,
     # Radial projection
     ur_true = mod_tools.proj_radial(u_true, v_true, radial_angle)
     # Beam angle attenuation
-    ur_true2 = ur_true * numpy.sin(numpy.deg2rad(beam_angle))
+    #ur_true2 = ur_true * numpy.sin(numpy.deg2rad(beam_angle))
     if p.uss is not True:
         u_uss = None
         v_uss = None
-    err.make_error(ur_true2, p, ac_angle, Gvar, rms_instr,
+    err.make_error(ur_true, p, ac_angle, Gvar, rms_instr,
                    uss=(u_uss, v_uss), std_local=std_uss, errdcos=errdcos)
     return ur_true, u_true, v_true, vindice, time
 
