@@ -70,7 +70,7 @@ def perform_oi_1(grd, obs, resol):
             dist = numpy.sqrt((obs['ac'] - grd['ac2'][i, j])**2
                               + (obs['al'] - grd['al2'][i, j])**2)
             ios = numpy.where((dist < 0.5 * resol))[0]
-            if len(ios) >= 2:
+            if len(ios) >= 3:
                 H = numpy.zeros((len(ios), 2))
                 H[:, 0] = numpy.cos(obs['dir'][ios])
                 H[:, 1] = numpy.sin(obs['dir'][ios])
@@ -79,12 +79,18 @@ def perform_oi_1(grd, obs, resol):
                 Ri = std_err**-2
                 RiH = numpy.tile(Ri, (2, 1)).T * H
                 M = numpy.dot(H.T, RiH)
-                try:
-                    Mi = numpy.linalg.inv(M)
-                except:
-                    print(M)
-                    import sys
-                    sys.exit(1)
+                #try:
+                Mi = numpy.linalg.inv(M)
+                #except:
+                #    grd['vobsal'][i, j]=eta_obs[0]
+                #    grd['vobsac'][i, j]=eta_obs[1]
+                #    grd['vmodal'][i, j]=eta_mod[0]
+                #    grd['vmodac'][i, j]=eta_mod[1]
+                #    print(i, j, M)
+                    #continue
+                    #print(M)
+                #    import sys
+                #    sys.exit(1)
                 eta_obs = numpy.dot(numpy.dot(Mi, RiH.T), obs['vobsr'][ios])
                 eta_mod = numpy.dot(numpy.dot(Mi, RiH.T), obs['vmodr'][ios])
                 grd['vobsal'][i, j]=eta_obs[0]
@@ -93,20 +99,67 @@ def perform_oi_1(grd, obs, resol):
                 grd['vmodac'][i, j]=eta_mod[1]
     return grd
 
-
+"""
 def perform_oi_2(grd, obs, resol):
-# - In parameter file ## TODO -
-# Number of pixel (resolution for healpix)
-nside = 256
-# Number of diamonds for healpix
-ndiam = 12
-ntotpixel = nside * nside * ndiam
-# Conditionning threshold
-thresh_cond = 10
+    # - In parameter file ## TODO -
+    # Number of pixel (resolution for healpix)
+    nside = 256
+    # Number of diamonds for healpix
+    ndiam = 12
+    ntotpixel = nside * nside * ndiam
+    # Conditionning threshold
+    thresh_cond = 10
+    ph = 2 * numpy.pi - numpy.deg2rad(lon)
+    th = numpy.pi / 2 - numpy.deg2rad(lat)
+    pidx = heal.ang2pix(nside, th, ph)
+
+    for i in range(nbeam):
+        for j in range(ndata):
+            if ur[j, i] > -1E9:
+                ip = pidx[j,i]
+                # compute imulated model
+                im[ip, 1] += u[j, i]
+                im[ip, 2] += v[j,i]
+                nim[ip] += 1
+                # compute covariance(s) model
+                co = numpy.cos(rangle[j,i])
+                si = numpy.sin(rangle[j,i])
+                w = ww[j,i]
+                cov[ip, 0, 0] += co * co
+                cov[ip, 1, 0] += si * co
+                cov[ip, 0, 1] += si * co
+                cov[ip, 1, 1] += si * si
+
+                cov2[ip, 0, 0] += w * co * co
+                cov2[ip, 1, 0] += w * si * co
+                cov2[ip, 0, 1] += w * si * co
+                cov2[ip, 1, 1] += w * si * si
+
+                # compute data vector model
+                vec[ip, 0] += co * ur[j,i]
+                vec[ip, 1] += si * ur[j,i]
+
+                # compute data noise vector model
+                vec2[ip, 0] += w* co * uro[j,i]
+                vec2[ip, 1] += w * si * uro[j,i]
+
+                # compute doppler projection
+                for k in range(3):
+                    vecdop[k, ip, 0] += w * co * tdop[j,i,k]
+                    vecdop[k, ip, 1] += w * si * tdop[j,i,k]
+"""
 
 
 
 def write_l2(outfile, grd, cycle, passn):
+                grd['vobsal'][i, j]=eta_obs[0]
+                grd['vobsal'][i, j]=eta_obs[0]
+                grd['vobsac'][i, j]=eta_obs[1]
+                grd['vmodal'][i, j]=eta_mod[0]
+                grd['vmodac'][i, j]=eta_mod[1]
+                grd['vobsac'][i, j]=eta_obs[1]
+                grd['vmodal'][i, j]=eta_mod[0]
+                grd['vmodac'][i, j]=eta_mod[1]
     if os.path.exists(outfile):
         os.remove(outfile)
     metadata = {}
@@ -151,25 +204,25 @@ def run_l2c(p):
         obs['vobsr'] = numpy.array(data.ur_model)
         obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
         obs['vobsr'] = obs['vobsr'].flatten()
-        ind = numpy.where((obs['vobsrt'] > -1000))[0]
+        ind = numpy.where((obs['vobsr'] > -1000))[0]
         if len(ind) > 1:
             obs = make_obs(data, grid, obs, ind)
             grd = make_grid(grid, obs, p.posting)
 
-        # OI
-        grd = perform_oi(grd, obs, p.resol)
-        grd['vobsac'][numpy.abs(grd['ac2']) < 20] = numpy.nan
+            # OI
+            grd = perform_oi_1(grd, obs, p.resol)
+            grd['vobsac'][numpy.abs(grd['ac2']) < 20] = numpy.nan
 
-        grd['vobsx'] = (grd['vobsac'] * numpy.cos(grd['angle'])
-                     + grd['vobsal'] * numpy.cos(grd['angle'] + numpy.pi/2))
-        grd['vobsy'] = (grd['vobsac'] * numpy.sin(grd['angle'])
-                     + grd['vobsal'] * numpy.sin(grd['angle'] + numpy.pi/2))
-        grd['vmodac'][numpy.abs(grd['ac2']) < 20] = numpy.nan
+            grd['vobsx'] = (grd['vobsac'] * numpy.cos(grd['angle'])
+                         + grd['vobsal'] * numpy.cos(grd['angle'] + numpy.pi/2))
+            grd['vobsy'] = (grd['vobsac'] * numpy.sin(grd['angle'])
+                         + grd['vobsal'] * numpy.sin(grd['angle'] + numpy.pi/2))
+            grd['vmodac'][numpy.abs(grd['ac2']) < 20] = numpy.nan
 
-        grd['vmodx'] = (grd['vmodac'] * numpy.cos(grd['angle'])
-                     + grd['vmodal'] * numpy.cos(grd['angle'] + numpy.pi/2))
-        grd['vmody'] = (grd['vmodac'] * numpy.sin(grd['angle'])
-                     + grd['vmodal'] * numpy.sin(grd['angle'] + numpy.pi/2))
-        pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
-        outfile = os.path.join(p.outdatadir, pattern_out)
-        write_l2(outfile, grd, cycle, passn)
+            grd['vmodx'] = (grd['vmodac'] * numpy.cos(grd['angle'])
+                         + grd['vmodal'] * numpy.cos(grd['angle'] + numpy.pi/2))
+            grd['vmody'] = (grd['vmodac'] * numpy.sin(grd['angle'])
+                         + grd['vmodal'] * numpy.sin(grd['angle'] + numpy.pi/2))
+            pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
+            outfile = os.path.join(p.outdatadir, pattern_out)
+            write_l2(outfile, grd, cycle, passn)
