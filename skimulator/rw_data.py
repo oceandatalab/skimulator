@@ -32,6 +32,7 @@ import numpy
 import sys
 import time as ti
 import logging
+import datetime
 version = skimulator.__version__
 logger = logging.getLogger(__name__)
 
@@ -172,6 +173,113 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
     if model_nan is not None:
         T[numpy.where(T == model_nan)] = numpy.nan
     return T
+
+
+def write_l2c(metadata, geolocation, **kwargs):
+    ti = datetime.datetime.now()
+    lat = geolocation['lat']
+    lon = geolocation['lon']
+    tim = geolocation['time']
+    # - Open Netcdf file in write mode
+    fid = Dataset(metadata['file'], 'w', format='NETCDF4_CLASSIC')
+    # - Create Global attribute
+    fid.title = 'SKIM L2C simulated by SKIM simulator'
+    fid.keywords = 'SKIM, Doppler'  # Check keywords
+    fid.Conventions = "CF-1.6"
+    fid.summary = 'SKIM data produced'
+    fid.description = "SKIM fixed swath"
+    fid.Metadata_Conventions = "Unidata Dataset Discovery v1.0"
+    fid.history = 'L2C File created by skimulator version ' + version
+    fid.processing_level = 'L2C'
+    fid.standard_name_vocabulary = "CF-1.6"
+    fid.creator_name = "Lucile Gaultier"
+    fid.creator_email = "lucile.gaultier@gmail.com"
+    fid.publisher_url = ""
+    fid.time_coverage_start = metadata['time_coverage_start']
+    # p.date0+"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
+    fid.time_coverage_end = metadata['time_coverage_end']
+    # p.date0 +"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
+    fid.geospatial_lat_min = "{:.2f}".format(numpy.min(lat))
+    fid.geospatial_lat_max = "{:.2f}".format(numpy.max(lat))
+    fid.geospatial_lat_units = "degrees_north"
+    fid.geospatial_lon_max = "{:.2f}".format(numpy.max(lon))
+    fid.geospatial_lon_min = "{:.2f}".format(numpy.min(lon))
+    fid.geospatial_lon_units = "degrees_east"
+    fid.project = "SKIM"
+    fid.date_created = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
+    fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
+    fid.keywords_vocabulary = ""
+    fid.references = ""
+    fid.cycle = "{0:d}".format(int(metadata['cycle']))
+    fid.track = "{} th pass".format(metadata['pass'])
+    # - Create dimensions
+    # if (not os.path.isfile(self.file)):
+    dimlon = 'xal'
+    dimlat = 'xac'
+    dimtime = 'time'
+    nlon = numpy.shape(lon)[0]
+    nlat = numpy.shape(lat)[1]
+    ntime = None
+    fid.createDimension(dimlon, nlon)
+    # fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
+    fid.createDimension(dimlat, nlat)
+    fid.createDimension(dimtime, ntime)
+    # - Create and write Variables
+    vtime = fid.createVariable('time', 'f8', (dimtime))
+    vtime.axis = "T"
+    vtime.units = "seconds since the beginning of the sampling"
+    vtime.long_name = "Time"
+    vtime.standard_name = "time"
+    vtime.calendar = "gregorian"
+    vtime[:] = tim
+    vlon = fid.createVariable('lon', 'f4', (dimlon, dimlat))
+    vlon.axis = "X"
+    vlon.long_name = "Longitude"
+    vlon.standard_name = "longitude"
+    vlon.units = "degrees_east"
+    vlon[:, :] = lon
+    vlat = fid.createVariable('lat', 'f4', (dimlon, dimlat))
+    vlat.axis = "Y"
+    vlat.long_name = "Latitude"
+    vlat.standard_name = "latitude"
+    vlat.units = "degrees_north"
+    vlat[:, :] = lat
+    longname = { "u_noerr": "Error-free zonal velocity",
+                 "v_noerr": "Error-free meridional velocity",
+                "u_obs": "Observed zonal velocity",
+                "v_obs": "Observed meridional velocity",
+                "u_ac": "Observed across track velocity",
+                "v_ac": "Observed along track velocity",
+                "angle": "angle of xac with eastward vector"
+                }
+    unit = {"u_noerr": "m/s", "u_obs": "m/s", "u_ac": "m/s",
+            "v_noerr": "m/s", "v_obs": "m/s", "v_ac": "m/s",
+            "angle": "rad"
+            }
+    for key, value in kwargs.items():
+        if value is not None:
+            nvar = '{}'.format(key)
+            var = fid.createVariable(nvar, 'f4', (dimlon, dimlat),
+                                     fill_value=-1.36e9)
+            try:
+                var.units = unit[str(key)]
+            except:
+                var.units = ''
+            try:
+                var.long_name = longname[str(key)]
+            except:
+                var.long_name = str(key)
+            if value.any():
+                mask = numpy.isnan(value)
+                value[numpy.where(mask)] = -1.36e9
+                mask_ind = numpy.where(value < -1e7)
+                value[mask_ind] = -1.36e9
+                mask_ind = numpy.where(value > 1e7)
+                value[mask_ind] = -1.36e9
+                mask_ind = numpy.where(value == numpy.PINF)
+                value[mask_ind] = -1.36e9
+                var[:, :] = value
+    fid.close()
 
 
 class Sat_SKIM():
@@ -568,6 +676,50 @@ class Sat_SKIM():
             self.incl = numpy.array(fid.variables['inclination'][:]).squeeze()
         except:
             print('inclination variable not found')
+        fid.close()
+        return None
+
+
+    def load_data(self, p, **kwargs):
+        '''Load swath variables stored in Satellite grid file sgridfile. \n
+        (longitude, latitude, number of days in a cycle, crossed distance
+        during a cycle, time, along track and across track position).'''
+
+        # - Open Netcdf file
+        try:
+            fid = Dataset(self.file, 'r')
+        except IOError:
+            logger.error('There was an error opening the file '
+                         '{}'.format(self.file))
+            sys.exit(1)
+        # fid = Dataset(self.file, 'r')
+        time = []
+        lon = []
+        lat = []
+        # cycle = []
+        # x_al = []
+        #listvar = {'time': time, 'lon': lon, 'lat': lat, }
+        #self.lon = []
+        #self.lat = []
+        #self.time = []
+        # - Read variables in listvar and return them
+        #for stringvar in listvar:
+        #    var = fid.variables['{}{}'.format(stringvar, '_nadir')]
+        #    listvar[stringvar].append(numpy.array(var[:]).squeeze())
+        #    var = fid.variables[stringvar]
+        #    for i in range(len(p.list_pos)):
+        #        listvar[stringvar].append(numpy.array(var[:, i]).squeeze())
+        #    setattr(self, stringvar, listvar[stringvar])
+        # - Read variables in arguments
+        for key, value in kwargs.items():
+            var = fid.variables[key]
+            value = numpy.array(fid.variables[key][:]).squeeze()
+            # value[value == var.fill_value] = numpy.nan
+            setattr(self, key, value)
+        try:
+            self.corresponding_grid = fid.corresponding_grid
+        except AttributeError:
+            pass
         fid.close()
         return None
 

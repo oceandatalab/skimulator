@@ -29,6 +29,8 @@ Rearth = 6378. * 10**3
 deg2km = 111.11
 # - Seconds in a day
 secinday = 86400.
+# - Light speed (m/s)
+C = 2.998*10**8
 
 
 # ###################################
@@ -42,9 +44,11 @@ B = 10
 Fka = 35.75 * 10**9
 # Satellite cycle (S1) in days
 satcycle = 12.
+# Plateform error model for reconstruction in 3D
+theta1 = 0.7E-4
+theta0 = 0.1
+gamma0 = 1E-4
 
-# - Light speed (m/s)
-C = 2.998*10**8
 
 # ###################################
 # # OTHER PARAMETERS               ##
