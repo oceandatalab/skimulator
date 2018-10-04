@@ -450,7 +450,7 @@ class Sat_SKIM():
         fid.close()
         return None
 
-    def write_data(self, p,  **kwargs):
+    def write_data(self, p, outdata): # **kwargs):
         '''Write SKIM data in output file file_output
         Dimensions are x_al (along track distance), x_ac (across
         track distance). \n
@@ -546,29 +546,29 @@ class Sat_SKIM():
                 vtime[:, i - 1] = self.time[i][:]
                 vlon[:, i - 1] = self.lon[i][:]
                 vlat[:, i - 1] = self.lat[i][:]
-        if p.footprint_std == 0 or p.footprint_std is None:
-            longname_std = "Standard deviation of uss on the model domain"
-        else:
-            longname_std = "Standard deviation of uss on a {} km"\
-                             "radius".format(p.footprint_std)
-        longname = {"instr": "Instrumental error",
+        longname = {"sigma0": "sigma0",
                     "ur_model": "Radial velocity interpolated from model",
                     "u_model": "Zonal velocity interpolated from model",
                     "v_model": "Meridional velocity interpolated from model",
                     "ur_obs": "Observed radial velocity (Ur_model+errors)",
                     "index": "Equivalent model output number in list of file",
                     "ur_uss": "Stokes drift radial velocity bias",
-                    "uss_err": "Stokes drift radial velocity bias_corrected",
+                    "uwnd": "Eastward wind at 10m ",
+                    "vwnd": "Northward wind at 10m ",
                     "nadir_err": "Nadir error",
-                    "std_uss": longname_std,
-                    "errdcos": "Weight for uss_err computation"}
-        unit = {"instr": "m/s", "ur_model": "m/s", "ur_obs": "m/s",
-                "index": " ", "ur_uss": "m/s", "uss_err": "m/s",
-                "uss_err": "m/s", "nadir_err": "m/s", "u_model": "m/s",
-                "v_model": "m/s", "std_uss": "m/s", "errdcos": "km",
+                    "ssh_model": "SSH interpolated from model",
+                    "ssh_obs": "Observed SSH",
+                    "ice": "Sea ice concentration",
+                    "uwb": "Current Wave bias"
+                    }
+        unit = {"sigma0": "", "ur_model": "m/s", "ur_obs": "m/s",
+                "index": " ", "ur_uss": "m/s", "uwnd": "m/s",
+                "vwnd": "m/s", "uwb": "m/s", "u_model": "m/s",
+                "v_model": "m/s", "ssh_obs": "m", "ssh_model": "m",
+                "nadir_err": "m", "ssh_obs":"m"
                 }
         list_nadir = {"instr", "nadir_err", "vindice"}
-        for key, value in kwargs.items():
+        for key, value in outdata.items():
             if value is not None:
                 nvar_nadir = '{}_nadir'.format(key)
                 var_nadir = fid.createVariable(nvar_nadir, 'f4', (dimsample, ),
@@ -941,30 +941,37 @@ class WW3():
     def __init__(self, p, ifile=None, varu='ucur', lonu='longitude',
                  latu='latitude', varv='vcur', lonv='longitude',
                  latv='latitude', depth=0, time=0):
-        self.nvaru = varu
-        self.nlonu = lonu
-        self.nlatu = latu
-        self.nvarv = varv
-        self.nlonv = lonv
-        self.nlatv = latv
+        self.nvaru = 'ucur'
+        self.nlonu = 'longitude'
+        self.nlatu = 'latitude'
+        self.nvarv = 'vcur'
+        self.nlonv = self.nlonu
+        self.nlatv = self.nlatv
         self.nfile = ifile
         self.depth = depth
         self.time = time
+        self.input_var = {}
+        self.input_var_list = {'ucur': 'cur', 'vcur': 'cur', 'uuss': 'uss',
+                               'vuss': 'uss', 'ice': 'ice', 'mssd': 'msd',
+                               'mssx': 'mss', 'mssy':'mss', 'wlv': 'wlv',
+                               'uwnd': 'wnd', 'vwnd': 'wnd'}
         self.model_nan = getattr(p, 'model_nan', 0.)
         p.model_nan = self.model_nan
         logger.debug('Nan Values {}, {}'.format(p.model_nan, self.model_nan))
 
+
     def read_var(self, p, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        vel_factor = p.vel_factor
-        self.vvarv = read_var(self.nfile[1], self.nvarv, index=index,
-                              time=self.time, depth=self.depth,
-                              model_nan=self.model_nan) * vel_factor
-        self.vvaru = read_var(self.nfile[0], self.nvaru, index=index,
-                              time=self.time, depth=self.depth,
-                              model_nan=self.model_nan) * vel_factor
+        for key, sufile in self.input_var_list.items():
+            _nfile = '{}{}.nc'.format(self.nfile[0][:6], sufile)
+            if os.path.exists(_nfile):
+                self.input_var[key] = read_var(_nfile, key, index=index,
+                                               time=self.time,
+                                               depth=self.depth,
+                                               model_nan=self.model_nan)
         return None
+
 
     def read_coordinates(self, p, index=None):
         '''Read coordinates from netcdf file \n
@@ -983,6 +990,7 @@ class WW3():
         self.vlonv = (lonv + 360) % 360
         return None
 
+
     def calc_box(self, p):
         '''Calculate subdomain coordinates from netcdf file
         Return minimum, maximum longitude and minimum, maximum latitude'''
@@ -996,3 +1004,39 @@ class WW3():
             lon1 = numpy.min(self.vlonu)
             lon2 = numpy.max(self.vlonu)
         return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
+
+
+    def compute_mss(self):
+        if ('mssx', 'mssy', 'mssd', 'uwnd', 'vwnd' 'uwnd', 'ucur',
+             'vcur') not in self.input_var.key():
+            logger.info('Missing file to compute sigma, instrumental error not'
+                        ' computed')
+            return None
+        else:
+            mssd = numpy.deg2rad(self.input_var['mssd'])
+            mssu = self.input_var['mssx']
+            mssc = self.input_var['mssy']
+            uwnd = self.input_var['uwnd']
+            vwnd = self.input_var['vwnd']
+            ucur = self.input_var['ucur']
+            vcur = self.input_var['vcur']
+            mssxl = mssu * numpy.sin(mssd)**2 + mssc * numpy.cos(mssd)**2
+            mssyl = mssu * numpy.cos(mssd)**2 + mssc * numpy.sin(mssd)**2
+            mssxyl = (mssu - mssc) * numpy.sin(2 * mssd) / 2
+            nwr = numpy.sqrt((uwnd - ucur)**2 + (vwnd - vcur)**2)
+            wrd = numpy.pi / 2 - numpy.tan2(vwnd - vcur, uwnd - ucur)
+            mssshort = numpy.log(nwr + 0.7) * 0.009
+            mssshort[mssshort < 0] = 0
+            #Directionality for short wave mss (if 0.5: isotrophic)
+            facssdw = 0.6
+            mssds = facssdw * mssshort
+            msscs = mssshort - mssds
+            mssxs = msscs * numpy.sin(wrd)**2 + mssds * numpy.cos(wrd)**2
+            mssys = mssds * numpy.sin(wrd)**2 + msscs * numpy.cos(wrd)**2
+            mssxys - abs(mssds - msscs) * numpy.sin(2* wrd)
+            self.input_var['mssx'] = mssxs + mssxl
+            self.input_var['mssy'] = mssys + mssyl
+            self.input_var['mssxy'] = mssxys + mssxyl
+            self.input_var.remove('mssd' )
+
+

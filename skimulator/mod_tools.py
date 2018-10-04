@@ -78,6 +78,12 @@ def initialize_parameters(p):
     p.proc_count = getattr(p, 'proc_number', 1)
     p.resol = getattr(p, 'resol', 40)
     p.posting = getattr(p, 'posting', 5)
+    listo = ['ssh_model', 'ssh_obs', 'ur_true', 'u_true', 'v_true',
+             'radial_angle',
+             'vindice', 'ur_obs', 'mask', 'wind', 'sigma0', 'wind', 'ice_conc']
+    p.list_output = getattr(p, 'list_output', listo)
+    listerr = ['err_instr', 'err_uwb']
+    p.list_err =  getattr(p, 'list_err', listerr)
     return None
 
 
