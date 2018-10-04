@@ -5,6 +5,7 @@ import scipy.interpolate
 import datetime
 import skimulator.const as const
 import skimulator.rw_data as rw
+import skimulator.mod_tools as mod_tools
 
 
 def make_obs(data, grid, obs, ind):
@@ -79,18 +80,7 @@ def perform_oi_1(grd, obs, resol):
                 Ri = std_err**-2
                 RiH = numpy.tile(Ri, (2, 1)).T * H
                 M = numpy.dot(H.T, RiH)
-                #try:
                 Mi = numpy.linalg.inv(M)
-                #except:
-                #    grd['vobsal'][i, j]=eta_obs[0]
-                #    grd['vobsac'][i, j]=eta_obs[1]
-                #    grd['vmodal'][i, j]=eta_mod[0]
-                #    grd['vmodac'][i, j]=eta_mod[1]
-                #    print(i, j, M)
-                    #continue
-                    #print(M)
-                #    import sys
-                #    sys.exit(1)
                 eta_obs = numpy.dot(numpy.dot(Mi, RiH.T), obs['vobsr'][ios])
                 eta_mod = numpy.dot(numpy.dot(Mi, RiH.T), obs['vmodr'][ios])
                 grd['vobsal'][i, j]=eta_obs[0]
@@ -152,14 +142,6 @@ def perform_oi_2(grd, obs, resol):
 
 
 def write_l2(outfile, grd, cycle, passn):
-                grd['vobsal'][i, j]=eta_obs[0]
-                grd['vobsal'][i, j]=eta_obs[0]
-                grd['vobsac'][i, j]=eta_obs[1]
-                grd['vmodal'][i, j]=eta_mod[0]
-                grd['vmodac'][i, j]=eta_mod[1]
-                grd['vobsac'][i, j]=eta_obs[1]
-                grd['vmodal'][i, j]=eta_mod[0]
-                grd['vmodac'][i, j]=eta_mod[1]
     if os.path.exists(outfile):
         os.remove(outfile)
     metadata = {}
@@ -179,14 +161,12 @@ def run_l2c(p):
     pattern = os.path.join(p.outdatadir, '{}_c*'.format(p.config))
     list_file = glob.glob(pattern)
     gpath = os.path.join(p.outdatadir, '{}_grid'.format(p.config))
-
-    p.resol=40. # km
-    p.posting=5. # km
+    mod_tools.initialize_parameters(p)
 
     for ifile in list_file:
         passn = int(ifile[-6:-3])
         cycle = int(ifile[-10:-8])
-        print(ifile, passn, cycle)
+        print(ifile)
         fileg = '{}_p{:03d}.nc'.format(gpath, passn)
         data = rw.Sat_SKIM(ifile=ifile)
         grid = rw.Sat_SKIM(ifile=fileg)
@@ -201,7 +181,7 @@ def run_l2c(p):
         nil, nbeams=numpy.shape(test)
         sbeam_incid=numpy.zeros((nil, nbeams))
         ### TODO Change this
-        obs['vobsr'] = numpy.array(data.ur_model)
+        obs['vobsr'] = numpy.array(data.ur_obs)
         obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
         obs['vobsr'] = obs['vobsr'].flatten()
         ind = numpy.where((obs['vobsr'] > -1000))[0]
