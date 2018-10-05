@@ -420,7 +420,6 @@ def worker_method_skim(*args, **kwargs):
         # Compute uss bias
         #   Compute errdcos if Formula is True
 
-                                                    err_uss)
         # Compute directly bias if formula is False
         # if p.uss is True and p.formula is False:
         #    err_uss2 = compute_errussr(p, sgrid, mask, ur_uss, err_uss)
@@ -428,18 +427,8 @@ def worker_method_skim(*args, **kwargs):
         #    # err_uss.append(err.err_uss)
         #    # , err_uss)
         # err_uss2 should be deleted, spectrum will provide stoke error
-        err_uss2 = err_uss
-        for i in range(0, len(p.list_pos) + 1):
-            make_err = build_error.make_vel_error
-            if err_uss is not None:
-                ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
-                                    err_uss=er_uss2)
-            else:
-                ur_obs_i = make_err(ur_true_all[i], p, instr=err_instr[i],
-                                    err_uss=None)
-            ur_obs.append(ur_obs_i)
         #   Save outputs in a netcdf file
-        if ((~numpy.isnan(numpy.array(vindice_all))).any()
+        if ((~numpy.isnan(numpy.array(output_var['vindice']))).any()
               or not p.file_input):
             sgrid.ncycle = cycle
             try:
