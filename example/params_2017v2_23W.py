@@ -10,15 +10,14 @@ home = expanduser("~") + '/src/'
 dir_setup = os.path.join(home, 'skimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimulator', 'example', 'input_fields')
-indatadir = '/mnt/data/model/ww3_23w/' #netcdf3/'
 # ------ Directory that contains your outputs:
 outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 # ------ Orbit file:
 #filesat = os.path.join(dir_setup,'orbs1a.txt')
-filesat = os.path.join(dir_setup,'orbits1_ifremer')
+filesat = os.path.join(dir_setup,'orbsmetop.txt')
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Name of the configuration (to build output files names) 
-config="WW3_23W_8b60az"
+config="WW3_23W_metop_8b60az"
 
 # -----------------------# 
 # SKIM swath parameters 
@@ -121,15 +120,12 @@ rms_instr = [os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_12.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat'),
              os.path.join(dir_setup, 'instrumentnoise_06.dat')]
-# ------- Stoke drift velocity [beam 12, beam 6]
-uss = True
-input_uss = os.path.join(indatadir, 'list_file_uss.txt')
-G = [50, 50, 50, 50, 50, 50, 50]
-bias_std = 0.09
-errdcos = None
-#[25.2006/20, 25.2747/20, 25.4763/20, 25.4271/20, 19.9728/20]
-footprint_std = 0 #400
-formula = False
+snr_coeff = 3e-3
+
+
+# ------- Wave bias
+uwb = True
+
 
 ## -- Geophysical error
 ## ----------------------
@@ -138,3 +134,7 @@ wet_tropo = True
 # ------ Beam print size (in km):
 #        Gaussian footprint of sigma km
 sigma = 8.
+
+## -- L2C computation
+resol = 40
+posting = 5

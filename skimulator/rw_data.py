@@ -33,6 +33,7 @@ import sys
 import time as ti
 import logging
 import datetime
+import os
 version = skimulator.__version__
 logger = logging.getLogger(__name__)
 
@@ -946,7 +947,7 @@ class WW3():
         self.nlatu = 'latitude'
         self.nvarv = 'vcur'
         self.nlonv = self.nlonu
-        self.nlatv = self.nlatv
+        self.nlatv = self.nlatu
         self.nfile = ifile
         self.depth = depth
         self.time = time
@@ -964,7 +965,8 @@ class WW3():
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
         for key, sufile in self.input_var_list.items():
-            _nfile = '{}{}.nc'.format(self.nfile[0][:6], sufile)
+            nfile0 = self.nfile[0]
+            _nfile = '{}{}.nc'.format(nfile0[:-6], sufile)
             if os.path.exists(_nfile):
                 self.input_var[key] = read_var(_nfile, key, index=index,
                                                time=self.time,
@@ -1007,10 +1009,13 @@ class WW3():
 
 
     def compute_mss(self):
-        if ('mssx', 'mssy', 'mssd', 'uwnd', 'vwnd' 'uwnd', 'ucur',
-             'vcur') not in self.input_var.key():
+        required = ('mssx', 'mssy', 'mssd', 'uwnd', 'vwnd', 'uwnd', 'ucur',
+                    'vcur')
+        missing = [_ for _ in required if _ not in self.input_var.keys()]
+        if 0 < len(missing):
             logger.info('Missing file to compute sigma, instrumental error not'
                         ' computed')
+            logger.info('Missing parameters: {}'.format(', '.join(missing)))
             return None
         else:
             mssd = numpy.deg2rad(self.input_var['mssd'])
@@ -1020,11 +1025,11 @@ class WW3():
             vwnd = self.input_var['vwnd']
             ucur = self.input_var['ucur']
             vcur = self.input_var['vcur']
-            mssxl = mssu * numpy.sin(mssd)**2 + mssc * numpy.cos(mssd)**2
-            mssyl = mssu * numpy.cos(mssd)**2 + mssc * numpy.sin(mssd)**2
+            mssxl = mssu * numpy.cos(mssd)**2 + mssc * numpy.sin(mssd)**2
+            mssyl = mssu * numpy.sin(mssd)**2 + mssc * numpy.cos(mssd)**2
             mssxyl = (mssu - mssc) * numpy.sin(2 * mssd) / 2
             nwr = numpy.sqrt((uwnd - ucur)**2 + (vwnd - vcur)**2)
-            wrd = numpy.pi / 2 - numpy.tan2(vwnd - vcur, uwnd - ucur)
+            wrd = numpy.pi / 2 - numpy.arctan2(vwnd - vcur, uwnd - ucur)
             mssshort = numpy.log(nwr + 0.7) * 0.009
             mssshort[mssshort < 0] = 0
             #Directionality for short wave mss (if 0.5: isotrophic)
@@ -1033,10 +1038,10 @@ class WW3():
             msscs = mssshort - mssds
             mssxs = msscs * numpy.sin(wrd)**2 + mssds * numpy.cos(wrd)**2
             mssys = mssds * numpy.sin(wrd)**2 + msscs * numpy.cos(wrd)**2
-            mssxys - abs(mssds - msscs) * numpy.sin(2* wrd)
+            mssxys = abs(mssds - msscs) * numpy.sin(2* wrd)
             self.input_var['mssx'] = mssxs + mssxl
             self.input_var['mssy'] = mssys + mssyl
             self.input_var['mssxy'] = mssxys + mssxyl
-            self.input_var.remove('mssd' )
+            del self.input_var['mssd']
 
 

@@ -192,8 +192,9 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
     shape_i = numpy.shape(sgrid.lon)[0]
     for key in p.list_output:
         output_var_i[key] = numpy.full(shape_i, numpy.nan)
-    for key in p.list_err:
-        err_var_i[key] = numpy.full(shape_i, numpy.nan)
+    #for key in p.list_err:
+    #    err_var_i[key] = numpy.full(shape_i, numpy.nan)
+    output_var_i['radial_angle'] = radial_angle
 
     date1 = cycle * sgrid.cycle
     # Definition of the time in the model
@@ -255,10 +256,11 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
             model_step = model_step_ctor(p, ifile=(filename_u, filename_v),
                                          varu=p.varu, varv=p.varv,
                                          time=filetime)
+            input_var_i = {}
             if p.grid == 'regular':
                 model_step.read_var(p)
                 model_step.compute_mss()
-                for key in self.input_var.key():
+                for key in model_step.input_var.keys():
                     _indlat = model_data.model_index_latu
                     _tmp = model_step.input_var[key][_indlat, :]
                     input_var_i[key] = _tmp[:, model_data.model_index_lonu]
@@ -266,7 +268,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
             else:
                 model_step.read_var(p, index=None)
                 model_step.compute_mss()
-                for key in self.input_var.key():
+                for key in model_step.input_var.keys():
                     _ind = model_data.model_indexu
                     input_var_i[key] = model_step.input_var[key][_ind]
             # - Interpolate Model data on a SKIM grid and/or along the
@@ -277,7 +279,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                     len(numpy.shape(model_data.vlonu)) == 1:
                 # Flatten satellite grid and select part of the track
                 # corresponding to the model time
-                for key in self.input_var.key():
+                for key in model_step.input_var.keys():
                     _tmp, Teval_u = interpolate_regular_1D(
                                                          model_data.vlonu,
                                                          model_data.vlatu,
@@ -320,7 +322,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                                  lons=model_data.vlonv, lats=model_data.vlatv)
                     grid_def = pr.geometry.SwathDefinition(lons=lon,
                                                            lats=lat)
-                    for key in self.input_var.key():
+                    for key in model_step.input_var.keys():
                         _tmp = interpolate_irregular_pyresample(
                                           swath_defu, input_var_i[key],
                                           grid_def,
@@ -328,23 +330,23 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                                           interp_type=p.interpolation)
                         output_var_i[key][ind_time[0]] = + _tmp
                 except ImportError:
-                    for key in self.input_var.key():
+                    for key in model_step.input_var.keys():
                          _tmp = + input_var_i[key].ravel()
                     interp = interpolate.griddata((lonuravel, laturavel),
                                                   _tmp, (lon[ind_time[0]],
                                                   lat[ind_time[0]]),
                                                   method=p.interpolation)
-                    output_var_i[key][u_true[ind_time[0]] = interp
+                    output_var_i[key][ind_time[0]] = interp
             # Force value outside modelbox at nan
             if modelbox[0] > modelbox[1]:
-                for key in self.input_var.key():
+                for key in model_step.input_var.keys():
                     _ind = numpy.where(~((lon > modelbox[0])
                                        & (lon < modelbox[1]))
                                        | (lat < modelbox[2])
                                        | (lat > modelbox[3]))
                     output_var_i[key][_ind] = numpy.nan
             else:
-                for key in self.input_var.key():
+                for key in model_step.input_var.keys():
                     _ind = numpy.where((lon < modelbox[0])
                                        | (lon > modelbox[1])
                                        | (lat < modelbox[2])
@@ -357,7 +359,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
     output_var_i['ur_true'] = mod_tools.proj_radial(output_var_i['ucur'],
                                                     output_var_i['vcur'],
                                                     radial_angle)
-    output_var_i['ur_obs'] = output_var_i['ur_true']
+    output_var_i['ur_obs'] = + output_var_i['ur_true']
     if p.instr is True:
         # Compute sigma0:
         R2 = 0.5
@@ -371,9 +373,9 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
         coeff = R2 / (2 * numpy.cos(rbeam_angle)**4 * numpy.sqrt(mssx * mssy))
         output_var_i['sigma0'] = coeff * numpy.exp(expo)
         output_var_i['ur_obs'] += p.snr_coeff * output_var_i['sigma0']
-    output_var_i.remove('mssx')
-    output_var_i.remove('mssy')
-    output_var_i.remove('mssxy')
+    del output_var_i['mssx']
+    del output_var_i['mssy']
+    del output_var_i['mssxy']
     # Radial projection
     if p.uwb is True:
         output_var_i['ur_uss'] = mod_tools.proj_radial(output_var_i['uuss'],
@@ -386,7 +388,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
         GP = 0
         output_var_i['uwb'] = GR * output_var_i['ur_uss']
         output_var_i['ur_obs'] +=  output_var_i['uwb']
-    return ur_true, u_true, v_true, vindice, time
+    return output_var_i, time
 
 
 
@@ -394,7 +396,7 @@ def create_nadir_data(ssh, vindice):
     return ssh, vindice
 
 
-def save_SKIM(cycle, sgrid, time, outdata, p)
+def save_SKIM(cycle, sgrid, time, outdata, p):
     file_output = '{}_c{:02d}_p{:03d}.nc'.format(p.file_output, cycle + 1,
                                                  sgrid.ipass)
     OutputSKIM = rw_data.Sat_SKIM(ifile=file_output, lon=sgrid.lon,
@@ -403,6 +405,7 @@ def save_SKIM(cycle, sgrid, time, outdata, p)
     OutputSKIM.gridfile = sgrid.gridfile
     OutputSKIM.ipass = sgrid.ipass
     OutputSKIM.ncycle = sgrid.ncycle
+
     OutputSKIM.write_data(p, outdata) #ur_model=ur_model, index=vindice,
                        #   uss_err=err_uss, ur_uss=ur_uss, std_uss=std_uss,
                        #   nadir_err=[err.nadir, ], ur_obs=ur_obs,

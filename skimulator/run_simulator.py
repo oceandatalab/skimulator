@@ -93,10 +93,7 @@ def run_simulator(p):
         list_file = [line.strip() for line in open(p.file_input)]
     else:
         list_file = None
-    if p.uss is True and p.input_uss is not None:
-        list_file_uss = [line.strip() for line in open(p.input_uss)]
-    else:
-        list_file_uss = None
+    list_file_uss = None
     # - Read model input coordinates '''
     # If a list of model files are specified, read model file coordinates
     if p.file_input is not None:
@@ -253,8 +250,8 @@ def run_simulator(p):
     jobs = []
     p2 = mod_tools.todict(p)
     for sgridfile in listsgridfile:
-        jobs.append([sgridfile, p2, listsgridfile, list_file, list_file_uss,
-                     modelbox, model_data, modeltime, err, errnad])
+        jobs.append([sgridfile, p2, listsgridfile, list_file,
+                     modelbox, model_data, modeltime])
     ok = make_skim_data(p.proc_count, jobs)
 
     # - Write Selected parameters in a txt file
@@ -314,10 +311,19 @@ def make_skim_data(_proc_count, jobs):
 
 
 def worker_method_skim(*args, **kwargs):
+    try:
+        _worker_method_skim(*args, **kwargs)
+    except:
+        import traceback
+        traceback_print_stack()
+        logger.error('bouh failure')
+
+
+def _worker_method_skim(*args, **kwargs):
     _args = list(args)[0]
     msg_queue = _args.pop()
     sgridfile = _args[0]
-    p2, listsgridfile, list_file, list_file_uss, modelbox, model_data, modeltime, err, errnad = _args[1:]
+    p2, listsgridfile, list_file, modelbox, model_data, modeltime = _args[1:]
     p = mod_tools.fromdict(p2)
     #   Load SKIM grid files (Swath and nadir)
     sgrid = mod.load_sgrid(sgridfile, p)
@@ -360,11 +366,11 @@ def worker_method_skim(*args, **kwargs):
             err_var['err_instr'] = []
         if p.uwb is True:
             err_var['err_uwb'] = []
-        if 'radial_angle' in key:
-            output_var_i['radial_angle'] = sgrid.radial_angle
+        #if 'radial_angle' in p.list_output:
+        #    output_var['radial_angle'] = sgrid.radial_angle
         # Loop over the beams
+        time_all = []
         for i in range(len(p.list_pos) + 1):
-            output_var_i = {}
             err_var_i = {}
             sgrid_tmp.lon = sgrid.lon[i]
             sgrid_tmp.lat = sgrid.lat[i]
@@ -372,16 +378,18 @@ def worker_method_skim(*args, **kwargs):
             # If nadir, compute a different noise, not implemented so far,
             # Initialize at zero.
             if i == 0:
+                output_var_i = {}
                 shape_0 = numpy.shape(sgrid_tmp.lon)
                 for key in p.list_output:
                     if ('ssh' not in key) or ('indice' not in key):
                         output_var_i[key ] = numpy.full(shape_0, numpy.nan)
                 for key in p.list_err:
                     output_var_i[key ] = numpy.full(shape_0, numpy.nan)
+                time = sgrid_tmp.time
 
                 # mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
                 #                      numpy.nan)
-                ssh_i, vindice = create_nadir_data()
+                #ssh_i, vindice = create_nadir_data()
             # Interpolate the velocity and compute the noise for each beam
             else:
                 Gvar = p.G[i - 1]
@@ -392,13 +400,14 @@ def worker_method_skim(*args, **kwargs):
                 # Read radial angle for projection on lon, lat reference
                 radial_angle = sgrid.radial_angle[:, i - 1]
 
+
                 ac_angle =  sgrid.angle[:, i - 1]
                 ##############################
                 # Compute SKIM like data data
                 try:
                     shape_all = (numpy.shape(listsgridfile)[0] * rcycle
                                  * (len(p.list_pos) + 1))
-                    create = create_SKIMlikedata(cycle, shape_all, list_file,
+                    create = mod.create_SKIMlikedata(cycle, shape_all, list_file,
                                                  modelbox, sgrid_tmp,
                                                  model_data, modeltime,
                                                  radial_angle, ac_angle,
@@ -410,10 +419,11 @@ def worker_method_skim(*args, **kwargs):
                     e = sys.exc_info()
                     logger.error('bouh', exc_info=e)
                     msg_queue.put((os.getpid(), sgridfile, -1))
-
             # Append variables for each beam
+            time_all.append(time)
             for key in p.list_output:
-                output_var[key].append(output_var_i[key])
+                if key in output_var_i.keys():
+                    output_var[key].append(output_var_i[key])
             #for key in p.list_err:
             #    err_var[key].append(err_var_i[key])
             # ur_obs.append(err.ur_obs)
@@ -432,7 +442,7 @@ def worker_method_skim(*args, **kwargs):
               or not p.file_input):
             sgrid.ncycle = cycle
             try:
-                mod.save_SKIM(cycle, sgrid, time, output_var, p)
+                mod.save_SKIM(cycle, sgrid, time_all, output_var, p)
                           #    time=time, vindice=vindice_all,
                       #ur_model=ur_true_all, ur_obs=ur_obs, std_uss=std_uss,
                       #err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss2,

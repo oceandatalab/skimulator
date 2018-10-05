@@ -43,7 +43,7 @@ B = 10
 # (in Hz)
 Fka = 35.75 * 10**9
 # Satellite cycle (S1) in days
-satcycle = 12.
+satcycle = 29.
 # Plateform error model for reconstruction in 3D
 theta1 = 0.7E-4
 theta0 = 0.1

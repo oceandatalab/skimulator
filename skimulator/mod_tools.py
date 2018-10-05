@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 """
-''' Spectral  and algebra tools  for swot simulator. \n
+''' Spectral  and algebra tools  for SKIM simulator. \n
 Contains the following functions:
 - load_python_file: load and parse parameter file \n
 - gen_signal1d: compute 1d random error from spectrum \n
@@ -78,12 +78,14 @@ def initialize_parameters(p):
     p.proc_count = getattr(p, 'proc_number', 1)
     p.resol = getattr(p, 'resol', 40)
     p.posting = getattr(p, 'posting', 5)
-    listo = ['ssh_model', 'ssh_obs', 'ur_true', 'u_true', 'v_true',
-             'radial_angle',
-             'vindice', 'ur_obs', 'mask', 'wind', 'sigma0', 'wind', 'ice_conc']
+    listo = ['wlv', 'ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss',
+             'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
+             'vindice', 'ur_obs', 'mask', 'uwnd', 'sigma0', 'ice']
     p.list_output = getattr(p, 'list_output', listo)
     listerr = ['err_instr', 'err_uwb']
     p.list_err =  getattr(p, 'list_err', listerr)
+    p.uwb =  getattr(p, 'uwb', True)  #TODO: remove this
+    p.snr_coeff = getattr(p, 'snr_coeff', 3e-3)
     return None
 
 
@@ -241,7 +243,7 @@ def todict(p):
 
 
 def fromdict(result):
-    p = type('swotparam', (object,), result)
+    p = type('skimparam', (object,), result)
     return p
 
 
