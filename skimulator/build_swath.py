@@ -78,7 +78,9 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
         lat_hr = numpy.zeros(len(x_hr)) + numpy.nan
         lon_hr, lat_hr = mod_tools.cart2sphervect(x_hr, y_hr, z_hr)
         # Cut orbit if more than an orbit cycle
-        ind = numpy.where((time_hr < const.satcycle * const.secinday))
+        if p.satcycle is None:
+            p.satcycle = const.satcycle
+        ind = numpy.where((time_hr < p.satcycle * const.secinday))
         volon = lon_hr[ind]
         volat = lat_hr[ind]
         votime = time_hr[ind]

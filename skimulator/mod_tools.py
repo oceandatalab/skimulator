@@ -69,11 +69,11 @@ def initialize_parameters(p):
     p.vel_factor = getattr(p, 'vel_factor', 1.)
     p.nadir = getattr(p, 'nadir', True)
     p.grid = getattr(p, 'grid', 'regular')
+    # TODO remove rms_instr_factor
     p.rms_instr_factor = getattr(p, 'rms_instr_factor', 1)
     p.cycle = getattr(p, 'cycle', 0.0368)
-    p.formula = getattr(p, 'formula', False)
-    p.footprint_std = getattr(p, 'footprint_std', 0)
     p.order_orbit_col = getattr(p, 'order_orbit_col', None)
+    p.satcycle = getattr(p, 'satcycle', None)
     p.ice_mask = getattr(p, 'ice_mask', True)
     p.proc_count = getattr(p, 'proc_number', 1)
     p.resol = getattr(p, 'resol', 40)
@@ -82,8 +82,8 @@ def initialize_parameters(p):
              'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
              'vindice', 'ur_obs', 'mask', 'uwnd', 'sigma0', 'ice']
     p.list_output = getattr(p, 'list_output', listo)
-    listerr = ['err_instr', 'err_uwb']
-    p.list_err =  getattr(p, 'list_err', listerr)
+    # listerr = ['err_instr', 'err_uwb']
+    # p.list_err =  getattr(p, 'list_err', listerr)
     p.uwb =  getattr(p, 'uwb', True)  #TODO: remove this
     p.snr_coeff = getattr(p, 'snr_coeff', 3e-3)
     return None

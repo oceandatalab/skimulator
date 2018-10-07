@@ -358,9 +358,9 @@ def _worker_method_skim(*args, **kwargs):
             output_var[key] = []
         # Initialize noise to None if this noise is not computed
         # (so that the variable is not written in the netcdf)
-        err_var = {}
-        for key in p.list_err:
-            err_var[key] = None
+        # err_var = {}
+        # for key in p.list_err:
+        #     err_var[key] = None
         # Initialize noises to empty lists if the noise is set to True
         if p.instr is True:
             err_var['err_instr'] = []
@@ -383,8 +383,8 @@ def _worker_method_skim(*args, **kwargs):
                 for key in p.list_output:
                     if ('ssh' not in key) or ('indice' not in key):
                         output_var_i[key ] = numpy.full(shape_0, numpy.nan)
-                for key in p.list_err:
-                    output_var_i[key ] = numpy.full(shape_0, numpy.nan)
+                # for key in p.list_err:
+                #     output_var_i[key ] = numpy.full(shape_0, numpy.nan)
                 time = sgrid_tmp.time
 
                 # mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
