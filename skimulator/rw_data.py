@@ -398,7 +398,7 @@ class Sat_SKIM():
         vx_al_nadir = fid.createVariable('x_al_nadir', 'f4', (dimsample,))
         vx_al_nadir.units = "km"
         vx_al_nadir.long_name = "Nadir along track distance from the"\
-                                "beginning of the pass"
+                                "beginning of the cycle"
         vangle = fid.createVariable('angle', 'f4', (dimsample, dimnbeam))
         vangle.units = "rad"
         vangle.long_name = "Angle of the beam refered to the across track"\

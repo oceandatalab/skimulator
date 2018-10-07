@@ -372,7 +372,11 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                 - numpy.sin(2 * radial_angle) * mssxy))
         coeff = R2 / (2 * numpy.cos(rbeam_angle)**4 * numpy.sqrt(mssx * mssy))
         output_var_i['sigma0'] = coeff * numpy.exp(expo)
-        output_var_i['ur_obs'] += p.snr_coeff * output_var_i['sigma0']
+        coeff_random = p.snr_coeff * output_var_i['sigma0']
+        cshape = numpy.shape(coeff_random)
+        center = numpy.zeros(cshape)
+        output_var_i['instr'] = numpy.random(cshape, coeff_random, cshape)
+        output_var_i['ur_obs'] += output_var_i['instr']
     del output_var_i['mssx']
     del output_var_i['mssy']
     del output_var_i['mssxy']
@@ -389,7 +393,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
         output_var_i['uwb'] = GR * output_var_i['ur_uss']
         output_var_i['ur_obs'] +=  output_var_i['uwb']
     return output_var_i, time
-
 
 
 def create_nadir_data(ssh, vindice):
