@@ -14,7 +14,7 @@ indatadir = os.path.join(home, 'skimulator', 'example', 'input_fields')
 outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 # ------ Orbit file:
 #filesat = os.path.join(dir_setup,'orbs1a.txt')
-filesat = os.path.join(dir_setup,'orbsmetop.txt')
+filesat = os.path.join(dir_setup,'orbmetop.txt')
 # ------ Number of days in orbit
 satcycle = 29
 # ------ Order of columns (lon, lat, time) in orbit file
@@ -42,13 +42,18 @@ makesgrid = True
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox =  [329.,347., -8.,8.]
+modelbox =  None #[329.,347., -8.,8.]
 #------- Rotation speed of the antenna (in tr/min)
-rotation_speed = 4.52
-# rotation_speed = 5.66
-# rotation_speed = 1.89
+if '2018_8a' in config:
+    rotation_speed = 4.52
+if '2018_8b' in config:
+    rotation_speed = 5.66
+if '2018_8c' in config:
+    rotation_speed = 1.89
 # Cycle duration
 cycle = 0.0368
+if '2018_8b' in config:
+    cycle = 0.0368 / 2.
 # cycle = 0.0368 / 2. # for 512 pulses configuration
 #------- List of position of beams:
 
@@ -117,9 +122,9 @@ file_output = os.path.join(outdatadir, config)
 #        as it is faster and use less memory.)
 interpolation = 'linear'
 # ------ List of output variables:
-list_output = ['wlv', 'ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss',
+list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
                'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
-               'vindice', 'ur_obs', 'mask', 'uwnd', 'sigma0', 'ice']
+               'vindice', 'ur_obs', 'uwnd', 'sigma0']
 # -----------------------# 
 # SKIM error parameters 
 # -----------------------# 
@@ -137,7 +142,9 @@ ncomp2d = 2000
 instr = True
 # ------- Coefficient SNR to retrieve instrumental noise from sigma, 
 #         Recommanded value for 1024 pulses: 3e-2, for 512 pulses: 3sqrt(2)e-3
-snr_coeff = 3e-3
+snr_coeff = 6e-3
+if '2018_8b' in config:
+    snr_coeff = 1.4142*6e-3
 
 # ------- Wave bias
 uwb = True
