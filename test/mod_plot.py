@@ -73,7 +73,7 @@ def plot_variable(listfile, nvar, modelbox, output):
         ax.set_global()
         norder = 1
     #ax.add_feature(cartopy.feature.OCEAN, zorder=norder)
-    #ax.add_feature(cartopy.feature.LAND, zorder=norder, edgecolor='black')
+    ax.add_feature(cartopy.feature.LAND, zorder=norder, edgecolor='black')
     gl = ax.gridlines(crs=transform, draw_labels=True, color='gray',
                        linestyle='--', alpha=0.5)
     gl.xlabels_top = False
@@ -88,20 +88,24 @@ def plot_variable(listfile, nvar, modelbox, output):
         lon_nadir = numpy.mod(lon_nadir + 180.0, 360) - 180.0
         lat_nadir = data['lat_nadir'][:]
         var = data[nvar][:]
-        print(numpy.shape(var))
         radial_angle = data['radial_angle'][:]
         data.close()
         for i in range(numpy.shape(lon)[1]):
+            if var[:, i].mask.all():
+                continue
             try:
                 pyplot.scatter(lon[:, i], lat[:, i], c=var[:, i], cmap='jet',
                            vmin=-1, vmax=1, s=1,
                        #color=listcolor[0], markersize=1,
                            transform=transform)
             except:
-                print(ifile, i)
+                continue
         pyplot.plot(lon_nadir, lat_nadir, '.', color=listcolor[4], markersize=1,
                     transform=transform)
-    pyplot.colorbar()
+    try:
+        pyplot.colorbar()
+    except:
+        pass
     # Save figure
     # pyplot.savefig(output)
     return fig
@@ -123,7 +127,7 @@ def plot_vectors(listfile, nvar, modelbox, output, scale=20):
         ax.set_global()
         norder = 1
     #ax.add_feature(cartopy.feature.OCEAN, zorder=norder)
-    #ax.add_feature(cartopy.feature.LAND, zorder=norder, edgecolor='black')
+    ax.add_feature(cartopy.feature.LAND, zorder=norder, edgecolor='black')
     gl = ax.gridlines(crs=transform, draw_labels=True, color='gray',
                        linestyle='--', alpha=0.5)
     gl.xlabels_top = False
