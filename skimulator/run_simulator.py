@@ -60,11 +60,12 @@ import skimulator.build_error as build_error
 import skimulator.mod_tools as mod_tools
 import skimulator.const as const
 import skimulator.mod_run as mod
+import skimulator.mod_uwb_corr as mod_uwb_corr
 import multiprocessing
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
-#logger = multiprocessing.log_to_stderr()
-#logger.setLevel(logging.DEBUG)
+# logger = multiprocessing.log_to_stderr()
+# logger.setLevel(logging.DEBUG)
 
 # - Define global variables for progress bars
 istep = 0
@@ -201,15 +202,15 @@ def run_simulator(p):
         model_data.vloncircv = numpy.rad2deg(numpy.unwrap(model_data.vlonv))
         # If corrdinates are 1D and local std needs to be computed for uss bias
         # Grid coordinates in 2D
-        if (p.uss is True and p.footprint_std is not None
-             and p.footprint_std != 0):
-            if len(numpy.shape(model_data.vlonu)) == 1:
-                model_data.lon2D, model_data.lat2D = numpy.meshgrid(
-                                                        model_data.vlonu,
-                                                        model_data.vlatu)
-            else:
-                model_data.lon2D = model_data.vlonu
-                model_data.lat2D = model_data.vlatu
+        # if (p.uss is True and p.footprint_std is not None
+        #     and p.footprint_std != 0):
+        #    if len(numpy.shape(model_data.vlonu)) == 1:
+        #        model_data.lon2D, model_data.lat2D = numpy.meshgrid(
+        #                                                model_data.vlonu,
+        #                                                model_data.vlatu)
+        #    else:
+        #        model_data.lon2D = model_data.vlonu
+        #        model_data.lat2D = model_data.vlatu
     else:
         model_data = []
 
@@ -228,7 +229,7 @@ def run_simulator(p):
         logger.info("-----------------------------------------------")
 
     # Initialize errors
-    err, errnad = mod.load_error(p)
+    # err, errnad = mod.load_error(p)
 
     # - Compute interpolated velocity and errors for each pass, at each
     #   cycle
@@ -311,15 +312,6 @@ def make_skim_data(_proc_count, jobs):
 
 
 def worker_method_skim(*args, **kwargs):
-    try:
-        _worker_method_skim(*args, **kwargs)
-    except:
-        import traceback
-        traceback_print_stack()
-        logger.error('bouh failure')
-
-
-def _worker_method_skim(*args, **kwargs):
     _args = list(args)[0]
     msg_queue = _args.pop()
     sgridfile = _args[0]
@@ -363,9 +355,9 @@ def _worker_method_skim(*args, **kwargs):
         #     err_var[key] = None
         # Initialize noises to empty lists if the noise is set to True
         if p.instr is True:
-            err_var['err_instr'] = []
+            output_var['instr'] = []
         if p.uwb is True:
-            err_var['err_uwb'] = []
+            output_var['uwb'] = []
         #if 'radial_angle' in p.list_output:
         #    output_var['radial_angle'] = sgrid.radial_angle
         # Loop over the beams
@@ -389,12 +381,9 @@ def _worker_method_skim(*args, **kwargs):
 
                 # mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
                 #                      numpy.nan)
-                #ssh_i, vindice = create_nadir_data()
+                #ssh_i, vindice = create_nadir_data()numpy create a mask from an a
             # Interpolate the velocity and compute the noise for each beam
             else:
-                Gvar = p.G[i - 1]
-                # Instrument noise file
-                rms_instr = p.rms_instr[i - 1]
                 #Beam angle value to correct for attenuation in radial velocity
                 beam_angle = p.list_angle[i - 1]
                 # Read radial angle for projection on lon, lat reference
@@ -424,10 +413,16 @@ def _worker_method_skim(*args, **kwargs):
             for key in p.list_output:
                 if key in output_var_i.keys():
                     output_var[key].append(output_var_i[key])
-            #for key in p.list_err:
-            #    err_var[key].append(err_var_i[key])
-            # ur_obs.append(err.ur_obs)
-        # Compute uss bias
+        # Compute correction with errdcos formulae
+
+        if p.uwb is True:
+            #ouput_var['uwb_corr']
+            _tmp = mod_uwb_corr.compute_erruwb(p, sgrid, output_var)
+            output_var['uwb_corr'] = _tmp
+            for i in range(len(output_var['ur_obs'])):
+                output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]
+                                               + output_var['uwb_corr'][i][:])
+
         #   Compute errdcos if Formula is True
 
         # Compute directly bias if formula is False

@@ -1,20 +1,5 @@
-'''Main program:
-Usage: run_simulator(file_param)  \n
-If no param file is specified, the default one is exemple/params_exemple.txt \n
-In the first part of the program, model coordinates are read and the
-SKIM swath is computing accordingly. \n
-The SKIM grid parameters are saved in netcdf files, if you don't want to
-recompute them, set maksgrid (in params file) to False.\n
+'''Module to create one beam data:
 
-In the second part of the program, errors are computed on SKIM grid for
-each pass, for each cycle. The error free velocity is the velocity interpolated
-from the model at each timestep. Note that there is no temporal interpolation
-between model files and thus if several files are used in the velocity
-interpolation, some discontinuities may be visible. \n
-
-OUTPUTS are netcdf files containing the requested errors, the error free
-radial velocity and the radial velocity with errors. There is one file every
-pass and every cycle.
 
 \n
 \n
@@ -340,7 +325,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
             # Force value outside modelbox at nan
             if modelbox[0] > modelbox[1]:
                 for key in model_step.input_var.keys():
-                    _ind = numpy.where(~((lon > modelbox[0])
+                    _ind = numpy.where(((lon > modelbox[0])
                                        & (lon < modelbox[1]))
                                        | (lat < modelbox[2])
                                        | (lat > modelbox[3]))
@@ -375,7 +360,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
         coeff_random = p.snr_coeff * output_var_i['sigma0']
         cshape = numpy.shape(coeff_random)
         center = numpy.zeros(cshape)
-        output_var_i['instr'] = numpy.random(cshape, coeff_random, cshape)
+        output_var_i['instr'] = numpy.random.rand(cshape[0]) * coeff_random
         output_var_i['ur_obs'] += output_var_i['instr']
     del output_var_i['mssx']
     del output_var_i['mssy']
@@ -387,11 +372,12 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                                                         radial_angle)
         nwr = numpy.sqrt((output_var_i['uwnd'] - output_var_i['ucur'])**2
                          + (output_var_i['vwnd'] - output_var_i['vcur'])**2)
+        nwr[nwr==0] = numpy.nan
         _angle = numpy.deg2rad((beam_angle - 25) / 10)
         GR = 25 * (0.82 * numpy.log(0.2 + 7/nwr)) * (1 - numpy.tanh(_angle))
         GP = 0
         output_var_i['uwb'] = GR * output_var_i['ur_uss']
-        output_var_i['ur_obs'] +=  output_var_i['uwb']
+        #output_var_i['ur_obs'] +=  output_var_i['uwb']
     return output_var_i, time
 
 

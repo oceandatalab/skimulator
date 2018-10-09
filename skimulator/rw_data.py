@@ -554,6 +554,8 @@ class Sat_SKIM():
                     "ur_obs": "Observed radial velocity (Ur_model+errors)",
                     "index": "Equivalent model output number in list of file",
                     "ur_uss": "Stokes drift radial velocity bias",
+                    "uwb": "Wave bias componant",
+                    "uwb_corr": "Remaining wave bias current after inversion",
                     "uwnd": "Eastward wind at 10m ",
                     "vwnd": "Northward wind at 10m ",
                     "nadir_err": "Nadir error",
@@ -566,29 +568,40 @@ class Sat_SKIM():
                 "index": " ", "ur_uss": "m/s", "uwnd": "m/s",
                 "vwnd": "m/s", "uwb": "m/s", "u_model": "m/s",
                 "v_model": "m/s", "ssh_obs": "m", "ssh_model": "m",
-                "nadir_err": "m", "ssh_obs":"m"
+                "nadir_err": "m", "ssh_obs":"m", "uwb_corr": "m/s"
                 }
-        list_nadir = {"instr", "nadir_err", "vindice"}
+        list_nadir = ("nadir_err", "ssh_true", "ssh_obs")
         for key, value in outdata.items():
             if value is not None:
-                nvar_nadir = '{}_nadir'.format(key)
-                var_nadir = fid.createVariable(nvar_nadir, 'f4', (dimsample, ),
-                                               fill_value=-1.36e9)
-                nvar = '{}'.format(key)
-                var = fid.createVariable(nvar, 'f4', (dimsample, dimnbeam),
-                                         fill_value=-1.36e9)
-                try:
-                    var.units = unit[str(key)]
-                    var_nadir.units = unit[str(key)]
-                except:
-                    var.units = ''
-                    var_nadir.units = ''
-                try:
-                    var.long_name = longname[str(key)]
-                    var_nadir.long_name = longname[str(key)]
-                except:
-                    var.long_name = str(key)
-                    var_nadir.long_name = str(key)
+                if key in list_nadir or key == "vindice" or key == "instr":
+                    nvar_nadir = '{}_nadir'.format(key)
+                    var_nadir = fid.createVariable(nvar_nadir, 'f4',
+                                                   (dimsample, ),
+                                                   fill_value=-1.36e9)
+                    try:
+                        var_nadir.units = unit[str(key)]
+                    except:
+                        var_nadir.units = ''
+                    try:
+                        var_nadir.long_name = longname[str(key)]
+                    except:
+                        var_nadir.long_name = str(key)
+                if value not in list_nadir:
+                    nvar = '{}'.format(key)
+                    var = fid.createVariable(nvar, 'f4', (dimsample, dimnbeam),
+                                             fill_value=-1.36e9)
+                    try:
+                        var.units = unit[str(key)]
+                        var_nadir.units = unit[str(key)]
+                    except:
+                        var.units = ''
+                        var_nadir.units = ''
+                    try:
+                        var.long_name = longname[str(key)]
+                        var_nadir.long_name = longname[str(key)]
+                    except:
+                        var.long_name = str(key)
+                        var_nadir.long_name = str(key)
                 for i in range(len(value)):
                     if value[i].any():
                         value_tmp = value[i][:]
@@ -603,7 +616,7 @@ class Sat_SKIM():
                         mask_ind = numpy.where(value_tmp == numpy.PINF)
                         value_tmp[mask_ind] = -1.36e9
                         if i == 0:
-                            if key in list_nadir:
+                            if key in list_nadir or key == "vindex" or key == 'instr':
                                 var_nadir[:] = value_tmp
                             else:
                                 continue
