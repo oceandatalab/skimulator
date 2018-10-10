@@ -143,5 +143,9 @@ wet_tropo = False
 
 ## -- L2C computation
 ## ----------------------
+# Length to select neighbors (in km)
 resol = 40
+# Grid resolution (in km)
 posting = 5
+# Remove noisy data in the center (in km)
+ac_threshold = 20

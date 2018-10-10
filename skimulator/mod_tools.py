@@ -86,6 +86,7 @@ def initialize_parameters(p):
     # p.list_err =  getattr(p, 'list_err', listerr)
     p.uwb =  getattr(p, 'uwb', True)  #TODO: remove this
     p.snr_coeff = getattr(p, 'snr_coeff', 3e-3)
+    p.ac_threshold = getattr(p, 'ac_threshold', 20)  # in km
     return None
 
 
