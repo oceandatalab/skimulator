@@ -37,7 +37,7 @@ C = 2.998*10**8
 # # SKIM INSTRUMENT CARACTERISTICS ##
 # ###################################
 # - Satellite elevation (m)
-sat_elev = 699*10**3
+sat_elev = 817*10**3
 # - Baseline (m)
 B = 10
 # (in Hz)

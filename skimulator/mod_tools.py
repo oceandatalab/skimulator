@@ -74,6 +74,7 @@ def initialize_parameters(p):
     p.cycle = getattr(p, 'cycle', 0.0368)
     p.order_orbit_col = getattr(p, 'order_orbit_col', None)
     p.satcycle = getattr(p, 'satcycle', None)
+    p.sat_elev = getattr(p, 'sat_elev', None)
     p.ice_mask = getattr(p, 'ice_mask', True)
     p.proc_count = getattr(p, 'proc_number', 1)
     p.resol = getattr(p, 'resol', 40)

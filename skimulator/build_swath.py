@@ -365,6 +365,9 @@ def worker_method_grid(*args, **kwargs):
     omega = p.rotation_speed * 2 * math.pi / 60.
     # Number of beam to lighten:
     nbeam = len(p.list_shift) + 1
+    sat_elev= p.sat_elev
+    if sat_elev is None:
+        sat_elev = const.sat_elev
     # Detect indices corresponding to the pass
     if ipass == numpy.shape(passtime)[0]-1:
         ind = numpy.where((stime >= passtime[ipass]))[0]
@@ -410,7 +413,7 @@ def worker_method_grid(*args, **kwargs):
             # Angle projected on the earth
             rc = (const.Rearth * (beam * math.pi/180
                   - numpy.arcsin(const.Rearth * numpy.sin(math.pi - beam
-                  * math.pi/180) / (const.Rearth + const.sat_elev)))
+                  * math.pi/180) / (const.Rearth + sat_elev)))
                   * 10**(-3))
             timebeamshift = timenad[shift::nbeam]
             beam_angle = omega * timebeamshift + angle

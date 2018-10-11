@@ -17,6 +17,9 @@ outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 filesat = os.path.join(dir_setup,'orbmetop.txt')
 # ------ Number of days in orbit
 satcycle = 29
+# ------ Satellite elevation
+sat_elev = 817 * 10e3
+#sat_elev = 699 * 10e3
 # ------ Order of columns (lon, lat, time) in orbit file
 # (default is (0, 1, 2) with order_orbit_col = None)
 order_orbit_col = None
