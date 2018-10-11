@@ -115,5 +115,5 @@ setup(name=__package_name__,
       setup_require=(),
       entry_points={'console_scripts': cmds},
       extras_require=optional_dependencies,
-      package_data=pkg_data,
+      #package_data=pkg_data,
       )
