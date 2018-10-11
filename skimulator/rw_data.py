@@ -549,8 +549,8 @@ class Sat_SKIM():
                 vlat[:, i - 1] = self.lat[i][:]
         longname = {"sigma0": "sigma0",
                     "ur_model": "Radial velocity interpolated from model",
-                    "u_model": "Zonal velocity interpolated from model",
-                    "v_model": "Meridional velocity interpolated from model",
+                    "ucur": "Zonal velocity interpolated from model",
+                    "vcur": "Meridional velocity interpolated from model",
                     "ur_obs": "Observed radial velocity (Ur_model+errors)",
                     "index": "Equivalent model output number in list of file",
                     "ur_uss": "Stokes drift radial velocity bias",
@@ -559,18 +559,18 @@ class Sat_SKIM():
                     "uwnd": "Eastward wind at 10m ",
                     "vwnd": "Northward wind at 10m ",
                     "nadir_err": "Nadir error",
-                    "ssh_model": "SSH interpolated from model",
+                    "wlv": "SSH interpolated from model",
                     "ssh_obs": "Observed SSH",
                     "ice": "Sea ice concentration",
                     "uwb": "Current Wave bias"
                     }
         unit = {"sigma0": "", "ur_model": "m/s", "ur_obs": "m/s",
                 "index": " ", "ur_uss": "m/s", "uwnd": "m/s",
-                "vwnd": "m/s", "uwb": "m/s", "u_model": "m/s",
-                "v_model": "m/s", "ssh_obs": "m", "ssh_model": "m",
+                "vwnd": "m/s", "uwb": "m/s", "ucur": "m/s",
+                "vcur": "m/s", "ssh_obs": "m", "wlv": "m",
                 "nadir_err": "m", "ssh_obs":"m", "uwb_corr": "m/s"
                 }
-        list_nadir = ("nadir_err", "ssh_true", "ssh_obs")
+        list_nadir = ("nadir_err", "wlv", "ssh_obs")
         for key, value in outdata.items():
             if value is not None:
                 if key in list_nadir or key == "vindice" or key == "instr":

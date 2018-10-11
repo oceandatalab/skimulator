@@ -5,7 +5,7 @@
 from os.path import expanduser
 import os
 import math
-home = expanduser("~") + '/src/'
+home = expanduser("~")
 # ------ Directory that contains orbit file:
 dir_setup = os.path.join(home, 'skimulator', 'data')
 # ------ Directory that contains your own inputs:
