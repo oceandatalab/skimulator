@@ -99,7 +99,7 @@ def check_path(p):
         sys.exit(1)
     if os.path.isdir(p.outdatadir) is False:
         logger.warn('Output directory {} did not exist and was '
-                    'created'.format(p.dir_setup))
+                    'created'.format(p.outdatadir))
         os.makedirs(p.outdatadir)
     filesat_path = os.path.join(p.dir_setup, p.filesat)
     if os.path.isfile(filesat_path) is False:
