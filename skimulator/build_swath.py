@@ -419,12 +419,14 @@ def worker_method_grid(*args, **kwargs):
             beam_angle = omega * timebeamshift + angle
             xal = -(rc * numpy.sin(beam_angle)) / const.deg2km
             xac = (rc * numpy.cos(beam_angle)) / const.deg2km
+            sign_ac = 1
             # Even pass: descending
             if ((ipass + 1) % 2 == 0):
                 # inclination = -inclination_angle[shift::nbeam] + math.pi
                 inclination = inclination_angle[shift::nbeam]
                 inclination_save = inclination_angle[0::nbeam]
                 radial_angle = -beam_angle + inclination - math.pi/2.
+                sign_ac = -1
             # Odd pass: ascending
             else:
                 inclination = math.pi + inclination_angle[shift::nbeam]
@@ -440,7 +442,7 @@ def worker_method_grid(*args, **kwargs):
             # Concatenate list for each beam angle
             lon_beam.append(lon_tmp)
             lat_beam.append(lat_tmp)
-            xal_beam.append(xal * const.deg2km)
+            xal_beam.append(xal * const.deg2km * sign_ac)
             xac_beam.append(xac * const.deg2km)
             xal_beam_tot.append(sgrid.x_al[shift::nbeam])
             time_beam.append(timebeamshift)
