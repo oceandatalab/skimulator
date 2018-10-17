@@ -7,10 +7,10 @@ import os
 import math
 home = expanduser("~")
 # ------ Name of the configuration (to build output files names) 
-config="WW3_23W_metop_2018_6a"
+config="WW3_AT_metop_2018_6a"
 # 6 beams, 60 azimuths, 1024 pulses and cycle length of 37 ms
 # ------ Directory that contains orbit file:
-dir_setup = os.path.join(home, 'skimsimulator', 'data')
+dir_setup = os.path.join(home, 'skimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimulator', 'example', 'input_fields')
 # ------ Directory that contains your outputs:
@@ -20,8 +20,10 @@ outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 filesat = os.path.join(dir_setup,'orbmetop.txt')
 # ------ Number of days in orbit
 satcycle = 29
+#satcycle = 12
 # ------ Satellite elevation
-sat_elev = 817*10**3
+sat_elev = 817 * 10e3
+#sat_elev = 699 * 10e3
 # ------ Order of columns (lon, lat, time) in orbit file
 # (default is (0, 1, 2) with order_orbit_col = None)
 order_orbit_col = None
@@ -71,6 +73,8 @@ file_input = os.path.join(indatadir, 'list_of_file.txt')
 #	 (Optional, default is NETCDF_MODEL and reads netcdf3 and netcdf4 files)
 #	 (Other options are ROMS, NEMO and CLS to read Nemo, roms or CLS)
 model = 'WW3'
+# ------ First time of the model
+first_time = '2011-11-15T00:00:00Z'
 # ------ Specify if there is a ice mask for high latitudes
 #        (if true, mask is recomputed at each cycle)
 ice_mask = False
@@ -145,9 +149,9 @@ wet_tropo = False
 
 ## -- L2C computation
 ## ----------------------
-# Length to select neighbors (in km)
+# Length resolution to select neighbors (in km)
 resol = 40
-# Grid resolution (in km)
+# Grid resolution for L2C (in km)
 posting = 5
-# Remove noisy data in the center (in km)
+# Remove noisy data around nadir (in km)
 ac_threshold = 20

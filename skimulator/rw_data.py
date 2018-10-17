@@ -228,7 +228,7 @@ def write_l2c(metadata, geolocation, **kwargs):
     # - Create and write Variables
     vtime = fid.createVariable('time', 'f8', (dimtime))
     vtime.axis = "T"
-    vtime.units = "seconds since the beginning of the sampling"
+    vtime.units = "seconds since".format(metadata['first_time'])
     vtime.long_name = "Time"
     vtime.standard_name = "time"
     vtime.calendar = "gregorian"
@@ -362,13 +362,13 @@ class Sat_SKIM():
         # - Create and write Variables
         vtime = fid.createVariable('time', 'f8', (dimsample, dimnbeam))
         vtime.axis = "T"
-        vtime.units = "seconds since the beginning of the sampling"
+        vtime.units = "seconds since {}".format(p.first_time)
         vtime.long_name = "Time"
         vtime.standard_name = "time"
         vtime.calendar = "gregorian"
         vtime_nadir = fid.createVariable('time_nadir', 'f8', (dimsample,))
         vtime_nadir.axis = "T"
-        vtime_nadir.units = "seconds since the beginning of the sampling"
+        vtime_nadir.units = "seconds since {}".format(p.first_time)
         vtime_nadir.long_name = "Time at nadir"
         vtime_nadir.standard_name = "time"
         vtime_nadir.calendar = "gregorian"

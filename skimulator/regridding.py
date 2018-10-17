@@ -267,15 +267,21 @@ def interpolate_model(p, model_data, list_model_step, grd, list_obs,
 
 
 
-def write_l2(outfile, grd, cycle, passn):
+def write_l2(outfile, grd, cycle, passn, firsttime):
     if os.path.exists(outfile):
         os.remove(outfile)
     metadata = {}
     metadata['file'] = outfile
-    metadata['time_coverage_start'] = '20170101'
-    metadata['time_coverage_end'] = '20170101'
+    dateformat = '%Y-%m-%dT%H:%M:%SZ'
+    time_model = datetime.datetime.strptime(firsttime, '%Y-%m-%dT%H:%M:%SZ')
+    time0 = time_model + datetime.timedelta(0, grd['time'][0])
+    time1 = time_model + datetime.timedelta(0, grd['time'][-1])
+
+    metadata['time_coverage_start'] = time0.strftime(format=dateformat)
+    metadata['time_coverage_end'] = time1.strftime(format=dateformat)
     metadata['cycle'] = cycle
     metadata['pass'] = passn
+    metadata['first_time'] = firsttime
     #geolocation = {}
     #geolocation['lon']
     rw.write_l2c(metadata, grd, u_ac_obs=grd['vobsac'], u_al_obs=grd['vobsal'],
@@ -361,7 +367,7 @@ def run_l2c(p):
                          + grd['vmodal'] * numpy.sin(grd['angle'] + numpy.pi/2))
             pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
             outfile = os.path.join(p.outdatadir, pattern_out)
-            write_l2(outfile, grd, cycle, passn)
+            write_l2(outfile, grd, cycle, passn, p.first_time)
     __ = mod_tools.update_progress(1, 'All passes have been processed', '')
     logger.info("\n Simulated skim files have been written in "
                 "{}".format(p.outdatadir))
