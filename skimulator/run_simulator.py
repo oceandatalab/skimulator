@@ -90,27 +90,7 @@ def run_simulator(p):
     '''
 
     # - Read list of user model files """
-    if p.file_input is not None:
-        list_file = [line.strip() for line in open(p.file_input)]
-    else:
-        list_file = None
-    list_file_uss = None
-    # - Read model input coordinates '''
-    # If a list of model files are specified, read model file coordinates
-    if p.file_input is not None:
-
-        model_data_ctor = getattr(rw_data, model)
-        _filename = list_file[0].split(',')
-        if len(_filename) > 1:
-            filename_u = os.path.join(p.indatadir, _filename[0])
-            filename_v = os.path.join(p.indatadir, _filename[1])
-        else:
-            filename_u = os.path.join(p.indatadir, _filename[0])
-            filename_v = os.path.join(p.indatadir, _filename[0])
-        #filename = os.path.join(p.indatadir, list_file[0])
-        model_data = model_data_ctor(p, ifile=(filename_u, filename_v),
-                                     lonu=p.lonu, lonv=p.lonv, latu=p.latu,
-                                     latv=p.latv)
+    model_data, list_file = mod.load_coordinate_model(p)
     # if no modelbox is specified (modelbox=None), the domain of the input
     # data is taken as a modelbox
     # coordinates from the region defined by modelbox are selected

@@ -86,6 +86,30 @@ def load_sgrid(sgridfile, p):
     return sgrid
 
 
+def load_coordinate_model(p):
+    model = p.model
+    if p.file_input is not None:
+        list_file = [line.strip() for line in open(p.file_input)]
+    else:
+        list_file = None
+    # - Read model input coordinates '''
+    # If a list of model files are specified, read model file coordinates
+    if p.file_input is not None:
+        model_data_ctor = getattr(rw_data, model)
+        _filename = list_file[0].split(',')
+        if len(_filename) > 1:
+            filename_u = os.path.join(p.indatadir, _filename[0])
+            filename_v = os.path.join(p.indatadir, _filename[1])
+        else:
+            filename_u = os.path.join(p.indatadir, _filename[0])
+            filename_v = os.path.join(p.indatadir, _filename[0])
+        #filename = os.path.join(p.indatadir, list_file[0])
+        model_data = model_data_ctor(p, ifile=(filename_u, filename_v),
+                                     lonu=p.lonu, lonv=p.lonv, latu=p.latu,
+                                     latv=p.latv)
+    return model_data, list_file
+
+
 def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
     ''' Interpolation of data when grid is regular and coordinate in 1D. '''
     # To correct for IDL issues
@@ -153,10 +177,12 @@ def interpolate_irregular_pyresample(swath_in, var, grid_out, radius,
     import pyresample as pr
     interp = pr.kd_tree.resample_nearest
     if interp_type == 'nearest':
+        interp = pr.kd_tree.resample_nearest
         radius_n = radius * 10**3
         var_out = interp(swath_in, var, grid_out, radius_of_influence=radius_n,
                          epsilon=100)
     else:
+        interp = pr.kd_tree.resample_gauss
         radius_g = radius * 3 * 10**3
         sigma_g = radius * 10**3
         var_out = interp(swath_in, var, grid_out, radius_of_influence=radius_g,
@@ -311,7 +337,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                         _tmp = interpolate_irregular_pyresample(
                                           swath_defu, input_var_i[key],
                                           grid_def,
-                                          p.delta_al,
+                                          p.posting,
                                           interp_type=p.interpolation)
                         output_var_i[key][ind_time[0]] = + _tmp
                 except ImportError:

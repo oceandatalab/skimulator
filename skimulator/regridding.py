@@ -6,6 +6,9 @@ import datetime
 import skimulator.const as const
 import skimulator.rw_data as rw
 import skimulator.mod_tools as mod_tools
+import skimulator.mod_run as mod
+import logging
+logger = logging.getLogger(__name__)
 
 
 def make_obs(data, grid, obs, ind):
@@ -19,6 +22,7 @@ def make_obs(data, grid, obs, ind):
     obs['lat_nadir'] = numpy.array(data.lat_nadir[:])
     obs['time'] = numpy.array(data.time).flatten()[ind] #+ (cycle-1)*self.tcycle 
     obs['time_nadir'] = numpy.array(data.time_nadir[:])
+    obs['vindice'] = numpy.array(data.vindice).flatten()[ind]
 
     obs['dir'] = numpy.mod(grid.angle + numpy.pi/2, 2*numpy.pi).flatten()[ind]
     obs['angle'] = numpy.mod(grid.radial_angle, 2*numpy.pi).flatten()[ind]
@@ -30,7 +34,7 @@ def make_obs(data, grid, obs, ind):
     return obs
 
 
-def across_track(lon, lat, posting, max_ac):
+def across_track(lon, lat, posting, max_ac, desc=False):
     npoints = 1
     nind = len(lon)
     SatDir = numpy.zeros((int(nind/npoints), 3))
@@ -73,7 +77,6 @@ def across_track(lon, lat, posting, max_ac):
             new_lon[i, nhalfswath-j], new_lat[i, nhalfswath-j] = cs
     new_lon = new_lon[:, ::-1]
     new_lat = new_lat[:, ::-1]
-#    ac = ac[::-1]
     return new_lon, new_lat, ac
 
 
@@ -99,7 +102,9 @@ def make_grid(grid, obs, posting, desc=False):
                                       (grd['al']), method='linear')
     lat = scipy.interpolate.griddata(obs['al_nadir'], obs['lat_nadir'],
                                       (grd['al']), method='linear')
-    grd['lon'], grd['lat'], grd['ac'] = across_track(lon, lat, posting, max_ac + grd['dal'])
+    grd['lon'], grd['lat'], grd['ac'] = across_track(lon, lat, posting,
+                                                     max_ac + grd['dal'],
+                                                     desc=desc)
     grd['ac2'], grd['al2'] = numpy.meshgrid(grd['ac'], grd['al'])
     grd['nal'], grd['nac'] = numpy.shape(grd['ac2'])
     grd['time'] = scipy.interpolate.griddata(obs['al_nadir'], obs['time_nadir'],
@@ -136,10 +141,13 @@ def perform_oi_1(grd, obs, resol, desc=False):
                 Mi = numpy.linalg.inv(M)
                 eta_obs = numpy.dot(numpy.dot(Mi, RiH.T), obs['vobsr'][ios])
                 eta_mod = numpy.dot(numpy.dot(Mi, RiH.T), obs['vmodr'][ios])
-                grd['vobsal'][i, j]=eta_obs[0]
-                grd['vobsac'][i, j]=eta_obs[1]
-                grd['vmodal'][i, j]=eta_mod[0]
-                grd['vmodac'][i, j]=eta_mod[1]
+                j2 = j
+                if desc is True:
+                    j2 = grd['nac'] - 1 - j
+                grd['vobsal'][i, j2]=eta_obs[0]
+                grd['vobsac'][i, j2]=eta_obs[1]
+                grd['vmodal'][i, j2]=eta_mod[0]
+                grd['vmodac'][i, j2]=eta_mod[1]
     return grd
 
 """
@@ -193,6 +201,71 @@ def perform_oi_2(grd, obs, resol):
 """
 
 
+def read_model(p, indice):
+    model_data, list_file = mod.load_coordinate_model(p)
+    model_data.read_coordinates(p)
+    list_model_step = []
+    for ifile in indice:
+        nfile = int(ifile /p.dim_time)
+        filetime = ifile - nfile * p.dim_time
+        _tmpfilename = list_file[nfile].split(',')
+        if len(_tmpfilename) > 1:
+            filename_u = os.path.join(p.indatadir, _tmpfilename[0])
+            filename_v = os.path.join(p.indatadir, _tmpfilename[1])
+        else:
+            filename_u = os.path.join(p.indatadir, _tmpfilename[0])
+            filename_v = os.path.join(p.indatadir, _tmpfilename[0])
+
+        model_step_ctor = getattr(rw, p.model)
+        model_step = model_step_ctor(p, ifile=(filename_u, filename_v),
+                                     time=filetime)
+        model_step.read_var(p)
+        list_model_step.append(model_data)
+    return model_data, list_model_step, list_file
+
+
+def interpolate_model(p, model_data, list_model_step, grd, list_obs,
+                      desc=False):
+    import pyresample as pr
+    model_data.vlonu = pr.utils.wrap_longitudes(model_data.vlonu)
+    lon = pr.utils.wrap_longitudes(grd['lon'])
+    if len(numpy.shape(model_data.vlonu)) <= 1:
+        model_data.vlonu, model_data.vlatu = numpy.meshgrid(model_data.vlonu,
+                                                            model_data.vlatu)
+        if p.lonu == p.lonv:
+            model_data.vlonv = model_data.vlonu
+            model_data.vlatv = model_data.vlatu
+        else:
+            model_data.vlonv, model_data.vlatv = numpy.meshgrid(model_data.vlonu,
+                                                                model_data.vlatu)
+    swath_defu = pr.geometry.SwathDefinition(lons=model_data.vlonu,
+                                             lats=model_data.vlatu)
+    swath_defv = pr.geometry.SwathDefinition(lons=model_data.vlonv,
+                                             lats=model_data.vlatv)
+    grd['u_model'] = numpy.full(numpy.shape(grd['lat']), numpy.nan)
+    grd['v_model'] = numpy.full(numpy.shape(grd['lat']), numpy.nan)
+    for i in range(len(list_model_step)):
+        model_step = list_model_step[i]
+        if desc is False:
+            ind_lat = numpy.where(grd['lat']> list_obs[i])
+        else:
+            ind_lat = numpy.where(grd['lat']< list_obs[i])
+        model_step.read_var(p)
+        grid_def = pr.geometry.SwathDefinition(lons=lon[ind_lat],
+                                               lats=grd['lat'][ind_lat])
+        var = model_step.input_var['ucur']
+        _tmp = mod.interpolate_irregular_pyresample(swath_defu, var, grid_def,
+                                                    p.posting,
+                                                    interp_type=p.interpolation)
+        grd['u_model'][ind_lat] = _tmp
+        var = model_step.input_var['vcur']
+        _tmp = mod.interpolate_irregular_pyresample(swath_defu, var,
+                                                    grid_def, p.posting,
+                                                    interp_type=p.interpolation)
+        grd['v_model'][ind_lat] = _tmp
+    return grd
+
+
 
 def write_l2(outfile, grd, cycle, passn):
     if os.path.exists(outfile):
@@ -205,9 +278,11 @@ def write_l2(outfile, grd, cycle, passn):
     metadata['pass'] = passn
     #geolocation = {}
     #geolocation['lon']
-    rw.write_l2c(metadata, grd, u_ac=grd['vobsac'], u_al=grd['vobsal'],
+    rw.write_l2c(metadata, grd, u_ac_obs=grd['vobsac'], u_al_obs=grd['vobsal'],
+                 u_ac_model=grd['vmodac'], u_al_model=grd['vmodal'],
                  angle=grd['angle'], u_obs=grd['vobsx'], v_obs=grd['vobsy'],
-                 u_mod=grd['vmodx'], v_mod=grd['vmody'])
+                 u_model=grd['vmodx'], v_model=grd['vmody'],
+                 u_true=grd['u_model'], v_true=grd['v_model'])
 
 
 def run_l2c(p):
@@ -215,21 +290,26 @@ def run_l2c(p):
     list_file = glob.glob(pattern)
     gpath = os.path.join(p.outdatadir, '{}_grid'.format(p.config))
     mod_tools.initialize_parameters(p)
-
+    iterate = 0
     for ifile in list_file:
+        progress = iterate / numpy.float(len(list_file))
+        arg1 = os.path.basename(ifile)
+        arg2 = '{} {} {}'.format(progress, iterate, len(list_file))
+        arg2 = ''
+        mod_tools.update_progress(progress, arg1, arg2)
+        iterate += 1
         passn = int(ifile[-6:-3])
         if passn % 2 == 0:
             desc = True
         else:
             desc = False
         cycle = int(ifile[-10:-8])
-        print(ifile)
         fileg = '{}_p{:03d}.nc'.format(gpath, passn)
         data = rw.Sat_SKIM(ifile=ifile)
         grid = rw.Sat_SKIM(ifile=fileg)
         data.load_data(p, ur_true=[], ur_obs=[], instr=[], ucur=[],
                        vcur=[], time=[], lon_nadir=[], lat_nadir=[],
-                       lon=[], lat=[], time_nadir=[])
+                       lon=[], lat=[], time_nadir=[], vindice=[])
         grid.load_swath(p, radial_angle=[], angle=[], x_al=[], x_al_nadir=[],
                         x_ac=[])
 
@@ -251,6 +331,22 @@ def run_l2c(p):
 
             # OI
             grd = perform_oi_1(grd, obs, p.resol, desc=desc)
+            vindice = obs['vindice']
+            diff_indice = vindice[1:] - vindice[:-1]
+            ind = numpy.where(diff_indice != 0)[0]
+            first_lat = numpy.min(grd['lat'])
+            if desc is True:
+                first_lat = numpy.max(grd['lat'])
+
+            if ind.any():
+                vindice = [obs['vindice'][0], obs['vindice'][ind + 1]]
+                ind_lat = [first_lat, obs['lat'][ind + 1]]
+            else:
+                vindice = [obs['vindice'][0],]
+                ind_lat = [first_lat,]
+            model_data, model_step, list_file2 = read_model(p, vindice)
+            grd = interpolate_model(p, model_data, model_step, grd, ind_lat,
+                                    desc=desc)
             ac_thresh = p.ac_threshold
             grd['vobsac'][numpy.abs(grd['ac2']) < ac_thresh] = numpy.nan
             grd['vobsx'] = (grd['vobsac'] * numpy.cos(grd['angle'])
@@ -265,3 +361,6 @@ def run_l2c(p):
             pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
             outfile = os.path.join(p.outdatadir, pattern_out)
             write_l2(outfile, grd, cycle, passn)
+    __ = mod_tools.update_progress(1, 'All passes have been processed', '')
+    logger.info("\n Simulated skim files have been written in "
+                "{}".format(p.outdatadir))

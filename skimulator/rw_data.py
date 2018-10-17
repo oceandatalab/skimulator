@@ -249,13 +249,21 @@ def write_l2c(metadata, geolocation, **kwargs):
                  "v_noerr": "Error-free meridional velocity",
                 "u_obs": "Observed zonal velocity",
                 "v_obs": "Observed meridional velocity",
-                "u_ac": "Observed across track velocity",
-                "v_ac": "Observed along track velocity",
-                "angle": "angle of xac with eastward vector"
+                "u_ac_obs": "Observed across track velocity",
+                "u_al_obs": "Observed along track velocity",
+                "u_model": "Error-free zonal velocity",
+                "v_model": "Error-free meridional velocity",
+                "u_ac_model": "Error-free across track velocity",
+                "u_al_model": "Error-free along track velocity",
+                "angle": "angle of xac with eastward vector",
+                "u_true": "True zonal velocity",
+                "v_true": "True meridional velocity",
                 }
-    unit = {"u_noerr": "m/s", "u_obs": "m/s", "u_ac": "m/s",
-            "v_noerr": "m/s", "v_obs": "m/s", "v_ac": "m/s",
-            "angle": "rad"
+    unit = {"u_noerr": "m/s", "u_obs": "m/s", "u_ac_obs": "m/s",
+            "v_noerr": "m/s", "v_obs": "m/s", "u_al_obs": "m/s",
+            "angle": "rad", "u_model": "m/s", "v_model": "m/s",
+            "u_ac_model": "m/s", "u_al_model": "m/s",
+            "u_true": "m/s", "v_true": "m/s",
             }
     for key, value in kwargs.items():
         if value is not None:
@@ -736,146 +744,6 @@ class Sat_SKIM():
             pass
         fid.close()
         return None
-
-
-class NEMO():
-    '''Class to read NEMO data \n
-    USAGE is NEMO(file=name of file ,var= variable name,
-    lon=longitude name, lat=latitude name, depth= depth name,
-    time=time name).\n
-    Argument file is mandatory, other arguments have default
-    values var='sossheig', lon='nav_lon', lat='nav_lat', depth='depth',
-    time='time. \n'''
-    def __init__(self, p, ifile=None, varu='vomecrtx', lonu='nav_lonu',
-                 latu='nav_latu', varv='vozocrty', lonv='nav_lonv',
-                 latv='nav_latv', time='time', depth='depth'):
-        self.nvar = varu
-        self.nlon = lonu
-        self.nlat = latu
-        self.nvar = varv
-        self.nlon = lonv
-        self.nlat = latv
-        self.ntime = time
-        self.nfile = ifile
-        self.p = p
-        self.ndepth = depth
-        self.model_nan = getattr(p, 'model_nan', 0)
-        p.model_nan = self.model_nan
-
-    def read_var(self, index=None):
-        '''Read variables from NEMO file \n
-        Argument is index=index to load part of the variable.'''
-        vel_factor = self.p.vel_factor
-        self.vvaru = read_var(self.nfile, self.nvaru, index=index, time=0,
-                              depth=0, model_nan=self.model_nan)*vel_factor
-        self.vvarv = read_var(self.nfile, self.nvarv, index=index, time=0,
-                              depth=0, model_nan=self.model_nan)*vel_factor
-        return None
-
-    def read_coordinates(self, index=None):
-        '''Read coordinates from NEMO file \n
-        Argument is index=index to load part of the variable.'''
-        if self.p.grid == 'regular':
-            lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
-                                          twoD=False)
-            lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
-                                          twoD=False)
-        else:
-            lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu)
-            lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv)
-
-        self.vlatu = latu
-        self.vlonu = (lonu + 360) % 360
-        self.vlatv = latv
-        self.vlonv = (lonv + 360) % 360
-        return None
-
-    def calc_box(self):
-        '''Calculate subdomain coordinates from NEMO file
-        Return minimum, maximum longitude and minimum, maximum latitude'''
-        self.read_coordinates()
-        if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
-            _ind = numpy.where(self.vlonu > 180.)
-            self.vlonu[_ind] = self.vlonu[_ind] - 360
-            lon1 = (numpy.min(self.vlon) + 360) % 360
-            lon2 = (numpy.max(self.vlon) + 360) % 360
-            if lon1 == lon2:
-                lon1 = 0
-                lon2 = 360
-        else:
-            lon1 = numpy.min(self.vlon)
-            lon2 = numpy.max(self.vlon)
-        return [lon1, lon2, numpy.min(self.vlat), numpy.max(self.vlat)]
-
-
-class ROMS():
-    '''Class to read ROMS data \n
-    USAGE is ROMS(file=name of file ,var= variable name,
-    lon=longitude name, lat=latitude name, depth= depth name,
-    time=time name).\n
-    Argument file is mandatory, other arguments have default
-    values var='rho', lon='x_rho', lat='y_rho', depth='depth',
-    time='time. \n
-    Variable units is specified in params file and default value
-    is True (coordinates in degree). \n
-    If units is False (coordinates in km), specify left
-    low corner of the domain (lon0, lat0) in params file.'''
-    def __init__(self, p, ifile=None, varu='u', varv='v', depth='depth',
-                 time='time', lonu='lon_u', latu='lat_u', lonv='lon_v',
-                 latv='lat_v'):
-        self.nvaru = varu
-        self.nlonu = lonu
-        self.nlatu = latu
-        self.nvarv = varv
-        self.nlonv = lonv
-        self.nlatv = latv
-        self.ntime = time
-        self.nfile = ifile
-        self.p = p
-        self.ndepth = depth
-        self.model_nan = getattr(p, 'model_nan', 0)
-        p.model_nan = self.model
-
-    def read_var(self, index=None):
-        '''Read variables from ROMS file\n
-        Argument is index=index to load part of the variable.'''
-        vel_factor = self.p.vel_factor
-        self.vvaru = read_var(self.nfile, self.nvaru, index=index, time=0,
-                              depth=0, model_nan=self.model_nan) * vel_factor
-        self.vvarv = read_var(self.nfile, self.nvarv, index=index, time=0,
-                              depth=0, model_nan=self.model_nan) * vel_factor
-        return None
-
-    def read_coordinates(self, index=None):
-        '''Read coordinates from ROMS file \n
-        Argument is index=index to load part of the variable.'''
-        if self.p.grid == 'regular':
-            lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu,
-                                          twoD=False)
-            lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv,
-                                          twoD=False)
-        else:
-            lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu)
-            lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv)
-        self.vlatu = latu
-        self.vlonu = (lonu + 360) % 360
-        self.vlatv = latv
-        self.vlonv = (lonv + 360) % 360
-        return None
-
-    def calc_box(self):
-        '''Calculate subdomain coordinates from ROMS file
-        Return minimum, maximum longitude and minimum, maximum latitude'''
-        self.read_coordinates()
-        if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlon) > 359.):
-            ind = numpy.where(self.vlonu > 180.)
-            self.vlonu[ind] = self.vlonu[ind] - 360
-            lon1 = (numpy.min(self.vlonu) + 360) % 360
-            lon2 = (numpy.max(self.vlonu) + 360) % 360
-        else:
-            lon1 = numpy.min(self.vlonu)
-            lon2 = numpy.max(self.vlonu)
-        return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
 
 
 class NETCDF_MODEL():

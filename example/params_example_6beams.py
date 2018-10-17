@@ -5,9 +5,12 @@
 from os.path import expanduser
 import os
 import math
-home = expanduser("~") + '/src/'
+home = expanduser("~")
+# ------ Name of the configuration (to build output files names) 
+config="WW3_23W_metop_2018_6a"
+# 6 beams, 60 azimuths, 1024 pulses and cycle length of 37 ms
 # ------ Directory that contains orbit file:
-dir_setup = os.path.join(home, 'skimulator', 'data')
+dir_setup = os.path.join(home, 'skimsimulator', 'data')
 # ------ Directory that contains your own inputs:
 indatadir = os.path.join(home, 'skimulator', 'example', 'input_fields')
 # ------ Directory that contains your outputs:
@@ -17,14 +20,13 @@ outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 filesat = os.path.join(dir_setup,'orbmetop.txt')
 # ------ Number of days in orbit
 satcycle = 29
+# ------ Satellite elevation
+sat_elev = 817*10**3
 # ------ Order of columns (lon, lat, time) in orbit file
 # (default is (0, 1, 2) with order_orbit_col = None)
 order_orbit_col = None
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
-# ------ Name of the configuration (to build output files names) 
-config="WW3_23W_metop_2018_6a"
-# 6 beams, 60 azimuths, 1024 pulses and cycle length of 37 ms
-# Number of processor for parallelisation
+# ------ Number of processor for parallelisation
 proc_count = 1
 
 # -----------------------# 
@@ -93,7 +95,7 @@ dim_time = 24
 timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 30*24
+nstep = 35*24
 # ------ Not a number value:
 model_nan = -32767.
 
@@ -110,7 +112,7 @@ file_output = os.path.join(outdatadir, config)
 interpolation = 'linear'
 # ------ List of output variables:
 list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
-               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
+               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb','wlv',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
 # -----------------------# 
 # SKIM error parameters 
