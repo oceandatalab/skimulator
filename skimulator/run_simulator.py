@@ -353,7 +353,7 @@ def worker_method_skim(*args, **kwargs):
                 output_var_i = {}
                 shape_0 = numpy.shape(sgrid_tmp.lon)
                 for key in p.list_output:
-                    if ('ssh' not in key) or ('indice' not in key) or ('wlv' not in key):
+                    if ('ssh' not in key) or ('indice' not in key):
                         output_var_i[key ] = numpy.full(shape_0, numpy.nan)
                 # for key in p.list_err:
                 #     output_var_i[key ] = numpy.full(shape_0, numpy.nan)

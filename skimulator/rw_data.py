@@ -697,7 +697,7 @@ class Sat_SKIM():
         try:
             self.incl = numpy.array(fid.variables['inclination'][:]).squeeze()
         except:
-            print('inclination variable not found')
+            logger.info('inclination variable not found')
         fid.close()
         return None
 
@@ -753,12 +753,20 @@ class NETCDF_MODEL():
     Argument file is mandatory, arguments var, lon, lat
     are specified in params file. \n
     '''
-    def __init__(self, p, ifile=None, varu='u', lonu='lon_u', latu='lat_u',
-                 varv='v', lonv='lon_v', latv='lat_v', depth=0, time=0):
-        self.nvaru = varu
+    def __init__(self, p, ifile=None, list_input_var=None, lonu='longitude',
+                 latu='latitude', lonv='longitude', latv='latitude', depth=0,
+                 time=0):
+        if p.list_input_var is None:
+            logger.error('Specify your list_input_var in parameter file')
+            sys.exit(1)
+            self.input_var_list = {'ucur': ['uo', ''],
+                                   'vcur': ['vo', ''],
+                                   }
+        else:
+            self.input_var_list = p.list_input_var
+        self.input_var = {}
         self.nlonu = lonu
         self.nlatu = latu
-        self.nvarv = varv
         self.nlonv = lonv
         self.nlatv = latv
         self.nfile = ifile
@@ -771,13 +779,14 @@ class NETCDF_MODEL():
     def read_var(self, p, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        vel_factor = p.vel_factor
-        self.vvarv = read_var(self.nfile[1], self.nvarv, index=index,
-                              time=self.time, depth=self.depth,
-                              model_nan=self.model_nan) * vel_factor
-        self.vvaru = read_var(self.nfile[0], self.nvaru, index=index,
-                              time=self.time, depth=self.depth,
-                              model_nan=self.model_nan) * vel_factor
+        for key, value in self.input_var_list.items():
+            nfile0 = self.nfile[0]
+            _nfile = '{}{}.nc'.format(nfile0, value[1])
+            if os.path.exists(_nfile):
+                self.input_var[key] = read_var(_nfile, value[0], index=index,
+                                               time=self.time,
+                                               depth=self.depth,
+                                               model_nan=self.model_nan)
         # self.vvar[numpy.where(numpy.isnan(self.vvar))]=0
         return None
 
@@ -820,23 +829,31 @@ class WW3():
     Argument file is mandatory, arguments var, lon, lat
     are specified in params file. \n
     '''
-    def __init__(self, p, ifile=None, varu='ucur', lonu='longitude',
-                 latu='latitude', varv='vcur', lonv='longitude',
+    def __init__(self, p, ifile=None, list_input_var=None, lonu='longitude',
+                 latu='latitude', lonv='longitude',
                  latv='latitude', depth=0, time=0):
-        self.nvaru = 'ucur'
         self.nlonu = 'longitude'
         self.nlatu = 'latitude'
-        self.nvarv = 'vcur'
         self.nlonv = self.nlonu
         self.nlatv = self.nlatu
         self.nfile = ifile
         self.depth = depth
         self.time = time
+        if list_input_var is None:
+            self.input_var_list = {'ucur': ['ucur', 'cur'],
+                                   'vcur': ['vcur', 'cur'],
+                                   'uuss': ['uuss', 'uss'],
+                                   'vuss': ['vuss', 'uss'],
+                                   'ice': ['ice', 'ice'],
+                                   'mssd': ['mssd', 'msd'],
+                                   'mssx': ['mssx', 'mss'],
+                                   'mssy':['mssy', 'mss'],
+                                   'ssh': ['wlv', 'wlv'],
+                                   'uwnd': ['uwnd', 'wnd'],
+                                   'vwnd': ['vwnd', 'wnd']}
+        else:
+            self.input_var_list = p.list_input_var
         self.input_var = {}
-        self.input_var_list = {'ucur': 'cur', 'vcur': 'cur', 'uuss': 'uss',
-                               'vuss': 'uss', 'ice': 'ice', 'mssd': 'msd',
-                               'mssx': 'mss', 'mssy':'mss', 'wlv': 'wlv',
-                               'uwnd': 'wnd', 'vwnd': 'wnd'}
         self.model_nan = getattr(p, 'model_nan', 0.)
         p.model_nan = self.model_nan
         logger.debug('Nan Values {}, {}'.format(p.model_nan, self.model_nan))
@@ -845,11 +862,11 @@ class WW3():
     def read_var(self, p, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        for key, sufile in self.input_var_list.items():
+        for key, value in self.input_var_list.items():
             nfile0 = self.nfile[0]
-            _nfile = '{}{}.nc'.format(nfile0[:-6], sufile)
+            _nfile = '{}{}.nc'.format(nfile0[:-6], value[1])
             if os.path.exists(_nfile):
-                self.input_var[key] = read_var(_nfile, key, index=index,
+                self.input_var[key] = read_var(_nfile, value[0], index=index,
                                                time=self.time,
                                                depth=self.depth,
                                                model_nan=self.model_nan)

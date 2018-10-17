@@ -265,12 +265,13 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
 
             model_step_ctor = getattr(rw_data, model_data.model)
             model_step = model_step_ctor(p, ifile=(filename_u, filename_v),
-                                         varu=p.varu, varv=p.varv,
+                                         list_input_var=p.list_input_var,
                                          time=filetime)
             input_var_i = {}
             if p.grid == 'regular':
                 model_step.read_var(p)
-                model_step.compute_mss()
+                if p.instr is True:
+                    model_step.compute_mss()
                 for key in model_step.input_var.keys():
                     _indlat = model_data.model_index_latu
                     _tmp = model_step.input_var[key][_indlat, :]
@@ -278,7 +279,8 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
 
             else:
                 model_step.read_var(p, index=None)
-                model_step.compute_mss()
+                if p.instr is True:
+                    model_step.compute_mss()
                 for key in model_step.input_var.keys():
                     _ind = model_data.model_indexu
                     input_var_i[key] = model_step.input_var[key][_ind]
@@ -388,9 +390,9 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
         center = numpy.zeros(cshape)
         output_var_i['instr'] = numpy.random.rand(cshape[0]) * coeff_random
         output_var_i['ur_obs'] += output_var_i['instr']
-    del output_var_i['mssx']
-    del output_var_i['mssy']
-    del output_var_i['mssxy']
+    # del output_var_i['mssx']
+    # del output_var_i['mssy']
+    # del output_var_i['mssxy']
     # Radial projection
     if p.uwb is True:
         output_var_i['ur_uss'] = mod_tools.proj_radial(output_var_i['uuss'],

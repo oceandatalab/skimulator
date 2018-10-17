@@ -82,11 +82,13 @@ ice_mask = False
 #        'regular' or 'irregular', if 'regular' only 1d coordinates 
 #        are extracted from model       
 grid = 'regular'
-# ------ Specify velocities variable:
-varu = 'ucur'
-varv = 'vcur'
-# ------ Specify factor to convert velocity values in m/s:
-vel_factor = 1.
+# ------ Specify list of variable:
+list_input_var = {'ucur': ['ucur', 'cur'], 'vcur': ['vcur', 'cur'],
+                  'uuss': ['uuss', 'uss'], 'vuss': ['vuss', 'uss'],
+                  'ice': ['ice', 'ice'], 'mssd': ['mssd', 'msd'],
+                  'mssx': ['mssx', 'mss'], 'mssy':['mssy', 'mss'],
+                  'ssh': ['wlv', 'wlv'],
+                  'uwnd': ['uwnd', 'wnd'], 'vwnd': ['vwnd', 'wnd']}
 # ------ Specify longitude variable:
 lonu = 'longitude'
 lonv = 'longitude'
@@ -116,7 +118,7 @@ file_output = os.path.join(outdatadir, config)
 interpolation = 'linear'
 # ------ List of output variables:
 list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
-               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb','wlv',
+               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb','ssh',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
 # -----------------------# 
 # SKIM error parameters 
