@@ -339,8 +339,9 @@ def run_l2c(p):
                 first_lat = numpy.max(grd['lat'])
 
             if ind.any():
-                vindice = [obs['vindice'][0], obs['vindice'][ind + 1]]
-                ind_lat = [first_lat, obs['lat'][ind + 1]]
+                vindice = [obs['vindice'][0], obs['vindice'][ind[0] + 1]]
+                ind_lat = [first_lat, obs['lat'][ind[0] + 1]]
+                print(ind, ind[0])
             else:
                 vindice = [obs['vindice'][0],]
                 ind_lat = [first_lat,]
