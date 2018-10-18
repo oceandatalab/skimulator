@@ -6,6 +6,13 @@ from os.path import expanduser
 import os
 import math
 home = expanduser("~")
+# ------ Name of the configuration (to build output files names) 
+# 8 beams, 45 azimuths, 1024 pulses and cycle length of 37 ms
+config = "WW3_23W_metop_2018_8a"
+# 8 beams, 72 azimuths, 0512 pulses and cycle length of 18 ms
+# config = "WW3_23W_metop_2018_8b"
+# 8 beams, 108 azimuths, 1024 pulses and cycle length of 37 ms
+# config = "WW3_23W_metop_2018_8c"
 # ------ Directory that contains orbit file:
 dir_setup = os.path.join(home, 'skimulator', 'data')
 # ------ Directory that contains your own inputs:
@@ -17,6 +24,7 @@ outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 filesat = os.path.join(dir_setup,'orbmetop.txt')
 # ------ Number of days in orbit
 satcycle = 29
+#satcycle = 12
 # ------ Satellite elevation
 sat_elev = 817 * 10e3
 #sat_elev = 699 * 10e3
@@ -24,13 +32,6 @@ sat_elev = 817 * 10e3
 # (default is (0, 1, 2) with order_orbit_col = None)
 order_orbit_col = None
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
-# ------ Name of the configuration (to build output files names) 
-# 8 beams, 45 azimuths, 1024 pulses and cycle length of 37 ms
-config = "WW3_23W_metop_2018_8a"
-# 8 beams, 72 azimuths, 0512 pulses and cycle length of 18 ms
-# config = "WW3_23W_metop_2018_8b"
-# 8 beams, 108 azimuths, 1024 pulses and cycle length of 37 ms
-# config = "WW3_23W_metop_2018_8c"
 # ------ Number of processor for parallelisation
 proc_count = 1
 
@@ -85,6 +86,8 @@ file_input = os.path.join(indatadir, 'list_of_file.txt')
 #	 (Optional, default is NETCDF_MODEL and reads netcdf3 and netcdf4 files)
 #	 (Other options are ROMS, NEMO and CLS to read Nemo, roms or CLS)
 model = 'WW3'
+# ------ First time of the model
+first_time = '2011-11-15T00:00:00Z'
 # ------ Specify if there is a ice mask for high latitudes
 #        (if true, mask is recomputed at each cycle)
 ice_mask = False
@@ -92,11 +95,13 @@ ice_mask = False
 #        'regular' or 'irregular', if 'regular' only 1d coordinates 
 #        are extracted from model       
 grid = 'regular'
-# ------ Specify velocities variable:
-varu = 'ucur'
-varv = 'vcur'
-# ------ Specify factor to convert velocity values in m/s:
-vel_factor = 1.
+# ------ Specify list of variable:
+list_input_var = {'ucur': ['ucur', 'cur'], 'vcur': ['vcur', 'cur'],
+                  'uuss': ['uuss', 'uss'], 'vuss': ['vuss', 'uss'],
+                  'ice': ['ice', 'ice'], 'mssd': ['mssd', 'msd'],
+                  'mssx': ['mssx', 'mss'], 'mssy':['mssy', 'mss'],
+                  'ssh': ['wlv', 'wlv'],
+                  'uwnd': ['uwnd', 'wnd'], 'vwnd': ['vwnd', 'wnd']}
 # ------ Specify longitude variable:
 lonu = 'longitude'
 lonv = 'longitude'
@@ -109,7 +114,7 @@ dim_time = 24
 timestep = 1/24.
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 30*24
+nstep = 35*24
 # ------ Not a number value:
 model_nan = -32767.
 
@@ -126,7 +131,7 @@ file_output = os.path.join(outdatadir, config)
 interpolation = 'linear'
 # ------ List of output variables:
 list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
-               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
+               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb','ssh',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
 # -----------------------# 
 # SKIM error parameters 
