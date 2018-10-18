@@ -274,8 +274,15 @@ def write_l2(outfile, grd, cycle, passn, firsttime):
     metadata['file'] = outfile
     dateformat = '%Y-%m-%dT%H:%M:%SZ'
     time_model = datetime.datetime.strptime(firsttime, '%Y-%m-%dT%H:%M:%SZ')
-    time0 = time_model + datetime.timedelta(0, grd['time'][0])
-    time1 = time_model + datetime.timedelta(0, grd['time'][-1])
+    grdtime0 = numpy.nanmin(grd['time'])
+    grdtime1 = numpy.nanmax(grd['time'])
+    if numpy.isnan(grdtime0):
+        grdtime0 = 0
+    if numpy.isnan(grdtime1):
+        grdtime1 = 0
+
+    time0 = time_model + datetime.timedelta(0, grdtime0)
+    time1 = time_model + datetime.timedelta(0, grdtime1)
 
     metadata['time_coverage_start'] = time0.strftime(format=dateformat)
     metadata['time_coverage_end'] = time1.strftime(format=dateformat)
