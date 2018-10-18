@@ -288,7 +288,8 @@ def write_l2(outfile, grd, cycle, passn, firsttime):
                  u_ac_model=grd['vmodac'], u_al_model=grd['vmodal'],
                  angle=grd['angle'], u_obs=grd['vobsx'], v_obs=grd['vobsy'],
                  u_model=grd['vmodx'], v_model=grd['vmody'],
-                 u_true=grd['u_model'], v_true=grd['v_model'])
+                 u_true=grd['u_model'], v_true=grd['v_model'],
+                 u_ac_true=grd['vtrueac'], u_al_true=grd['vtrueal'])
 
 
 def run_l2c(p):
@@ -365,6 +366,10 @@ def run_l2c(p):
                          + grd['vmodal'] * numpy.cos(grd['angle'] + numpy.pi/2))
             grd['vmody'] = (grd['vmodac'] * numpy.sin(grd['angle'])
                          + grd['vmodal'] * numpy.sin(grd['angle'] + numpy.pi/2))
+            grd['vtrueac'] = (grd['u_model']*numpy.cos(grd['angle'])
+                              + grd['v_model'] * numpy.sin(grd['angle']))
+            grd['vtrueal'] = (-grd['u_model']*numpy.sin(grd['angle'])
+                              + grd['v_model']*numpy.cos(grd['angle']))
             pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
             outfile = os.path.join(p.outdatadir, pattern_out)
             write_l2(outfile, grd, cycle, passn, p.first_time)
