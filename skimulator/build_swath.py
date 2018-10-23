@@ -443,7 +443,7 @@ def worker_method_grid(*args, **kwargs):
             lon_beam.append(lon_tmp)
             lat_beam.append(lat_tmp)
             xal_beam.append(xal * const.deg2km * sign_ac)
-            xac_beam.append(xac * const.deg2km)
+            xac_beam.append(xac * const.deg2km * sign_ac)
             xal_beam_tot.append(sgrid.x_al[shift::nbeam])
             time_beam.append(timebeamshift)
             angle_beam.append(beam_angle)

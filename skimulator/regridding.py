@@ -115,7 +115,6 @@ def make_grid(grid, obs, posting, desc=False):
     grd['angle'][:, -1]= grd['angle'][:, -2]
 
 
-
     grd['vobsal'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
     grd['vobsac'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
     grd['vmodal'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
@@ -142,8 +141,8 @@ def perform_oi_1(grd, obs, resol, desc=False):
                 eta_obs = numpy.dot(numpy.dot(Mi, RiH.T), obs['vobsr'][ios])
                 eta_mod = numpy.dot(numpy.dot(Mi, RiH.T), obs['vmodr'][ios])
                 j2 = j
-                if desc is True:
-                    j2 = grd['nac'] - 1 - j
+                #if desc is True:
+                #    j2 = grd['nac'] - 1 - j
                 grd['vobsal'][i, j2]=eta_obs[0]
                 grd['vobsac'][i, j2]=eta_obs[1]
                 grd['vmodal'][i, j2]=eta_mod[0]
@@ -255,12 +254,12 @@ def interpolate_model(p, model_data, list_model_step, grd, list_obs,
                                                lats=grd['lat'][ind_lat])
         var = model_step.input_var['ucur']
         _tmp = mod.interpolate_irregular_pyresample(swath_defu, var, grid_def,
-                                                    p.posting,
+                                                    p.resol,
                                                     interp_type=p.interpolation)
         grd['u_model'][ind_lat] = _tmp
         var = model_step.input_var['vcur']
         _tmp = mod.interpolate_irregular_pyresample(swath_defu, var,
-                                                    grid_def, p.posting,
+                                                    grid_def, p.resol,
                                                     interp_type=p.interpolation)
         grd['v_model'][ind_lat] = _tmp
     return grd
@@ -349,13 +348,14 @@ def run_l2c(p):
             diff_indice = vindice[1:] - vindice[:-1]
             ind = numpy.where(diff_indice != 0)[0]
             first_lat = numpy.min(grd['lat'])
+            sign_uv = 1
             if desc is True:
                 first_lat = numpy.max(grd['lat'])
+                sign_uv = -1
 
             if ind.any():
                 vindice = [obs['vindice'][0], obs['vindice'][ind[0] + 1]]
                 ind_lat = [first_lat, obs['lat'][ind[0] + 1]]
-                print(ind, ind[0])
             else:
                 vindice = [obs['vindice'][0],]
                 ind_lat = [first_lat,]
@@ -364,18 +364,18 @@ def run_l2c(p):
                                     desc=desc)
             ac_thresh = p.ac_threshold
             grd['vobsac'][numpy.abs(grd['ac2']) < ac_thresh] = numpy.nan
-            grd['vobsx'] = (grd['vobsac'] * numpy.cos(grd['angle'])
+            grd['vobsx'] = sign_uv * (grd['vobsac'] * numpy.cos(grd['angle'])
                          + grd['vobsal'] * numpy.cos(grd['angle'] + numpy.pi/2))
-            grd['vobsy'] = (grd['vobsac'] * numpy.sin(grd['angle'])
+            grd['vobsy'] = sign_uv * (grd['vobsac'] * numpy.sin(grd['angle'])
                          + grd['vobsal'] * numpy.sin(grd['angle'] + numpy.pi/2))
             grd['vmodac'][numpy.abs(grd['ac2']) < ac_thresh] = numpy.nan
-            grd['vmodx'] = (grd['vmodac'] * numpy.cos(grd['angle'])
+            grd['vmodx'] = sign_uv * (grd['vmodac'] * numpy.cos(grd['angle'])
                          + grd['vmodal'] * numpy.cos(grd['angle'] + numpy.pi/2))
-            grd['vmody'] = (grd['vmodac'] * numpy.sin(grd['angle'])
+            grd['vmody'] = sign_uv * (grd['vmodac'] * numpy.sin(grd['angle'])
                          + grd['vmodal'] * numpy.sin(grd['angle'] + numpy.pi/2))
-            grd['vtrueac'] = (grd['u_model']*numpy.cos(grd['angle'])
+            grd['vtrueac'] = sign_uv *(grd['u_model']*numpy.cos(grd['angle'])
                               + grd['v_model'] * numpy.sin(grd['angle']))
-            grd['vtrueal'] = (-grd['u_model']*numpy.sin(grd['angle'])
+            grd['vtrueal'] = sign_uv * (-grd['u_model']*numpy.sin(grd['angle'])
                               + grd['v_model']*numpy.cos(grd['angle']))
             pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
             outfile = os.path.join(p.outdatadir, pattern_out)

@@ -9,7 +9,7 @@ datadir_input = p.outdatadir
 datadir_output = './'
 
 config = p.config
-list_files = glob.glob(os.path.join(datadir_input, '{}_L2C_*'.format(config)))
+list_files = glob.glob(os.path.join(datadir_input, '{}_L2C_*127.nc'.format(config)))
 nac = 63
 nal = 63
 ref = {}
@@ -33,6 +33,9 @@ ntot_alm = numpy.zeros(nal)
 
 for filev in list_files:
     fid = Dataset(filev, 'r')
+    ipath = int(filev[-6:-3])
+    if ipath%2==0:
+       continue
     print(filev)
     ref['uac'] = numpy.array(fid.variables['u_ac_true'][:])
     ref['uac'][ref['uac'] < -10] = numpy.nan
@@ -51,19 +54,19 @@ for filev in list_files:
     fid.close()
     for i in range(nuac):
         it_ac = len(numpy.where(numpy.isnan(skim['uac'][:, i]) == False)[0])
-        if it_ac >= 1:
+        if it_ac >= 62:
             std_uac[i] += numpy.nanstd(skim['uac'][:, i] - ref['uac'][:, i])*it_ac
             ntot_ac[i] += it_ac
         it_al = len(numpy.where(numpy.isnan(skim['ual'][:, i]) == False)[0])
-        if it_al >= 1:
+        if it_al >= 62:
             std_ual[i] += numpy.nanstd(skim['ual'][:, i] - ref['ual'][:, i])*it_al
             ntot_al[i] += it_al
         it_acm = len(numpy.where(numpy.isnan(skim['uacm'][:, i]) == False)[0])
-        if it_acm >= 1:
+        if it_acm >= 62:
             std_uacm[i] += numpy.nanstd(skim['uacm'][:, i] - ref['uac'][:, i])*it_acm
             ntot_acm[i] += it_acm
         it_alm = len(numpy.where(numpy.isnan(skim['ualm'][:, i]) == False)[0])
-        if it_alm >= 1:
+        if it_alm >= 62:
             std_ualm[i] += numpy.nanstd(skim['ualm'][:, i] - ref['ual'][:, i])*it_alm
             ntot_alm[i] += it_alm
 
