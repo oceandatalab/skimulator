@@ -9,7 +9,7 @@ datadir_input = p.outdatadir
 datadir_output = './'
 
 config = p.config
-list_files = glob.glob(os.path.join(datadir_input, '{}_L2C_*127.nc'.format(config)))
+list_files = glob.glob(os.path.join(datadir_input, '{}_L2C_*.nc'.format(config)))
 nac = 63
 nal = 63
 ref = {}
@@ -80,7 +80,7 @@ xac = numpy.arange(-(nac - 1) * p.posting/2, (nac + 1)* p.posting/2, p.posting)
 ax1.plot(xac, std_uac, 'r', label='across track')
 ax1.plot(xac, std_ual, 'b', label='along cross')
 ax1.set_title('Observation {}'.format(config))
-ax1.set_ylim([0.2, 0.64])
+ax1.set_ylim([0.05, 0.24])
 ax1.legend()
 ax2.plot(xac, std_uacm, 'r', label='across track')
 ax2.plot(xac, std_ualm, 'b', label='along cross')

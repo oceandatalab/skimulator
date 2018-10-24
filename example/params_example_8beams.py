@@ -26,8 +26,8 @@ filesat = os.path.join(dir_setup,'orbmetop.txt')
 satcycle = 29
 #satcycle = 12
 # ------ Satellite elevation
-sat_elev = 817 * 10e3
-#sat_elev = 699 * 10e3
+sat_elev = 817 * 10**3
+#sat_elev = 699 * 10**3
 # ------ Order of columns (lon, lat, time) in orbit file
 # (default is (0, 1, 2) with order_orbit_col = None)
 order_orbit_col = None
