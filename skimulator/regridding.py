@@ -219,7 +219,7 @@ def read_model(p, indice):
         model_step = model_step_ctor(p, ifile=(filename_u, filename_v),
                                      time=filetime)
         model_step.read_var(p)
-        list_model_step.append(model_data)
+        list_model_step.append(model_step)
     return model_data, list_model_step, list_file
 
 
@@ -252,16 +252,20 @@ def interpolate_model(p, model_data, list_model_step, grd, list_obs,
         model_step.read_var(p)
         grid_def = pr.geometry.SwathDefinition(lons=lon[ind_lat],
                                                lats=grd['lat'][ind_lat])
+        #grid_def = pr.geometry.SwathDefinition(lons=lon, #[ind_lat],
+        #                                       lats=grd['lat']) #[ind_lat])
         var = model_step.input_var['ucur']
         _tmp = mod.interpolate_irregular_pyresample(swath_defu, var, grid_def,
                                                     p.resol,
                                                     interp_type=p.interpolation)
         grd['u_model'][ind_lat] = _tmp
+        # grd['u_model'] = _tmp
         var = model_step.input_var['vcur']
         _tmp = mod.interpolate_irregular_pyresample(swath_defu, var,
                                                     grid_def, p.resol,
                                                     interp_type=p.interpolation)
         grd['v_model'][ind_lat] = _tmp
+        # grd['v_model'] = _tmp
     return grd
 
 
@@ -336,7 +340,7 @@ def run_l2c(p):
         obs['vobsr'] = obs['vobsr'].flatten()
         ind = numpy.where((obs['vobsr'] > -1000))[0]
         obs['vobsr'] = obs['vobsr'][ind]
-        if len(ind) > 1 and len(data.lon_nadir) >2:
+        if len(ind) > 2 and len(data.lon_nadir) >2:
             obs = make_obs(data, grid, obs, ind)
             grd = make_grid(grid, obs, p.posting, desc=desc)
             if grd is None:
@@ -359,6 +363,8 @@ def run_l2c(p):
             else:
                 vindice = [obs['vindice'][0],]
                 ind_lat = [first_lat,]
+            #vindice = [obs['vindice'][0],]
+            #ind_lat = [first_lat,]
             model_data, model_step, list_file2 = read_model(p, vindice)
             grd = interpolate_model(p, model_data, model_step, grd, ind_lat,
                                     desc=desc)
