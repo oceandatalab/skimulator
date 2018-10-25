@@ -127,14 +127,15 @@ def perform_oi_1(grd, obs, resol, desc=False):
         for i in range(grd['nal']):
             dist = numpy.sqrt((obs['ac'] - grd['ac2'][i, j])**2
                               + (obs['al'] - grd['al2'][i, j])**2)
-            ios = numpy.where((dist < 0.5 * resol))[0]
+            ios = numpy.where((dist < resol))[0]
             if len(ios) >= 4:
                 H = numpy.zeros((len(ios), 2))
                 H[:, 0] = numpy.cos(obs['dir'][ios])
                 H[:, 1] = numpy.sin(obs['dir'][ios])
                 std_err = numpy.ones((len(ios)))
                 # rectangular filtering window for now...
-                Ri = std_err**-2
+                # Ri = std_err**-2
+                Ri=numpy.exp(-dist[ios]**2/(0.5*resol)**2) # exp window
                 RiH = numpy.tile(Ri, (2, 1)).T * H
                 M = numpy.dot(H.T, RiH)
                 Mi = numpy.linalg.inv(M)
@@ -341,13 +342,17 @@ def run_l2c(p):
         ind = numpy.where((obs['vobsr'] > -1000))[0]
         obs['vobsr'] = obs['vobsr'][ind]
         if len(ind) > 2 and len(data.lon_nadir) >2:
-            obs = make_obs(data, grid, obs, ind)
-            grd = make_grid(grid, obs, p.posting, desc=desc)
-            if grd is None:
-                continue
+            try:
+                obs = make_obs(data, grid, obs, ind)
+                grd = make_grid(grid, obs, p.posting, desc=desc)
+                if grd is None:
+                    continue
 
-            # OI
-            grd = perform_oi_1(grd, obs, p.resol, desc=desc)
+                # OI
+                grd = perform_oi_1(grd, obs, p.resol, desc=desc)
+            except:
+                print(passn)
+                continue
             vindice = obs['vindice']
             diff_indice = vindice[1:] - vindice[:-1]
             ind = numpy.where(diff_indice != 0)[0]
