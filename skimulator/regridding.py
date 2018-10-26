@@ -98,6 +98,7 @@ def make_grid(grid, obs, posting, desc=False):
     #                                        method='linear')
     #grd['lat'] = scipy.interpolate.griddata(_alac, obs['lat'], _inalac,
     #                                     method='linear')
+    lon360 = numpy.mod(obs['lon_nadir'] + 180, 360) - 180
     lon = scipy.interpolate.griddata(obs['al_nadir'], obs['lon_nadir'],
                                       (grd['al']), method='linear')
     lat = scipy.interpolate.griddata(obs['al_nadir'], obs['lat_nadir'],
@@ -271,22 +272,25 @@ def interpolate_model(p, model_data, list_model_step, grd, list_obs,
 
 
 
-def write_l2(outfile, grd, cycle, passn, firsttime):
+def write_l2(outfile, grd, obs, cycle, passn, firsttime):
     if os.path.exists(outfile):
         os.remove(outfile)
     metadata = {}
     metadata['file'] = outfile
     dateformat = '%Y-%m-%dT%H:%M:%SZ'
     time_model = datetime.datetime.strptime(firsttime, '%Y-%m-%dT%H:%M:%SZ')
-    grdtime0 = numpy.nanmin(grd['time'])
-    grdtime1 = numpy.nanmax(grd['time'])
+    grdtime0 = numpy.nanmin(obs['time_nadir'])
+    grdtime1 = numpy.nanmax(obs['time_nadir'])
     if numpy.isnan(grdtime0):
         grdtime0 = 0
     if numpy.isnan(grdtime1):
         grdtime1 = 0
-
-    time0 = time_model + datetime.timedelta(0, grdtime0)
-    time1 = time_model + datetime.timedelta(0, grdtime1)
+    day = numpy.floor(grdtime0)
+    seconds = (grdtime0 - day) * 86400
+    time0 = time_model + datetime.timedelta(day, seconds)
+    day = numpy.floor(grdtime1)
+    seconds = (grdtime1 - day) * 86400
+    time1 = time_model + datetime.timedelta(day, seconds)
 
     metadata['time_coverage_start'] = time0.strftime(format=dateformat)
     metadata['time_coverage_end'] = time1.strftime(format=dateformat)
@@ -390,7 +394,7 @@ def run_l2c(p):
                               + grd['v_model']*numpy.cos(grd['angle']))
             pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
             outfile = os.path.join(p.outdatadir, pattern_out)
-            write_l2(outfile, grd, cycle, passn, p.first_time)
+            write_l2(outfile, grd, obs, cycle, passn, p.first_time)
     __ = mod_tools.update_progress(1, 'All passes have been processed', '')
     logger.info("\n Simulated skim files have been written in "
                 "{}".format(p.outdatadir))

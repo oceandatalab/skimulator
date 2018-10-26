@@ -228,7 +228,7 @@ def write_l2c(metadata, geolocation, **kwargs):
     # - Create and write Variables
     vtime = fid.createVariable('time', 'f8', (dimtime))
     vtime.axis = "T"
-    vtime.units = "seconds since".format(metadata['first_time'])
+    vtime.units = "days since {}".format(metadata['first_time'])
     vtime.long_name = "Time"
     vtime.standard_name = "time"
     vtime.calendar = "gregorian"
@@ -245,25 +245,25 @@ def write_l2c(metadata, geolocation, **kwargs):
     vlat.standard_name = "latitude"
     vlat.units = "degrees_north"
     vlat[:, :] = lat
-    longname = { "u_noerr": "Error-free zonal velocity",
-                 "v_noerr": "Error-free meridional velocity",
-                "u_obs": "Observed zonal velocity",
-                "v_obs": "Observed meridional velocity",
-                "u_ac_obs": "Observed across track velocity",
-                "u_al_obs": "Observed along track velocity",
-                "u_model": "Error-free zonal velocity",
-                "v_model": "Error-free meridional velocity",
-                "u_ac_model": "Error-free across track velocity",
-                "u_al_model": "Error-free along track velocity",
+    longname = { "ux_noerr": "Error-free zonal velocity",
+                 "uy_noerr": "Error-free meridional velocity",
+                "ux_obs": "Observed zonal velocity",
+                "uy_obs": "Observed meridional velocity",
+                "uac_obs": "Observed across track velocity",
+                "ual_obs": "Observed along track velocity",
+                "ux_model": "Error-free zonal velocity",
+                "uy_model": "Error-free meridional velocity",
+                "uac_model": "Error-free across track velocity",
+                "ual_model": "Error-free along track velocity",
                 "angle": "angle of xac with eastward vector",
-                "u_true": "True zonal velocity",
-                "v_true": "True meridional velocity",
+                "ux_true": "True zonal velocity",
+                "uy_true": "True meridional velocity",
                 }
-    unit = {"u_noerr": "m/s", "u_obs": "m/s", "u_ac_obs": "m/s",
-            "v_noerr": "m/s", "v_obs": "m/s", "u_al_obs": "m/s",
-            "angle": "rad", "u_model": "m/s", "v_model": "m/s",
-            "u_ac_model": "m/s", "u_al_model": "m/s",
-            "u_true": "m/s", "v_true": "m/s",
+    unit = {"ux_noerr": "m/s", "ux_obs": "m/s", "uac_obs": "m/s",
+            "uy_noerr": "m/s", "uy_obs": "m/s", "ual_obs": "m/s",
+            "angle": "rad", "ux_model": "m/s", "uy_model": "m/s",
+            "uac_model": "m/s", "ual_model": "m/s",
+            "ux_true": "m/s", "uy_true": "m/s",
             }
     for key, value in kwargs.items():
         if value is not None:
@@ -487,9 +487,19 @@ class Sat_SKIM():
         fid.creator_name = "Lucile Gaultier"
         fid.creator_email = "lucile.gaultier@gmail.com"
         fid.publisher_url = ""
-        fid.time_coverage_start = self.time[0][0]
+        dateformat = '%Y-%m-%dT%H:%M:%SZ'
+        time_model = datetime.datetime.strptime(p.first_time, '%Y-%m-%dT%H:%M:%SZ')
+        mintime = numpy.nanmin(self.time)
+        maxtime = numpy.nanmax(self.time)
+        day = numpy.floor(mintime)
+        seconds = (mintime - day) * 86400
+        time0 = time_model + datetime.timedelta(day, seconds)
+        fid.time_coverage_start = time0.strftime(format=dateformat)
         # p.date0+"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
-        fid.time_coverage_end = self.time[-1][-1]
+        day = numpy.floor(maxtime)
+        seconds = (maxtime - day) * 86400
+        time0 = time_model + datetime.timedelta(day, seconds)
+        fid.time_coverage_end = time0.strftime(format=dateformat)
         # p.date0 +"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
         fid.geospatial_lat_min = "{:.2f}".format(numpy.min(self.lat))
         fid.geospatial_lat_max = "{:.2f}".format(numpy.max(self.lat))
@@ -515,13 +525,13 @@ class Sat_SKIM():
         # - Create and write Variables
         vtime = fid.createVariable('time', 'f8', (dimsample, dimnbeam))
         vtime.axis = "T"
-        vtime.units = "seconds since the beginning of the sampling"
+        vtime.units = "days since {}".format(p.first_time)
         vtime.long_name = "Time"
         vtime.standard_name = "time"
         vtime.calendar = "gregorian"
         vtime_nadir = fid.createVariable('time_nadir', 'f8', (dimsample,))
         vtime_nadir.axis = "T"
-        vtime_nadir.units = "seconds since the beginning of the sampling"
+        vtime_nadir.units = "days since {}".format(p.first_time)
         vtime_nadir.long_name = "Time at nadir"
         vtime_nadir.standard_name = "time"
         vtime_nadir.calendar = "gregorian"
@@ -556,7 +566,7 @@ class Sat_SKIM():
                 vlon[:, i - 1] = self.lon[i][:]
                 vlat[:, i - 1] = self.lat[i][:]
         longname = {"sigma0": "sigma0",
-                    "ur_model": "Radial velocity interpolated from model",
+                    "ur_true": "Radial velocity interpolated from model",
                     "ucur": "Zonal velocity interpolated from model",
                     "vcur": "Meridional velocity interpolated from model",
                     "ur_obs": "Observed radial velocity (Ur_model+errors)",
@@ -572,7 +582,7 @@ class Sat_SKIM():
                     "ice": "Sea ice concentration",
                     "uwb": "Current Wave bias"
                     }
-        unit = {"sigma0": "", "ur_model": "m/s", "ur_obs": "m/s",
+        unit = {"sigma0": "", "ur_true": "m/s", "ur_obs": "m/s",
                 "index": " ", "ur_uss": "m/s", "uwnd": "m/s",
                 "vwnd": "m/s", "uwb": "m/s", "ucur": "m/s",
                 "vcur": "m/s", "ssh_obs": "m", "wlv": "m",

@@ -96,7 +96,12 @@ def load_coordinate_model(p):
     # If a list of model files are specified, read model file coordinates
     if p.file_input is not None:
         model_data_ctor = getattr(rw_data, model)
-        _filename = list_file[0].split(',')
+        if p.file_grid_model is not None:
+            _filename = list(p.file_grid_model)
+        else:
+            logger.info("WARNING: First file of list of files is used for"
+                        "coordinates only")
+            _filename = list_file[0].split(',')
         if len(_filename) > 1:
             filename_u = os.path.join(p.indatadir, _filename[0])
             filename_v = os.path.join(p.indatadir, _filename[1])
@@ -255,6 +260,8 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                 nfile += 1
                 filetime = (ifile - time_offset)%p.dim_time
             nfile = int(ifile /p.dim_time)
+            filetime = ifile - nfile * p.dim_time
+
             _tmpfilename = list_file[nfile].split(',')
             if len(_tmpfilename) > 1:
                 filename_u = os.path.join(p.indatadir, _tmpfilename[0])
@@ -275,7 +282,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                 for key in model_step.input_var.keys():
                     _indlat = model_data.model_index_latu
                     _tmp = model_step.input_var[key][_indlat, :]
-                    input_var_i[key] = _tmp[:, model_data.model_index_lonu]
+                    input_var_i[key] = +_tmp[:, model_data.model_index_lonu]
 
             else:
                 model_step.read_var(p, index=None)
@@ -283,7 +290,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                     model_step.compute_mss()
                 for key in model_step.input_var.keys():
                     _ind = model_data.model_indexu
-                    input_var_i[key] = model_step.input_var[key][_ind]
+                    input_var_i[key] = + model_step.input_var[key][_ind]
             # - Interpolate Model data on a SKIM grid and/or along the
             #   nadir track
             # if grid is regular, use interpolate.RectBivariateSpline to
@@ -349,7 +356,7 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
                                                   _tmp, (lon[ind_time[0]],
                                                   lat[ind_time[0]]),
                                                   method=p.interpolation)
-                    output_var_i[key][ind_time[0]] = interp
+                    output_var_i[key][ind_time[0]] = + interp
             # Force value outside modelbox at nan
             if modelbox[0] > modelbox[1]:
                 for key in model_step.input_var.keys():

@@ -224,7 +224,8 @@ def run_simulator(p):
     # Build model time steps from parameter file
     modeltime = numpy.arange(0, p.nstep*p.timestep, p.timestep)
     #   Remove the grid from the list of model files
-    if p.file_input:
+    if p.file_input and p.file_grid_model is None:
+        logger.info("WARNING: the first file is not used to build data")
         list_file.remove(list_file[0])
 
     # - Loop on SKIM grid files
@@ -357,7 +358,7 @@ def worker_method_skim(*args, **kwargs):
                         output_var_i[key ] = numpy.full(shape_0, numpy.nan)
                 # for key in p.list_err:
                 #     output_var_i[key ] = numpy.full(shape_0, numpy.nan)
-                time = sgrid_tmp.time
+                time = sgrid_tmp.time / 86400. + sgrid.cycle * cycle
 
                 # mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
                 #                      numpy.nan)
