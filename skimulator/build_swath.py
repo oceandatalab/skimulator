@@ -46,11 +46,23 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     logger.info('Load data from orbit file')
     if p.order_orbit_col is None:
         volon, volat, votime = numpy.loadtxt(orbitfile, usecols=(0, 1, 2),
-                                             unpack=True)
+                                             comments='#', unpack=True)
     else:
         ncols = p.order_orbit_col
         volon, volat, votime = numpy.loadtxt(orbitfile, usecols=ncols,
-                                             unpack=True)
+                                             comments='#', unpack=True)
+    dic_sat = {}
+    with open(orbitfile, 'r') as fh:
+        for i, line in enumerate(fh):
+            if line.strip().startswith('#'):
+                key, value = line.strip().split('=')
+                dic_sat[key[1:].strip()] = float(value.strip())
+            else:
+                break
+    if 'cycle' in dic_sat.keys() and 'elevation' in dic_sat.keys():
+        p.satcycle = dic_sat['cycle']
+        p.sat_elev = dic_sat['elevation']
+
     # - If orbit is at low resolution, interpolate at cycle (s) resolution
     cycle = p.cycle
     votime = votime * const.secinday
