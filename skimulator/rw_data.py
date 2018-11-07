@@ -221,8 +221,6 @@ def write_l2c(metadata, geolocation, **kwargs):
     nlon = numpy.shape(lon)[0]
     nlat = numpy.shape(lat)[1]
     ntime = None
-    fid.createDimension(dimlon, nlon)
-    # fid.createDimension('time_nadir', numpy.shape(self.lon)[0])
     fid.createDimension(dimlat, nlat)
     fid.createDimension(dimtime, ntime)
     # - Create and write Variables
