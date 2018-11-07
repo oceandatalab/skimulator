@@ -215,8 +215,8 @@ def write_l2c(metadata, geolocation, **kwargs):
     fid.track = "{} th pass".format(metadata['pass'])
     # - Create dimensions
     # if (not os.path.isfile(self.file)):
-    dimlon = 'xal'
-    dimlat = 'xac'
+    dimlon = 'al'
+    dimlat = 'ac'
     dimtime = 'time'
     nlon = numpy.shape(lon)[0]
     nlat = numpy.shape(lat)[1]
@@ -233,13 +233,25 @@ def write_l2c(metadata, geolocation, **kwargs):
     vtime.standard_name = "time"
     vtime.calendar = "gregorian"
     vtime[:] = tim
-    vlon = fid.createVariable('lon', 'f4', (dimlon, dimlat))
+    vlon = fid.createVariable('lon', 'f4', (dimtime, dimlat))
     vlon.axis = "X"
     vlon.long_name = "Longitude"
     vlon.standard_name = "longitude"
     vlon.units = "degrees_east"
     vlon[:, :] = lon
-    vlat = fid.createVariable('lat', 'f4', (dimlon, dimlat))
+    val = fid.createVariable('x_al', 'f4', (dimtime))
+    val.axis = "Y"
+    val.long_name = "Along track distance from beginning of cycle"
+    val.standard_name = "Along track distance"
+    val.units = "km"
+    val[:] = geolocation['al']
+    vac = fid.createVariable('x_ac', 'f4', (dimlat))
+    vac.axis = "Y"
+    vac.long_name = "Along track distance from nadir"
+    vac.standard_name = "Across track distance"
+    vac.units = "km"
+    vac[:] = geolocation['ac']
+    vlat = fid.createVariable('lat', 'f4', (dimtime, dimlat))
     vlat.axis = "Y"
     vlat.long_name = "Latitude"
     vlat.standard_name = "latitude"
@@ -258,17 +270,19 @@ def write_l2c(metadata, geolocation, **kwargs):
                 "angle": "angle of xac with eastward vector",
                 "ux_true": "True zonal velocity",
                 "uy_true": "True meridional velocity",
+                "x_al": "Along track distance from beginning of cycle",
+                "x_ac": "Across track distance from nadir"
                 }
     unit = {"ux_noerr": "m/s", "ux_obs": "m/s", "uac_obs": "m/s",
             "uy_noerr": "m/s", "uy_obs": "m/s", "ual_obs": "m/s",
             "angle": "rad", "ux_model": "m/s", "uy_model": "m/s",
             "uac_model": "m/s", "ual_model": "m/s",
-            "ux_true": "m/s", "uy_true": "m/s",
+            "ux_true": "m/s", "uy_true": "m/s", "x_al": "km", "x_ac": "km"
             }
     for key, value in kwargs.items():
         if value is not None:
             nvar = '{}'.format(key)
-            var = fid.createVariable(nvar, 'f4', (dimlon, dimlat),
+            var = fid.createVariable(nvar, 'f4', (dimtime, dimlat),
                                      fill_value=-1.36e9)
             try:
                 var.units = unit[str(key)]

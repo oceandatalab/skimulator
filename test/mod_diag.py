@@ -58,6 +58,8 @@ def diag_rms(listfile, modelbox, output):
         #varobs[mask] = numpy.nan
         beam_angle = p.list_angle #data['beam_angle'][:]
         data.close()
+        if numpy.shape(lon)[0]<100:
+            continue
         for i in range(numpy.shape(lon)[1]):
             if varobs[:, i].mask.all():
                 continue
@@ -69,7 +71,10 @@ def diag_rms(listfile, modelbox, output):
             if instr is True:
                 _tmpinstr = numpy.nanmean(abs(varinstr[:, i])**2)
             if uwb is True:
-                _tmpuwb = numpy.nanmean(abs(varuwb[:, i])**2)
+                try:
+                    _tmpuwb = numpy.nanmean(abs(varuwb[:, i])**2)
+                except:
+                    continue
             if uwbc is True:
                 _tmpuwbc = numpy.nanmean(abs(varuwbc[:, i])**2)
             if beam_angle[i] == 6:

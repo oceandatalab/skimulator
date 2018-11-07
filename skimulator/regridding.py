@@ -304,7 +304,8 @@ def write_l2(outfile, grd, obs, cycle, passn, firsttime):
                  angle=grd['angle'], u_obs=grd['vobsx'], v_obs=grd['vobsy'],
                  u_model=grd['vmodx'], v_model=grd['vmody'],
                  u_true=grd['u_model'], v_true=grd['v_model'],
-                 u_ac_true=grd['vtrueac'], u_al_true=grd['vtrueal'])
+                 u_ac_true=grd['vtrueac'], u_al_true=grd['vtrueal'],
+                 )
 
 
 def run_l2c(p):
