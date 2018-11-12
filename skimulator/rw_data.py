@@ -27,6 +27,7 @@ Contains satellite class: Sat_SKIM \n
 Contains file instrumentation class: file_instr \n
 '''
 import skimulator
+import skimulator.grid_check
 from netCDF4 import Dataset
 import numpy
 import sys
@@ -327,6 +328,7 @@ class Sat_SKIM():
         Variables are longitude, latitude, number of days in a cycle,
         distance crossed in a cycle, time, along track and across track
         distances are stored.'''
+        grid_params_md5 = skimulator.grid_check.get_b64_gzipped_hash(p)
         # - Open Netcdf file in write mode
         fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
         # - Create Global attribute
@@ -359,6 +361,7 @@ class Sat_SKIM():
         fid.references = ""
         fid.cycle = "{0:d}".format(int(self.al_cycle))
         fid.track = "{} th pass".format(self.ipass)
+        fid.grid_params_md5 = grid_params_md5
         # - Create dimensions
         # if (not os.path.isfile(self.file)):
         dimsample = 'sample'
