@@ -26,7 +26,7 @@ pass and every cycle.
 # - Mar 2017:  Original by Lucile Gaultier, ODL
 #
 # Notes:
-# - Written for Python 2.7,  Python 3.5, tested with Python 2.7, Python 3.5
+# - written for Python 3.5, tested with Python 3.5, 3.7
 #
 #-----------------------------------------------------------------------
 Copyright (C) 2017-2018 OceanDataLab
@@ -64,8 +64,8 @@ import skimulator.mod_uwb_corr as mod_uwb_corr
 import multiprocessing
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
-# logger = multiprocessing.log_to_stderr()
-# logger.setLevel(logging.DEBUG)
+logger = multiprocessing.log_to_stderr()
+logger.setLevel(logging.DEBUG)
 
 # - Define global variables for progress bars
 istep = 0
@@ -314,6 +314,7 @@ def worker_method_skim(*args, **kwargs):
     # Compute number of cycles needed to cover all nstep model timesteps
     rcycle = (p.timestep * p.nstep)/float(sgrid.cycle)
     ncycle = int(rcycle)
+
 
     #  Loop on all cycles
     for cycle in range(0, ncycle+1):

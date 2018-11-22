@@ -616,22 +616,18 @@ class Sat_SKIM():
                         var_nadir.long_name = longname[str(key)]
                     except:
                         var_nadir.long_name = str(key)
-                if value not in list_nadir:
+                if key not in list_nadir:
                     nvar = '{}'.format(key)
                     var = fid.createVariable(nvar, 'f4', (dimsample, dimnbeam),
                                              fill_value=-1.36e9)
                     try:
                         var.units = unit[str(key)]
-                        var_nadir.units = unit[str(key)]
                     except:
                         var.units = ''
-                        var_nadir.units = ''
                     try:
                         var.long_name = longname[str(key)]
-                        var_nadir.long_name = longname[str(key)]
                     except:
                         var.long_name = str(key)
-                        var_nadir.long_name = str(key)
                 for i in range(len(value)):
                     if value[i].any():
                         value_tmp = value[i][:]
@@ -809,6 +805,8 @@ class NETCDF_MODEL():
                                                time=self.time,
                                                depth=self.depth,
                                                model_nan=self.model_nan)
+            else:
+                logger.info('{} not found'.format(_nfile))
         # self.vvar[numpy.where(numpy.isnan(self.vvar))]=0
         return None
 
