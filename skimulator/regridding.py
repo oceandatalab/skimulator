@@ -330,7 +330,7 @@ def run_l2c(p):
         fileg = '{}_p{:03d}.nc'.format(gpath, passn)
         data = rw.Sat_SKIM(ifile=ifile)
         grid = rw.Sat_SKIM(ifile=fileg)
-        data.load_data(p, ur_true=[], ur_obs=[], instr=[], ucur=[],
+        data.load_data(p, ur_true=[], ur_obs=[], ucur=[],
                        vcur=[], time=[], lon_nadir=[], lat_nadir=[],
                        lon=[], lat=[], time_nadir=[], vindice=[])
         grid.load_swath(p, radial_angle=[], angle=[], x_al=[], x_al_nadir=[],
