@@ -64,8 +64,8 @@ import skimulator.mod_uwb_corr as mod_uwb_corr
 import multiprocessing
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
-logger = multiprocessing.log_to_stderr()
-logger.setLevel(logging.DEBUG)
+#logger = multiprocessing.log_to_stderr()
+#logger.setLevel(logging.DEBUG)
 
 # - Define global variables for progress bars
 istep = 0
