@@ -127,7 +127,7 @@ def coherency_l2c(datadir_input, config, var, nal_min,
 
 def rms_l2c(datadir_input, config):
     datadir_output = './'
-    glob_files = os.path.join(datadir_input, '{}_L2C_c*p*.nc'.format(config))
+    glob_files = os.path.join(datadir_input, '{}_L2C_c01*p*.nc'.format(config))
     list_files = glob.glob(glob_files)
     ref = {}
     skim = {}
@@ -152,8 +152,10 @@ def rms_l2c(datadir_input, config):
     for filev in list_files:
         fid = netCDF4.Dataset(filev, 'r')
         ipath = int(filev[-6:-3])
-        if ipath%2==0:
-           continue
+        if ipath > 400:
+            continue
+       # if ipath%2==0:
+        #   continue
         ref['uac'] = numpy.array(fid.variables['u_ac_true'][:])
         ref['uac'][ref['uac'] < -10] = numpy.nan
         ref['ual'] = numpy.array(fid.variables['u_al_true'][:])
@@ -168,6 +170,8 @@ def rms_l2c(datadir_input, config):
         skim['ual'][skim['ual'] < -10] = numpy.nan
         nuac = ref['uac'].shape[1]
         fid.close()
+        if nuac < 61:
+            continue
         for i in range(nuac):
             it_ac = len(numpy.where(numpy.isnan(skim['uac'][:, i]) == False)[0])
             if it_ac >= 62:
@@ -194,9 +198,13 @@ def rms_l2c(datadir_input, config):
     std_ual = std_ual/ntot_al
     std_uacm = std_uacm/ntot_acm
     std_ualm = std_ualm/ntot_alm
-
     f, (ax1, ax2) = pyplot.subplots(1, 2, sharey= True, figsize=(12,5 ))
     xac = numpy.arange(-(nac - 1) * p.posting/2, (nac + 1)* p.posting/2, p.posting)
+    _ind = numpy.where(numpy.abs(xac)>40)
+    print(config, 'uac', numpy.nanmean(std_uac[_ind]))
+    print(config, 'ual', numpy.nanmean(std_ual[_ind]))
+    print(config, 'uacm', numpy.nanmean(std_uacm[_ind]))
+    print(config, 'ualm', numpy.nanmean(std_ualm[_ind]))
     ax1.plot(xac, std_uac, 'r', label='across track')
     ax1.plot(xac, std_ual, 'b', label='along track')
     ax1.set_title('Observation {}'.format(config))
@@ -218,10 +226,17 @@ if '__main__' == __name__:
     #             p.posting, outfile='{}_obs_model'.format(p.config))
     list_config = ('WW3_AT_metop_2018_8a', 'WW3_AT_metop_2018_8b',
                    'WW3_AT_metop_2018_8c', 'WW3_AT_metop_2018_6a')
+    list_config = ('WW3_EQ_metop_2018_8a', 'WW3_EQ_metop_2018_8b',
+                   'WW3_EQ_metop_2018_8c', 'WW3_EQ_metop_2018_6a')
+    #list_config = ('WW3_FR_metop_2018_8a', 'WW3_FR_metop_2018_8b',
+    #               'WW3_FR_metop_2018_8c', 'WW3_FR_metop_2018_6a')
     list_dir = []
     for iconfig in list_config:
         outdatadir = os.path.join('/tmp/key/data/skim_at_output', iconfig)
+        outdatadir = os.path.join('/tmp/key/data/skim_eq_output', iconfig)
+    #    outdatadir = os.path.join('/tmp/key/data/skim_fr_output', iconfig)
         list_dir.append(outdatadir)
+        rms_l2c(outdatadir, iconfig)
         coherency_l2c((outdatadir, outdatadir), (iconfig, iconfig),
                      ('obs','model'), length_al,
                      p.posting, outfile='{}_obs_model'.format(iconfig))
@@ -229,4 +244,4 @@ if '__main__' == __name__:
     nal_min = 200
     print(list_dir, list_config)
     coherency_l2c(list_dir, list_config, list_var, nal_min,
-                  p.posting, outfile='WW3_AT_obs')
+                  p.posting, outfile=list_config[0][:-8])

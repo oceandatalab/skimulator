@@ -647,7 +647,8 @@ class Sat_SKIM():
                             else:
                                 continue
                         else:
-                            var[:, i - 1] = value_tmp
+                            if key not in list_nadir:
+                                var[:, i - 1] = value_tmp
 
                 # try:    var.missing_value = p.model_nan
                 # except: var.missing_value = 0.
