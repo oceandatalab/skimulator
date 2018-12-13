@@ -133,7 +133,8 @@ file_output = os.path.join(outdatadir, config)
 interpolation = 'linear'
 # ------ List of output variables:
 list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
-               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb','ssh',
+               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
+               'ssh_true', 'ssh',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
 # -----------------------# 
 # SKIM error parameters 

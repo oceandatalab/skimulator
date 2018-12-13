@@ -44,16 +44,16 @@ makesgrid = True
 # 	 (If modelbox is None, the whole domain of the model is considered)
 modelbox = None # [329.,347., -8.,8.]
 #------- Rotation speed of the antenna (in tr/min)
-rotation_speed = 9.05
+rotation_speed = 9.26
 # ------ Cycle duration
-cycle = 0.0368
+cycle = 0.0368 / 2
 #------- List of position of beams:
 list_pos = (0, 120*math.pi/180., 240*math.pi/180.,
             0, math.pi)
 #------- List of angle of beams in degrees:
 list_angle = (12, 12, 12, 6, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
-list_shift = (4, 2, 3, 5, 1)
+list_shift = (5, 2, 3, 1, 4)
 # ------ Shift longitude of the orbit file if no pass is in the domain 
 #        (in degree): Default value is None (no shift)
 shift_lon = 0
@@ -120,7 +120,8 @@ file_output = os.path.join(outdatadir, config)
 interpolation = 'linear'
 # ------ List of output variables:
 list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
-               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb','ssh',
+               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
+               'ssh_true', 'ssh',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
 # -----------------------# 
 # SKIM error parameters 
@@ -130,6 +131,8 @@ list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
 #        If file_coeff is specified and does not exist, file is created
 #	 If you don't want runs to be reproducible, file_coeff is set to None
 file_coeff = None  # outdatadir+os.sep+'Random_coeff.nc'
+# Compute instrumental nadir noise:
+nadir = True
 # ------ Number of random realisations for instrumental and geophysical error 
 #        (recommended ncomp=2000), ncomp1d is used for 1D spectrum, and ncomp2d
 #        is used for 2D spectrum (wet troposphere computation):
@@ -139,7 +142,7 @@ ncomp2d = 2000
 instr = True
 # ------- Coefficient SNR to retrieve instrumental noise from sigma, 
 #         Recommanded value for 1024 pulses: 3e-2, for 512 pulses: 3sqrt(2)e-3
-snr_coeff = 6e-3
+snr_coeff = 1.4142*6e-3
 
 # ------- Wave bias
 uwb = True
