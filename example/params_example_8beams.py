@@ -143,6 +143,8 @@ list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
 #        If file_coeff is specified and does not exist, file is created
 #	 If you don't want runs to be reproducible, file_coeff is set to None
 file_coeff = None  # outdatadir+os.sep+'Random_coeff.nc'
+# Compute instrumental nadir noise:
+nadir = True
 # ------ Number of random realisations for instrumental and geophysical error 
 #        (recommended ncomp=2000), ncomp1d is used for 1D spectrum, and ncomp2d
 #        is used for 2D spectrum (wet troposphere computation):

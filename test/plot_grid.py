@@ -4,11 +4,13 @@ import numpy
 import glob
 import os
 
+
 # Initialize variables
 indatadir = p.outdatadir
 config = p.config
 modelbox = p.modelbox
 #modelbox = [-5, 5, 75, 85]
+#modelbox = [-65, 55, 40, 45]
 modelbox[0] = numpy.mod(modelbox[0] + 180.0, 360.0) - 180.0
 modelbox[1] = numpy.mod(modelbox[1] + 180.0, 360.0) - 180.0
 filesgrid = os.path.join(indatadir, '{}_grid'.format(config))

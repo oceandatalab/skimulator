@@ -353,10 +353,7 @@ def worker_method_skim(*args, **kwargs):
             # Initialize at zero.
             if i == 0:
                 output_var_i = {}
-                shape_0 = numpy.shape(sgrid_tmp.lon)
-                for key in p.list_output:
-                    if ('ssh' not in key) or ('indice' not in key):
-                        output_var_i[key ] = numpy.full(shape_0, numpy.nan)
+                # TODO remove the next line
                 # for key in p.list_err:
                 #     output_var_i[key ] = numpy.full(shape_0, numpy.nan)
                 time = sgrid_tmp.time / 86400. + sgrid.cycle * cycle
@@ -364,6 +361,13 @@ def worker_method_skim(*args, **kwargs):
                 # mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
                 #                      numpy.nan)
                 #ssh_i, vindice = create_nadir_data()numpy create a mask from an a
+                create = mod.create_SKIMlikedata(cycle, list_file,
+                                                 modelbox, sgrid_tmp,
+                                                 model_data, modeltime, p,
+                                                 progress_bar=True)
+                output_var_i, time = create
+                mod.compute_nadir_noise_skim(p, output_var_i, sgrid, cycle)
+
             # Interpolate the velocity and compute the noise for each beam
             else:
                 #Beam angle value to correct for attenuation in radial velocity
@@ -376,15 +380,17 @@ def worker_method_skim(*args, **kwargs):
                 ##############################
                 # Compute SKIM like data data
                 try:
-                    shape_all = (numpy.shape(listsgridfile)[0] * rcycle
-                                 * (len(p.list_pos) + 1))
-                    create = mod.create_SKIMlikedata(cycle, shape_all, list_file,
-                                                 modelbox, sgrid_tmp,
-                                                 model_data, modeltime,
-                                                 radial_angle, ac_angle,
-                                                 beam_angle, p,
-                                                 progress_bar=True)
+                    # TODO remove the next line
+                    # shape_all = (numpy.shape(listsgridfile)[0] * rcycle
+                    #              * (len(p.list_pos) + 1))
+                    create = mod.create_SKIMlikedata(cycle, list_file,
+                                                     modelbox, sgrid_tmp,
+                                                     model_data, modeltime, p,
+                                                     progress_bar=True)
                     output_var_i, time = create
+                    mod.compute_beam_noise_skim(p, output_var_i, radial_angle,
+                                                beam_angle)
+
                 except:
                     import sys
                     e = sys.exc_info()

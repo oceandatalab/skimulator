@@ -600,7 +600,7 @@ class Sat_SKIM():
                 "vcur": "m/s", "ssh_obs": "m", "wlv": "m",
                 "nadir_err": "m", "ssh_obs":"m", "uwb_corr": "m/s"
                 }
-        list_nadir = ("nadir_err", "wlv", "ssh_obs")
+        list_nadir = ("nadir_err", "ssh_true", "ssh_obs")
         for key, value in outdata.items():
             if value is not None:
                 if key in list_nadir or key == "vindice" or key == "instr":

@@ -75,8 +75,8 @@ def load_sgrid(sgridfile, p):
     x_al = []
     al_cycle = 0
     timeshift = 0
-    sgrid.load_swath(p, cycle=cycle, x_al=x_al, al_cycle=al_cycle,
-                     timeshift=timeshift)
+    sgrid.load_swath(p, cycle=cycle, x_al=x_al, x_al_nadir=[],
+                     al_cycle=al_cycle, timeshift=timeshift)
     # sgrid.loncirc = []
     # for i in range(len(sgrid.lon)):
     #     sgrid.loncirc.append(numpy.rad2deg(numpy.unwrap(sgrid.lon[i])))
@@ -195,9 +195,8 @@ def interpolate_irregular_pyresample(swath_in, var, grid_out, radius,
     return var_out
 
 
-def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
+def create_SKIMlikedata(cycle, list_file, modelbox,
                         sgrid, model_data, modeltime,
-                        radial_angle, ac_angle, beam_angle,
                         p, progress_bar=True):
     '''Create SKIM and nadir errors err and errnad, interpolate model velocity\
     model_data on swath and nadir track,
@@ -210,7 +209,6 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
         output_var_i[key] = numpy.full(shape_i, numpy.nan)
     #for key in p.list_err:
     #    err_var_i[key] = numpy.full(shape_i, numpy.nan)
-    output_var_i['radial_angle'] = radial_angle
 
     date1 = cycle * sgrid.cycle
     # Definition of the time in the model
@@ -376,10 +374,16 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
 
     else:
         pass
+    # TODO to proof: creation of empty mss if no mss and p.instr is True
+    return output_var_i, time
+
+
+def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
     output_var_i['ur_true'] = mod_tools.proj_radial(output_var_i['ucur'],
                                                     output_var_i['vcur'],
                                                     radial_angle)
     output_var_i['ur_obs'] = + output_var_i['ur_true']
+    output_var_i['radial_angle'] = radial_angle
     if p.instr is True:
         # Compute sigma0:
         R2 = 0.5
@@ -413,11 +417,25 @@ def create_SKIMlikedata(cycle, ntotfile, list_file, modelbox,
         GP = 0
         output_var_i['uwb'] = GR * output_var_i['ur_uss']
         #output_var_i['ur_obs'] +=  output_var_i['uwb']
-    return output_var_i, time
+    return None
 
 
-def create_nadir_data(ssh, vindice):
-    return ssh, vindice
+def compute_nadir_noise_skim(p, output_var_i, sgrid, cycle):
+    output_var_i['ssh_obs'] = + output_var_i['ssh']
+    output_var_i['ssh_true'] = + output_var_i['ssh']
+    if p.nadir is True:
+        errnad = build_error.errornadir(p)
+        errnad.init_error(p)
+        errnad.make_error(sgrid, cycle, p)
+        output_var_i['instr'] = errnad.nadir
+    output_var_i['ssh_obs'] += output_var_i['instr']
+    shape_0 = numpy.shape(sgrid.lon)
+    for key in p.list_output:
+        if key not in output_var_i.keys():
+            output_var_i[key] = numpy.full(shape_0, numpy.nan)
+    #if p.wet_tropo is True:
+    #    output_var_i['wet_tropo'] = 
+    return None
 
 
 def save_SKIM(cycle, sgrid, time, outdata, p):

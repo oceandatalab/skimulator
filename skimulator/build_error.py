@@ -133,8 +133,6 @@ class errornadir():
         self.nadir = nadir
         self.wet_tropo1 = wet_tropo1
         self.wt = wt
-        self.nrand = getattr(p, 'nrandkarin', 1000)
-        p.nrandkarin = self.nrand
         self.ncomp2d = getattr(p, 'ncomp2d', 2000)
         p.ncomp2d = self.ncomp2d
         self.ncomp1d = getattr(p, 'ncomp1d', 2000)
@@ -225,14 +223,14 @@ class errornadir():
         fid.close()
         return None
 
-    def make_error(self, orb, cycle, SSH_true, p):
-        nal = numpy.shape(SSH_true)[0]
+    def make_error(self, orb, cycle, p):
+        nal = numpy.shape(orb.x_al_nadir)[0]
         errnadir = numpy.zeros((nal))
         # - Compute random noise of 10**2 cm**2/(km/cycle)
         # - Compute the correspond error on the nadir in m
         for comp in range(0, self.ncomp1d):
             phase_x_al = (2. * math.pi * float(self.f[comp])
-                          * (numpy.float64(orb.x_al[:])
+                          * (numpy.float64(orb.x_al_nadir[:])
                           + float(cycle*orb.al_cycle))) % (2.*math.pi)
             errnadir[:] = (errnadir[:] + 2*self.A[comp]
                            * numpy.cos(phase_x_al[:] + self.phi[comp]))
@@ -249,10 +247,10 @@ class errornadir():
             x_ac_large = numpy.arange(-2. * p.sigma/float(p.delta_ac),
                                       2.*p.sigma/float(p.delta_ac)+p.delta_ac,
                                       p.delta_ac)
-            wt_large = numpy.zeros((numpy.shape(orb.x_al[:])[0],
+            wt_large = numpy.zeros((numpy.shape(orb.x_al_nadir[:])[0],
                                    numpy.shape(x_ac_large)[0]))
             x_large, y_large = numpy.meshgrid(x_ac_large,
-                                              numpy.float64(orb.x_al[:])
+                                              numpy.float64(orb.x_al_nadir[:])
                                               + float(cycle*orb.al_cycle))
             # - Compute path delay error due to wet tropo and radiometer error
             #   using random coefficient initialized with power spectrums
@@ -265,7 +263,7 @@ class errornadir():
                             * numpy.cos(phase_x_al_large
                             + self.phi_wt[comp])*10**-2)
                 phase_x_al = (2. * math.pi * float(self.fr_radio[comp])
-                              * (numpy.float64(orb.x_al[:])
+                              * (numpy.float64(orb.x_al_nadir[:])
                               + float(cycle*orb.al_cycle))) % (2.*math.pi)
                 err_radio = (err_radio + 2*self.A_radio[comp]
                              * numpy.cos(phase_x_al + self.phi_radio[comp])
@@ -283,11 +281,11 @@ class errornadir():
             for i in range(0, nal):
                 # - Find along track indices in the gaussian footprint of
                 #   2.*p.sigma
-                indal = numpy.where(((orb.x_al[:]-orb.x_al[i]) <= (2*p.sigma))
-                                    & ((orb.x_al[:]-orb.x_al[i]) > -2*p.sigma))[0]
+                indal = numpy.where(((orb.x_al_nadir[:]-orb.x_al_nadir[i]) <= (2*p.sigma))
+                                    & ((orb.x_al_nadir[:]-orb.x_al_nadir[i]) > -2*p.sigma))[0]
                 x, y = numpy.meshgrid(x_ac_large[min(indac): max(indac)+1],
-                                      (orb.x_al[(min(indal)):
-                                                (max(indal)+1)]-orb.x_al[i]))
+                                      (orb.x_al_nadir[(min(indal)):
+                                        (max(indal)+1)]-orb.x_al_nadir[i]))
                 # - Compute path delay on gaussian footprint
                 G = 1. / (2.*math.pi*p.sigma**2) * numpy.exp(-(x**2.+y**2.)
                                                              / (2.*p.sigma**2))
