@@ -28,11 +28,12 @@ The software is scalable and designed to support future evolution of orbital
 parameters, error budget estimates from the project team and suggestions from
 the science community.
 
-
 Simulation of the SKIM sampling over synthetic Sea Surface current
 ==================================================================
 From a global or regional OGCM configuration, the software generates radial
 velocities, including instrumental and geophysical noise, for each beam.
+Note that for an accurate instrumental ang geophysical noise, various forcings
+ are needed such as mean square slope, Stockes drift, wind, ice ...
 
 .. _Fig1:
 
@@ -52,29 +53,41 @@ The software uses as an input the ground-tracks of the satellite orbit.
 |             | Repeat Cycle | Repeat Cycle | Sub-cycles | Inclination | Elevation |
 |             | (days)       | (Orbits)     | (days)     |             | (km)      |
 +=============+==============+==============+============+=============+===========+
-| sentinel 1  |       12     |     175      |   6        |    90.18    |  698     |
+| sentinel 1  |       12     |     175      |   6        |    90.18    |  698      |
+| **metop**   |      **29**  |   **412**    |   **5**    |  **98.63**  | **817**   |
+| fast sampl  |        3     |      43      |   0        |    98.5     |  775      |
+| fast sampl  |        8     |     113      |   0        |    98.8     |  845      |
+| scanning    |              |              |            |             |           |
 +-------------+--------------+--------------+------------+-------------+-----------+
 
 The ground-track coordinates corresponding to these orbits are given as input
 ASCII files of 3 columns (longitude, latitude, time) for one complete cycle
 sampled at every  ~5 km. The first ascending node has been arbitrarily set to
 270 degree of longitude, but the user can shift the orbit by any value in
-longitude.
+longitude. The default orbit is metop.
 
 Other orbit files of the same format (time, longitude, latitude) can also be
 used as an input. To avoid distortions in the grid, we recommend a minimum of
 10km sampling between the ground-track points of the orbit.
 
+Note that the first two commented lines of the files concerns the satellite
+ cycle (in days) and elevation (in km).
+.. code-block:: python
+# cycle = 29
+# elevation = 817000
+
+If these lines does not exist, the skimulator will look for these values in the
+ parameter file or take default value (cycle = 29 days and elevation = 817000)
 
 The SKIM geometry
 -----------------
 
 From the orbit nadir ground track the software generates a grid covering the
-swath over 1 satellite cycle. The longitude and latitude coordinates as well as
+swath over one satellite cycle. The longitude and latitude coordinates as well as
 the time are referenced for each grid point. A scheme of the SKIM geometry is
 presented on :ref:`Fig. 2 <Fig2>`.
-The SKIM grid is stored by pass (e.g. 175 ascending passes and 175 descending
-passes for the sentinel-1a orbit). A pass is defined by an orbit starting at
+The SKIM grid is stored by pass (e.g. 412 ascending passes and 412 descending
+passes for the Metop orbit). A pass is defined by an orbit starting at
 the lowest latitude for ascending track and at the highest latitude for
 descending track. The first pass starts at the first lowest latitude crossing
 in the input file, meaning that ascending passes are odd numbers and descending
@@ -89,21 +102,29 @@ passes are even numbers.
            6 degree for figure a and 5 beams at 12 degrees and 2 beams at 6
            degree for figure b.
 
-Interpolation of currents and Stoke drift on the SWOT grid and nadir track
+Interpolation of model variables on the SKIM grid and nadir track
 --------------------------------------------------------------------------
-The input currents and Stoke drifts must be given at regular time step, over
-any period of time. By default the absolute time of the first time step is zero
-and corresponds to the beginning of pass 1. The current and Stoke drifts are
-interpolated on the SWOT grid and nadir track for each pass and successive
-cycles if the input data exceeds 1 cycle. They are then projected along the
-radial component as only measurement along the radial axe can be made.
+A list of model variables can be given to the skimulator. All the variables
+ should have the same coordinates. The naming of the netcdf files should be
+ :math:`[pattern_model]_[pattern_variable].nc`, where :math:`pattern_variable`
+ is a 3-character string.
+All input variables must be given at the same regular time step.
+
+The absolute time of the first time step is zero
+and corresponds to the beginning of pass 1. A first date can be provided in
+order to have a consistent timestamps in the netcdf file.  All provided
+ variables are
+interpolated on the SKIM grid and nadir track for each pass and successive
+cycles if the input data exceeds 1 cycle. Current and Stokes drift are then
+ projected along the radial component as only measurement along the radial axis
+ can be made.
 
 No interpolation is made in time (the model file with the closest time step is
 chosen). This avoids contaminations of the rapid signals (e.g. internal waves)
 if they are under-sampled in the model outputs. However, note that locally,
-sharp transitions of the SSH along the swath may occur if the satellite
+sharp transitions of the variable along the swath may occur if the satellite
 happens to be over the domain at the time of transition between two time steps.
-By default a linear 2D spatial interpolation is performed to compute velocity
+By default a linear 2D spatial interpolation is performed to compute the variable
 data on the SKIM grid.
 
 
@@ -122,7 +143,46 @@ Simulation of errors
 
 Instrumental errors
 ````````````
-The instrumental error corresponds to the geometric doppler. For now a random
+The instrumental error corresponds to the geometric doppler.
+This componant is proportional to sigma0 with a SNR specified in the parameter
+ file. 
+The following variables are needed to compute long range and short range mss:
+ mssu, mssc, mssd, uwnd, vwnd, ucur, vcur.
+
+Computation of long range MSS:
+.. math::
+    mssxl = mssu * \cos(mssd)^2 + mssc * \sin(mssd)^2
+    mssyl = mssu * \sin(mssd)^2 + mssc * \cos(mssd)^2
+    mssxyl = (mssu - mssc) * sin(2 * mssd) / 2
+
+
+Computation of short range MSS:
+.. math::
+   nwr = \sqrt{(uwnd - ucur)^2 + (vwnd - vcur)^2}
+   wrd = \pi / 2 - arctan2(vwnd - vcur, uwnd - ucur)
+   mssshort = \log(nwr + 0.7) * 0.009
+   mssshort[mssshort < 0] = 0
+
+   #Directionality for short wave mss (if 0.5: isotrophic)
+   facssdw = 0.6
+   mssds = facssdw * mssshort
+   msscs = mssshort - mssds
+   mssxs = msscs * \sin(wrd)^2 + mssds * \cos(wrd)^2
+   mssys = mssds * \sin(wrd)^2 + msscs * \cos(wrd)^2
+   mssxys = \abs(mssds - msscs) * \sin(2* wrd)
+
+
+Computation of total MSS:
+.. math::
+   mssx = mssxs + mssxl
+   mssy = mssys + mssyl
+   mssxy = mssxys + mssxyl
+
+Computation of sigma0:
+
+To compute this noise, the short and long range MSS (mean square slopes) needs
+to be computed
+ For now a random
 noise has been implemented. The amplitude of the noise depends on the beam
 angle and the azimuth.
 .. _Fig4:
