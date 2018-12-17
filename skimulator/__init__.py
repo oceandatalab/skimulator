@@ -68,6 +68,11 @@ try:
             __date__ = f.readline().strip()
 except ImportError:
     pass
+except KeyError:
+    # It seems that some versions of setuptools/pkg_resources try to read the
+    # file once its path has been rebuilt, which causes an error when the file
+    # does not exist.
+    pass
 
 # - If you're importing this module in testing mode, or you're running
 #  pydoc on this module via the command line, import user-specific
