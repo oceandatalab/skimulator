@@ -2,9 +2,7 @@
 ################################
 SKIM Simulator
 ################################
-Lucile Gaultier
-
-OceanDataLab
+Lucile Gaultier (OceanDataLab)
 
 .. role:: red
 .. toctree::
@@ -54,8 +52,11 @@ The software uses as an input the ground-tracks of the satellite orbit.
 |             | (days)       | (Orbits)     | (days)     |             | (km)      |
 +=============+==============+==============+============+=============+===========+
 | sentinel 1  |       12     |     175      |   6        |    90.18    |  698      |
++-------------+--------------+--------------+------------+-------------+-----------+
 | **metop**   |      **29**  |   **412**    |   **5**    |  **98.63**  | **817**   |
++-------------+--------------+--------------+------------+-------------+-----------+
 | fast sampl  |        3     |      43      |   0        |    98.5     |  775      |
++-------------+--------------+--------------+------------+-------------+-----------+
 | fast sampl  |        8     |     113      |   0        |    98.8     |  845      |
 | scanning    |              |              |            |             |           |
 +-------------+--------------+--------------+------------+-------------+-----------+
@@ -72,9 +73,12 @@ used as an input. To avoid distortions in the grid, we recommend a minimum of
 
 Note that the first two commented lines of the files concerns the satellite
  cycle (in days) and elevation (in km).
+
+
 .. code-block:: python
-# cycle = 29
-# elevation = 817000
+    cycle = 29
+    elevation = 817000
+
 
 If these lines does not exist, the skimulator will look for these values in the
  parameter file or take default value (cycle = 29 days and elevation = 817000)
@@ -106,7 +110,7 @@ Interpolation of model variables on the SKIM grid and nadir track
 --------------------------------------------------------------------------
 A list of model variables can be given to the skimulator. All the variables
  should have the same coordinates. The naming of the netcdf files should be
- :math:`[pattern_model]_[pattern_variable].nc`, where :math:`pattern_variable`
+ :math:`[pattern\_model]\_[pattern\_variable].nc`, where :math:`pattern\_variable`
  is a 3-character string.
 All input variables must be given at the same regular time step.
 
@@ -145,41 +149,56 @@ Instrumental errors
 ````````````
 The instrumental error corresponds to the geometric doppler.
 This componant is proportional to sigma0 with a SNR specified in the parameter
- file. 
+ file.
 The following variables are needed to compute long range and short range mss:
  mssu, mssc, mssd, uwnd, vwnd, ucur, vcur.
 
 Computation of long range MSS:
+
 .. math::
-    mssxl = mssu * \cos(mssd)^2 + mssc * \sin(mssd)^2
-    mssyl = mssu * \sin(mssd)^2 + mssc * \cos(mssd)^2
-    mssxyl = (mssu - mssc) * sin(2 * mssd) / 2
+    mssxl = mssu * \cos(mssd)^2 + mssc * \sin(mssd)^2 \\
+    mssyl = mssu * \sin(mssd)^2 + mssc * \cos(mssd)^2 \\
+    mssxyl = (mssu - mssc) * \frac{\sin(2 * mssd)}{2}
 
 
 Computation of short range MSS:
+
 .. math::
-   nwr = \sqrt{(uwnd - ucur)^2 + (vwnd - vcur)^2}
-   wrd = \pi / 2 - arctan2(vwnd - vcur, uwnd - ucur)
-   mssshort = \log(nwr + 0.7) * 0.009
+   nwr = \sqrt{(uwnd - ucur)^2 + (vwnd - vcur)^2} \\ 
+   wrd = \pi / 2 - arctan2(vwnd - vcur,\ uwnd - ucur) \\
+   mssshort = \log(nwr + 0.7) * 0.009 \\
    mssshort[mssshort < 0] = 0
+    
+Directionality for short wave mss (if 0.5: isotrophic)
 
-   #Directionality for short wave mss (if 0.5: isotrophic)
-   facssdw = 0.6
-   mssds = facssdw * mssshort
-   msscs = mssshort - mssds
-   mssxs = msscs * \sin(wrd)^2 + mssds * \cos(wrd)^2
-   mssys = mssds * \sin(wrd)^2 + msscs * \cos(wrd)^2
-   mssxys = \abs(mssds - msscs) * \sin(2* wrd)
-
+.. math::
+   facssdw = 0.6 \\
+   mssds = facssdw * mssshort \\
+   msscs = mssshort - mssds \\
+   mssxs = msscs * \sin(wrd)^2 + mssds * \cos(wrd)^2 \\
+   mssys = mssds * \sin(wrd)^2 + msscs * \cos(wrd)^2 \\
+   mssxys = |mssds - msscs| * \sin(2* wrd) \\
 
 Computation of total MSS:
+
 .. math::
-   mssx = mssxs + mssxl
-   mssy = mssys + mssyl
-   mssxy = mssxys + mssxyl
+   mssx = mssxs + mssxl \\
+   mssy = mssys + mssyl \\
+   mssxy = mssxys + mssxyl \\
 
-Computation of sigma0:
+:math:`\sigma 0` on water is computed from the total MSS:
 
+.. math::
+    B = -0.5 * \tan(beam)^2 * \frac{(\cos(azimuth)^2 * mssy + \sin(azimuth)^2 *mssx -\sin(2*azimuth)*mssxy)}{mssx * mssy} \\
+    A = \frac{R^2}{(2 * \cos(beam)^4 * \sqrt{mssx * mssy}} \\
+    \sigma 0_{water} =  A \exp(B)
+
+with :math:`R^2=0.55` which is a typical value for the tropics in Ka band.
+Note that R depends on the radar frequency, water temperature and salinity
+ (eg :math:`R^2=0.50` for 3ºC water).
+
+
+In the presence of ice, t
 To compute this noise, the short and long range MSS (mean square slopes) needs
 to be computed
  For now a random

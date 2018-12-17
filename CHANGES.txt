@@ -98,6 +98,7 @@ Changelog for skimulator
 - Fix bugs (sorting index in multiprocessor to handle files in the right order,
  interpolation in global simulation, add errors to model, angle to compute
  instrumental rms)
+
 1.1
 ----
 2018/04/01
