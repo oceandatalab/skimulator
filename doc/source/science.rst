@@ -228,16 +228,19 @@ The relation between the wave bias and the Stoke drift is parametrized using a
 radial and perpendicular G parameter.
 
 Compute the wind stress on the surface of the ocean:
+
 .. math::
    nwr = \sqrt((u_{wind} - u_{cur})^2 + (v_{wind} - v_{cur})^2)
 
 Compute radial (:math:`G_r`) and perpendicular (:math:`G_p`) parameter
+
 .. math::
-    G_r = 25 * (0.82 * \log(0.2 + \frac{7}{nwr})) * (1-tanh((beam - 25)/10))
+    G_r = 25 * (0.82 * \log(0.2 + \frac{7}{nwr})) * (1-tanh((beam - 25)/10))\\
     G_p = 0
 
 Compute the wave bias
-..math::
+
+.. math::
     Uwb = G_r * ur_{uss} + G_p * up_{uss}
 
 This wave bias can be corrected assuming that we can compute it using
@@ -251,8 +254,8 @@ available and thus the drift remaining bias is higher than in the open ocean.
 .. figure:: ../images/Fig5.png
    :alt: Model current geophysical noise
 
-   FIG. 5: Model interpolated currents and the corresponding geophysical noise
-           (for now, it contains only stoke drift remaining bias).
+   FIG. 5: Model interpolated currents and the corresponding wave remaining
+           bias.
 
 Total error
 ```````````
@@ -308,13 +311,18 @@ data (in netcdf).
 * :mod:`mod_tools.py` contains miscellaneous functions (algebraic functions and
 generation of random coefficients).
 
+* :mod:`regridding.py` contains reconstruction for L2c products functions
+
+* :mod:`mod_uwb_corr.py` contains function to correct the wave bias using
+neighbors
+
 
 Inputs
 -------
 You can provide to the simulator a list of model outputs in netcdf. You need 
 to have at least the meridional and zonal currents to compute error-free radial
 L2B velocities and SSH if you want to simulate nadir data. Wind and MSS
- are necessary to compute instrumental noise (proportional to :math:`sigma^0`),
+are necessary to compute instrumental noise (proportional to :math:`sigma^0`),
 Stokes drift and Wind are needed to compute wave bias. Ice concentration should
 also be provided to improve the computation of sigma0 in polar areas.
 Any other variables provided to the skimulator will be interpolated on the
@@ -325,6 +333,7 @@ in the parameter file.
 For WW3 data, you should provide a list following this format:
 
 .. code-block:: python
+
    model_0001_var.nc
    model_0002_var.nc
    model_0003_var.nc 
@@ -334,18 +343,21 @@ with var any three-characters variable (eg cur, uss, wnd ... )
 For any other model type, the extension does not need to be provided
 
 .. code-block:: python
+
    model_0001_
    model_0002_
    model_0003_
 
 The model file should be model_0001_var.nc with variable the extension of the
 file. For example, if all the variables are in the same file
-:math:`myfile_[date].nc`, the list of file will be:
+:math:`myfile\_[date].nc`, the list of file will be:
 
 .. code-block:: python
+
    myfile_date1
    myfile_date2
    myfile_date3
+
 FIG 19: Example of a list of files, a real example is located in the example directory.
 
 The grid files are provided as a list in the parameter file, using the key
@@ -371,6 +383,7 @@ All other variables that are to be read, are added to the dictionnary
 :ref:`list_input_var <params-model>`:
 
 .. code-block:: python
+
   list_input_var = {'key': [[variable\_name], [variable\_extension_file]]}
 
 The following table summarizes the key that are required to compute
@@ -410,17 +423,18 @@ longitude or latitude variables name.
 Below is an example of :ref:`list_input_var  <params-model>` for WW3 model:
 
 .. code:: python
-list_input_var = {'ucur': ['ucur', 'cur'],
-                  'vcur': ['vcur', 'cur'],
-                  'uuss': ['uuss', 'uss'],
-                  'vuss': ['vuss', 'uss'],
-                  'ice': ['ice', 'ice'],
-                  'mssd': ['mssd', 'msd'],
-                  'mssx': ['mssx', 'mss'],
-                  'mssy':['mssy', 'mss'],
-                  'ssh': ['wlv', 'wlv'],
-                  'uwnd': ['uwnd', 'wnd'],
-                  'vwnd': ['vwnd', 'wnd']}
+
+  list_input_var = {'ucur': ['ucur', 'cur'],
+                    'vcur': ['vcur', 'cur'],
+                    'uuss': ['uuss', 'uss'],
+                    'vuss': ['vuss', 'uss'],
+                    'ice': ['ice', 'ice'],
+                    'mssd': ['mssd', 'msd'],
+                    'mssx': ['mssx', 'mss'],
+                    'mssy':['mssy', 'mss'],
+                    'ssh': ['wlv', 'wlv'],
+                    'uwnd': ['uwnd', 'wnd'],
+                    'vwnd': ['vwnd', 'wnd']}
 
 
 The coordinates are supposed to
@@ -433,7 +447,7 @@ following  :ref:`first_time`='yyyy-mm-ddTHH:MM:SSZ". By default,
 
 If there is a ice_mask varying in time, set :ref:`ice_mask  <params-model>`
 to False to
- recompute the mask at every cycle.
+recompute the mask at every cycle.
 
 The number of time in each file should be constant for all the files
 and specified in the
@@ -501,40 +515,94 @@ domain, this last solution for the mgriddata, interpolation can be slow and
 even trigger memory error. The use of the ‘nearest’ interpolation is necessary
 to avoid memory error though the derivative of the current can be significantly
 altered using this interpolation method.
+The :ref:`list_output  <params-output>` key  concerns the list of variables that you want to be
+store in the netcdf files. The most common key are summarized in the table
+below, you can add any other key that you want to interpolate on the SKIM grid:
+
++------------+--------------------------------+-------------------------------+
+|Key         | Long name                      | Required for ...              |
++============+================================+===============================+
+| ur_true    | Radial error free velocity     |                               |
++------------+--------------------------------+-------------------------------+
+| ur_obs     | Radial velocity with errors    |                               |
++------------+--------------------------------+-------------------------------+
+| ucur       | Meridional true current        | Radial velocity, Wave bias    |
++------------+--------------------------------+-------------------------------+
+| vcur       | Zonal true current             | Radial velocity, Wave bias    |
++------------+--------------------------------+-------------------------------+
+| uuss       | Meridional Stokes drift        | ur_obs, Wave bias             |
++------------+--------------------------------+-------------------------------+
+| vuss       | Zonal Stokes drift             | ur_obs, Wave bias             |
++------------+--------------------------------+-------------------------------+
+| instr      | Instrumental error             | instrumental error, ur_obs    |
++------------+--------------------------------+-------------------------------+
+|radial_angle| Azimuthal angle                | all                           |
++------------+--------------------------------+-------------------------------+
+| uwnd       | Meridional wind                | wave bias, ur_obs, instr      |
++------------+--------------------------------+-------------------------------+
+| vwnd       | Zonal wind                     | wave bias, ur_obs, instr      |
++------------+--------------------------------+-------------------------------+
+| mssx       | Meridional MSS                 | instr, ur_obs                 |
++------------+--------------------------------+-------------------------------+
+| mssy       | Zonal MSS                      | instr, ur_obs                 |
++------------+--------------------------------+-------------------------------+
+| mssxy      | Mixed MSS                      | instr, ur_obs                 |
++------------+--------------------------------+-------------------------------+
+| uwb        | Wave bias                      | wave bias, ur_obs, uwb_corr   |
++------------+--------------------------------+-------------------------------+
+| uwb_corr   | Remaining wave bias            | wave bias, ur_obs             |
++------------+--------------------------------+-------------------------------+
+| sigma0     | NRCS                           | instr, ur_obs                 |
++------------+--------------------------------+-------------------------------+
+| ssh_obs    | Sea Surface Height with errors | ssh_obs, nadir                |
++------------+--------------------------------+-------------------------------+
+| ssh_true   | Error free Sea Surface Height  | ssh_obs,                      |
++------------+--------------------------------+-------------------------------+
+
 
 To compute each error, set the corresponding parameter to True
-(:ref:`instr <params-error>`, :ref:`uss <params-error>`.
-The rms for the instrumental noise depends on the beam angle and on the
-position related to the along track direction. .dat files (one file per beam
-angle) contain the rms as a function of the position. The file names
-(including the path) are provided as a list of file path in
-:ref:`rms_instr <params-error>`.
-There are two methods to compute the Stoke drift remaining bias. For both
-methods, a stoke parameter :ref:`G <params-error>` is defined. It depends
-highly on the wind intensity.
-To use the parametrisation as a function of the distance and the uss of
-neighboring beams, use the options :ref:`formula = True <params-error>`, and
-define the :ref:`uss_std <params-error>` and `factor_errdcos <params-error>`
-parameters corresponding to the region of interest. The bias is computed using
-the following formula:
-`errwb = G * uss_std * std(uss) *errdcos[beam] / factor_errdcos`
-If :ref:`formula <params-error>` is set to False,
-`errwb = G * sum(uss[beam] / errdcos[beam])`
+(:ref:`instr <params-error>`, :ref:`ice <params-error>`,
+:ref:`uwb <params-error>`, :ref:`nadir <params-error>`).
+If :ref:`nadir <params-error>` is True, then :ref:`ncomp1d  <params-error>`
+should be specified to compute random error realisations. 
+If :ref:`instr <params-error>` is True, the :ref:`snr_coeff <params-error>`
+coefficient (to retrieve instrumental noise from sigma) should be specified.
 
 
 All the computed errors are saved in the output netcdf file. The observed SSH
 (SSH_obs) is also computed by adding all the computed errors to the SSH from
-the model (SSH_model) when model data are provided. Note that if
-:ref:`nbeam  <params-error>` ='both' (residual error due to path delay using
-one beam and two beams are both computed), only the residual error due to path
-delay using one beam is considered in the observed SSH.
+the model (SSH_model) when model data are provided.
 
 Two errors are considered in the nadir. The first one is the instrument error,
 which follows the 1d spectrum computed from the current altimeters. You have
-to set (:ref:`nadir <params-error>`) to True to compute this error. The second
-error is the path delay due to the wet troposphere and this error is computed
-with the residual path delay error in the swath. The observed SSH (SSH_obs) is
-computing by adding these two errors to the SSH interpolated from the model (SSH_model).
+to set (:ref:`nadir <params-error>`) to True to compute this error.
+.. comment::
+  The second
+  error is the path delay due to the wet troposphere and this error is computed
+  with the residual path delay error in the swath. The observed SSH (SSH_obs) is
+  computing by adding these two errors to the SSH interpolated from the model (SSH_model).
+
+L2C 2d currents
+---------------
+L2b radial current can be projected on a along swath and across swath grid
+using the skiml2c command with the same parameter file as the one used for
+the L2b current production. It uses the L2b produced previously as an input.
+The along track and across track grid resolution is specified in
+:ref:`posting <params-l2c>`. By default, the spatial resolution of the grid is
+5 km.
+The L2c reconstrunction uses neighbors to project and interpolate the current. 
+The length resolution to select neighbors can be set in
+:ref:`resol <params-l2c>`. Coefficient for the OI are deacreasing exponentially
+with the distance to the pixel.
+As data around nadir are particularly noisy (all radial velocity are
+parrallels), one can mask them by specifiying the distance in km from nadir
+where data are to be masked :ref:`ac_threshold <params-l2c>`.
+
+The L2c outputs contains along track, across track, meridional and zonal
+current reconstructed from the error-free and radial velocity with errors.
+True along track, across track meridional and zonal velocity interpolated
+from the model inputs are also stored for diagnosis purposes.
+
 
 Getting started 
 ----------------
@@ -552,13 +620,20 @@ or ipython window:
 
 with M the name of the module.
 
-To run the example, type in any terminal:
+To compute L2b products:
 
 .. code-block:: python
 
-   >> skimulator ./example/params_example.py
+   >>>skimulator [your_parameter_file]
 
-for the SKIM simulator.
+
+You can compute L2c products after L2b files have been produced, keep the same
+parameter file and run:
+
+.. code-block:: python
+
+   >>>skiml2c [your_parameter_file]
+
 
 
 .. _params:
@@ -591,6 +666,10 @@ Example of Params.txt for SKIM-like data
 .. literalinclude:: params.py
    :lines: 106-
 
+.. _params-l2c:
+
+.. literalinclude:: params.py
+   :lines: 106-
 
 References:
 ===========

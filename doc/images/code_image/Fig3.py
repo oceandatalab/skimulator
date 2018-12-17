@@ -16,19 +16,18 @@ import os
 listcolor = ['c', 'y', 'b', 'g', 'k', 'r', 'c', 'y']
 
 # List files
+config="WW3_AT_metop_2018_8b"
 indatadir = '/mnt/data/project/'
-indatadir = '/tmp/key/project/'
-indatadir = os.path.join(indatadir, 'skim', 'skim_output')
-config="WW3_GS_6b108az"
-config="WW3_GS_8b105az"
-modeldatapath = '/tmp/key/model/ww3_gs/ww3.201109_cur.nc'
+indatadir = '/tmp/key/data/skim_at_output/{}'.format(config)
+
+modeldatapath = '/tmp/key/data/model/ww3_gs/ww3.201109_cur.nc'
 filesgrid = os.path.join(indatadir, '{}_'.format(config))
-ipass = 59
+ipass = 58
 indatapath = '{}c01_p{:03d}.nc'.format(filesgrid, ipass)
 listfile = glob.glob(indatapath)
 listfile = sorted(listfile)
 outdatadir = '../'
-modelbox = [-73, -71.0, 34.0, 36.0]
+modelbox = [-71, -69.0, 34.0, 36.0]
 scale = 11
 is_cartopy = True
 # Prepare figure
@@ -93,7 +92,7 @@ ax2.set_title('(b) Interpolated (green) and projected (red) velocity')
 lon = data['lon'][:]
 lon[lon > 180] = lon[lon > 180] - 360
 lat = data['lat'][:]
-ur = data['ur_model'][:]
+ur = data['ur_true'][:]
 corrangle = datag['radial_angle'][:]
 datau = data['u_model'][:]
 datav = data['v_model'][:]
