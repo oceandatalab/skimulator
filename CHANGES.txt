@@ -1,12 +1,112 @@
 Changelog for skimulator
 ===========================
 
+
+2.3
+---
+2018/12/14
+- Add nadir-like observation with and without errors
+
+- Add diagostic and plot example scripts (jupyter notebooks)
+
+
+2.2
+---
+2018/12/07
+- Change format of l2c
+
+- Read satellite elevation and cycle from orbit files
+
+- Add coherence diagnostics for L2c
+
+- Fix typos
+
+2.1
+---
+2018/10/17
+- Handle any OGCM file withou waves (no noise is produced)
+
+- Add rms diagnostics for L2c
+
+- Add first time of model in parameter file to handle timestamps in netcdf
+ files
+
+- Add interpolation of model during regridding of L2c for diagnostic purposes
+
+- Add true along track and across track velocity in L2c
+
+- Handle nearly empty pass for L2c reconstruction
+
+- Add error free plot for L2c std computation
+
+- Add grid file in parameter file
+
+- Add exponential window in space for L2c OI
+- Fix bug (l2c sign issues on descending tracks, index time in l2c
+ reconstruction)
+
+2.0
+---
+2018/10/16
+- Handle interpolation of an ensemble of variables and files provided in the
+ parameter file
+
+- Compute sigma and G from mss, wind, stockes ..., compute instrumental noise
+ from sigma0 and wave bias from stockes and G
+
+- Compute remaining wave bias with simulating a correction using neighbors
+ (errdcos function)
+
+- Clean up by splitting codes and creation of new module mod_run
+
+- Add module in test for diagnostics puposes (RMS for L2b and L2c )
+
+- Add 2018 new configurations (2018_8a, b, c and 2018_6a)
+
+- Correct satellite elevation used for Metop
+
+- Fix bug in L2c during interpolation of descending tracks
+
+1.31
+---
+2018/09/18
+- Remove attenuation in sin(beam_angle) assuming that we will be able to
+ correct it
+
+- Fix bugs (typo in mod_tools, debug print, exceed dimension in time)
+
+
+
+1.3
+---
+2018/07/18
+- Add attenuation in sin(beam_angle) in projected radial velocity
+
+- Improve packaging with a VERSION.txt that gather git information
+
+- Add test script to generate L2C data
+
+1.2
+---
+2018/07/01
+- Handle generation of grid only when no model file is provided
+
+- Implement error messages and user proof simulator
+
+- Handle files with Arakawa grid C.
+
+- Fix bugs (sorting index in multiprocessor to handle files in the right order,
+ interpolation in global simulation, add errors to model, angle to compute
+ instrumental rms)
+
 1.1
 ----
 2018/04/01
 - Parallelisation
 
-_ Fix bugs (issues with numpy 14.2, interpolation at 0E, radial velocity)
+- Add figures in documentation and example files in example
+
+- Fix bugs (issues with numpy 14.2, interpolation at 0E, radial velocity)
 
 1.0
 -----
