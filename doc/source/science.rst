@@ -31,7 +31,7 @@ Simulation of the SKIM sampling over synthetic Sea Surface current
 From a global or regional OGCM configuration, the software generates radial
 velocities, including instrumental and geophysical noise, for each beam.
 Note that for an accurate instrumental ang geophysical noise, various forcings
- are needed such as mean square slope, Stockes drift, wind, ice ...
+are needed such as mean square slope, Stockes drift, wind, ice ...
 
 .. _Fig1:
 
@@ -72,7 +72,7 @@ used as an input. To avoid distortions in the grid, we recommend a minimum of
 10km sampling between the ground-track points of the orbit.
 
 Note that the first two commented lines of the files concerns the satellite
- cycle (in days) and elevation (in km).
+cycle (in days) and elevation (in km).
 
 
 .. code-block:: python
@@ -81,7 +81,7 @@ Note that the first two commented lines of the files concerns the satellite
 
 
 If these lines does not exist, the skimulator will look for these values in the
- parameter file or take default value (cycle = 29 days and elevation = 817000)
+parameter file or take default value (cycle = 29 days and elevation = 817000)
 
 The SKIM geometry
 -----------------
@@ -109,19 +109,19 @@ passes are even numbers.
 Interpolation of model variables on the SKIM grid and nadir track
 --------------------------------------------------------------------------
 A list of model variables can be given to the skimulator. All the variables
- should have the same coordinates. The naming of the netcdf files should be
- :math:`[pattern\_model]\_[pattern\_variable].nc`, where :math:`pattern\_variable`
- is a 3-character string.
+should have the same coordinates. The naming of the netcdf files should be
+:math:`[pattern\_model]\_[pattern\_variable].nc`, where :math:`pattern\_variable`
+is a 3-character string.
 All input variables must be given at the same regular time step.
 
 The absolute time of the first time step is zero
 and corresponds to the beginning of pass 1. A first date can be provided in
 order to have a consistent timestamps in the netcdf file.  All provided
- variables are
+variables are
 interpolated on the SKIM grid and nadir track for each pass and successive
 cycles if the input data exceeds 1 cycle. Current and Stokes drift are then
  projected along the radial component as only measurement along the radial axis
- can be made.
+can be made.
 
 No interpolation is made in time (the model file with the closest time step is
 chosen). This avoids contaminations of the rapid signals (e.g. internal waves)
@@ -149,9 +149,9 @@ Instrumental errors
 ````````````
 The instrumental error corresponds to the geometric doppler.
 This componant is proportional to sigma0 with a SNR specified in the parameter
- file.
+file.
 The following variables are needed to compute long range and short range mss:
- mssu, mssc, mssd, uwnd, vwnd, ucur, vcur.
+mssu, mssc, mssd, uwnd, vwnd, ucur, vcur.
 
 Computation of long range MSS:
 
@@ -186,24 +186,31 @@ Computation of total MSS:
    mssy = mssys + mssyl \\
    mssxy = mssxys + mssxyl \\
 
-:math:`\sigma 0` on water is computed from the total MSS:
+:math:`\sigma^0` on water is computed from the total MSS:
 
 .. math::
     B = -0.5 * \tan(beam)^2 * \frac{(\cos(azimuth)^2 * mssy + \sin(azimuth)^2 *mssx -\sin(2*azimuth)*mssxy)}{mssx * mssy} \\
+
+.. math::
     A = \frac{R^2}{(2 * \cos(beam)^4 * \sqrt{mssx * mssy}} \\
-    \sigma 0_{water} =  A \exp(B)
+    \sigma^0_{water} =  A \exp(B)
 
 with :math:`R^2=0.55` which is a typical value for the tropics in Ka band.
 Note that R depends on the radar frequency, water temperature and salinity
- (eg :math:`R^2=0.50` for 3ºC water).
+(eg :math:`R^2=0.50` for 3ºC water).
 
 
-In the presence of ice, t
-To compute this noise, the short and long range MSS (mean square slopes) needs
-to be computed
- For now a random
-noise has been implemented. The amplitude of the noise depends on the beam
-angle and the azimuth.
+In the presence of ice, we use the concentration of sea ice :math:`C_{ice}`
+and assume that :math:`\sigma^0_{ice}` is constant (:math:`\sigma^0_{ice}=2.5`
+for 6º beam and :math:`\sigma^0_{ice}=1` for 12º beam).
+
+.. math::
+   \sigma^0 = (1 - C_{ice}) * \sigma^0_{water} +  C_{ice} * `\sigma^0_{ice}
+
+Finally, the instrumental error is a random number proportional to
+:math:`\sigma^0`
+
+
 .. _Fig4:
 
 .. figure:: ../images/Fig4.png
@@ -212,14 +219,33 @@ angle and the azimuth.
    FIG. 4: Model interpolated currents and the corresponding intrumental error.
 
 
-Stoke drift remaining bias
+Wave bias
 ````````````````````````
-The geophysical noise contains only the bias on the doppler due to the Stoke
-drift. The stoke drift is provided to the simulator, we retrieve the
-corresponding radial Stoke componant measured by SKIM and correct it using
-nearest negihbours in all azimuth. The corrected variable is called the Stoke 
-drift remaing bias. Near the coast, not all azimuth are
+The geophysical doppler includes also part of the currents due to the Stokes
+drift. This componant is later refered as the current wave bias :math:`Uwb`.
+To compute the wave bias, the Stoke drift and the wind are necessary:
+The relation between the wave bias and the Stoke drift is parametrized using a
+radial and perpendicular G parameter.
+
+Compute the wind stress on the surface of the ocean:
+.. math::
+   nwr = \sqrt((u_{wind} - u_{cur})^2 + (v_{wind} - v_{cur})^2)
+
+Compute radial (:math:`G_r`) and perpendicular (:math:`G_p`) parameter
+.. math::
+    G_r = 25 * (0.82 * \log(0.2 + \frac{7}{nwr})) * (1-tanh((beam - 25)/10))
+    G_p = 0
+
+Compute the wave bias
+..math::
+    Uwb = G_r * ur_{uss} + G_p * up_{uss}
+
+This wave bias can be corrected assuming that we can compute it using
+neighbors in different azimuthal direction.This corrected componant is called
+the remaining wave bias.
+Near the coast, not all azimuth are
 available and thus the drift remaining bias is higher than in the open ocean.
+
 .. _Fig5:
 
 .. figure:: ../images/Fig5.png
@@ -240,14 +266,16 @@ All previous errors are added to compute the total error.
    FIG. 5: Model interpolated currents and the corresponding total noise
            (instrumental + geophysical).
 
+
 Simulation of errors for the nadir altimeter
 ============================================
 Two main components of the nadir altimetry error budget are simulated: the
  altimeter noise and residual wet-tropospheric errors. For the altimeter noise,
 the noise follow a spectrum of error consistent with global estimates from the
-Jason-2 altimeter. The wet-tropospheric residual errors are generated using the
-simulated wet-tropospheric signal and radiometer beam convolution described in
-SWOT Simulator documentation.
+Jason-2 altimeter.
+The wet-tropospheric residual errors (not implemented yet) are generated using
+the simulated wet-tropospheric signal and radiometer beam convolution described
+in SWOT Simulator documentation.
 
 .. raw:: latex
 
@@ -256,7 +284,9 @@ SWOT Simulator documentation.
 The software
 =============
 The software is written in Python, and uses Numpy, Scipy amd netCDF4 python
-libraries. All the parameters that can be modified by the user are read in a
+libraries. Pyresample is also required for L2C computation and faster
+interpolation.
+All the parameters that can be modified by the user are read in a
 params file (e.g. params.py) specified by the user. These parameters are
 written in :ref:`yellow <params>` later on and are linked to their location in
 the params file example.
@@ -264,6 +294,8 @@ the params file example.
 The software is divided in 6 modules:
 
 * :mod:`run_simulator.py` is the main program that runs the simulator.
+
+* :mod:`mod_run.py` contains interpolations and data construction functions.
 
 * :mod:`build_swath.py` generates the SKIM geometry and save several
 coordinates and angular variables in a netcdf file.
@@ -279,29 +311,54 @@ generation of random coefficients).
 
 Inputs
 -------
-The inputs are current and Stoke drift model outputs in netcdf. Two lists of
-file (in .txt format) are read by the software (one for the current and one for
-the Stoke drift). It contains the grid file and all model outputs. The first
-file in this list is the grid, therefore, if the grid is contained in the data
-files, the first data file should be repeated. The directory that contains
-input (:ref:`indatadir <params-file>`) and the names of the list of files
-(:ref:`file_input <params-file>` for current and
-:ref:`input_uss <params-file>`) are specified in the params file.
+You can provide to the simulator a list of model outputs in netcdf. You need 
+to have at least the meridional and zonal currents to compute error-free radial
+L2B velocities and SSH if you want to simulate nadir data. Wind and MSS
+ are necessary to compute instrumental noise (proportional to :math:`sigma^0`),
+Stokes drift and Wind are needed to compute wave bias. Ice concentration should
+also be provided to improve the computation of sigma0 in polar areas.
+Any other variables provided to the skimulator will be interpolated on the
+SKIM points.
+
+A list of files (in .txt format) is provided using :ref:`file_input <params-file>`
+in the parameter file.
+For WW3 data, you should provide a list following this format:
 
 .. code-block:: python
+   model_0001_var.nc
+   model_0002_var.nc
+   model_0003_var.nc 
 
-   Grid_model.nc  
-   model_0001.nc
-   model_0002.nc
-   model_0003.nc 
+with var any three-characters variable (eg cur, uss, wnd ... )
 
+For any other model type, the extension does not need to be provided
+
+.. code-block:: python
+   model_0001_
+   model_0002_
+   model_0003_
+
+The model file should be model_0001_var.nc with variable the extension of the
+file. For example, if all the variables are in the same file
+:math:`myfile_[date].nc`, the list of file will be:
+
+.. code-block:: python
+   myfile_date1
+   myfile_date2
+   myfile_date3
 FIG 19: Example of a list of files, a real example is located in the example directory.
 
-It is possible to generate the noise alone, without using any model as an
-input. To generate the noise alone, the name of the list of files
-(:ref:`file_input <params-file>`) should be set to `None`. Note that if you set
-the `input_uss <params-error>` list to `None`, no Stoke drift bias will be
-computed.
+The grid files are provided as a list in the parameter file, using the key
+:ref:`file_grid_model`. Provide one file in this list if meridional and zonal
+velocities are on the same grid, two otherwise. 
+If no file_grid_model is provided, The skimulator is going to use the first
+file of your list and data in this file will be ignored.
+
+
+It is possible to generate the SKIM sampling alone, without using any model as an
+input. If the name of the list of files
+(:ref:`file_input <params-file>`) is set to `None`, then only SKIM grid files
+will be generated.
 
 
 The module :mod:`rw_data.py` is used to read model data. For any standard
@@ -309,16 +366,78 @@ netcdf format, the data can be read using
 :ref:`model <params-model>` = MODEL_NETCDF, which is the
 :ref:`model<params-model>` default value. The user needs to specify the
 latitude (:ref:`latu <params-model>` and :ref:`latv <params-model>`), longitude
-(:ref:`lonu <params-model>` and :ref:`lonv <params-model>`), and velocity
-(:ref:`varu <params-model>` and :ref:`varv <params-model>`) variable names for
-both component. Netcdf data that follow WW3 format can automatically be read
+(:ref:`lonu <params-model>` and :ref:`lonv <params-model>`) variables names.
+All other variables that are to be read, are added to the dictionnary
+:ref:`list_input_var <params-model>`:
+
+.. code-block:: python
+  list_input_var = {'key': [[variable\_name], [variable\_extension_file]]}
+
+The following table summarizes the key that are required to compute
+instrumental noise and wave bias:
+
++-------+---------------------------+-----------------------------------+
+| Key   | corresponding variable    | Necessary to compute ...          |
++=======+===========================+===================================+
+| ucur  | Zonal total current       | Wave bias, radial current         |
++-------+---------------------------+-----------------------------------+
+| vcur  | Meridional total current  | Wave bias, radial current         |
++-------+---------------------------+-----------------------------------+
+| uuss  | Zonal Stokes drift        | Wave bias                         |
++-------+---------------------------+-----------------------------------+
+| vuss  | Meridional Stokes drift   | Wave bias                         |
++-------+---------------------------+-----------------------------------+
+| ice   | Ice concentration         | Instrumental noise if there is ice|
++-------+---------------------------+-----------------------------------+
+| mssd  | Direction long wave mss   | Instrumental noise                |
++-------+---------------------------+-----------------------------------+
+| mssx  | Zonal MSS                 | Instrumental noise                |
++-------+---------------------------+-----------------------------------+
+| mssy  | Meridional MSS            | Instrumental noise                |
++-------+---------------------------+-----------------------------------+
+| ssh   | Sea Surface Height        | Nadir SSH                         |
++-------+---------------------------+-----------------------------------+
+| uwnd  | Zonal wind                | Wave bias, Instrumental noise     |
++-------+---------------------------+-----------------------------------+
+| vwnd  | Meridional wind           | Wave bias, Instrumental noise     |
++-------+---------------------------+-----------------------------------+
+
+
+
+Netcdf data that follow WW3 format can automatically be read
 using :ref:`model <params-model>` = WW3 and there is no need to specify the
-longitude, latitude or current variables name. The coordinates are supposed to
-be in degrees and current variables in m/s in the program, if the current is
-not in m/s, specify the conversion factor in :ref:`vel_factor <params-model>`
-(so that u*vel_factor is in m/s). If there is more than one time step in a
-single file, a list of the time dimension for each file can be provided in
-:ref:`dim_time <params-model>`. The time step between two inputs
+longitude or latitude variables name.
+Below is an example of :ref:`list_input_var  <params-model>` for WW3 model:
+
+.. code:: python
+list_input_var = {'ucur': ['ucur', 'cur'],
+                  'vcur': ['vcur', 'cur'],
+                  'uuss': ['uuss', 'uss'],
+                  'vuss': ['vuss', 'uss'],
+                  'ice': ['ice', 'ice'],
+                  'mssd': ['mssd', 'msd'],
+                  'mssx': ['mssx', 'mss'],
+                  'mssy':['mssy', 'mss'],
+                  'ssh': ['wlv', 'wlv'],
+                  'uwnd': ['uwnd', 'wnd'],
+                  'vwnd': ['vwnd', 'wnd']}
+
+
+The coordinates are supposed to
+be in degrees and current variables in m/s in the program.
+
+To refer timestamp properly in netcdf files, fill in the
+:ref:`first_time  <params-model>` key
+following  :ref:`first_time`='yyyy-mm-ddTHH:MM:SSZ". By default,
+:ref:`first_time`='2011-11-15T00:00:00Z'
+
+If there is a ice_mask varying in time, set :ref:`ice_mask  <params-model>`
+to False to
+ recompute the mask at every cycle.
+
+The number of time in each file should be constant for all the files
+and specified in the
+:ref:`dim_time  <params-model>` parameter. The time step between two inputs
 (:ref:`timestep <params-model>`) and the number of steps that have to be
 processed (nstep) can be modified in the params file. The value corresponding
 to not a number can be specified in :ref:`model_nan <params-model>`.
