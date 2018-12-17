@@ -29,7 +29,7 @@ sat_elev = 817 * 10**3
 order_orbit_col = None
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Number of processor for parallelisation
-proc_count = 1
+proc_number = 1
 
 # -----------------------# 
 # SKIM swath parameters 

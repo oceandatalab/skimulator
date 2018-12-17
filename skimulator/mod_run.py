@@ -386,14 +386,14 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
     output_var_i['radial_angle'] = radial_angle
     if p.instr is True:
         # Compute sigma0:
-        R2 = 0.5
+        R2 = 0.55
         rbeam_angle = numpy.deg2rad(beam_angle)
         mssx = output_var_i['mssx']
         mssy = output_var_i['mssy']
         mssxy = output_var_i['mssxy']
         expo = (-0.5 * numpy.tan(rbeam_angle)**2 * (numpy.cos(radial_angle)**2
-                *mssy + numpy.sin(radial_angle)**2 *mssx
-                - numpy.sin(2 * radial_angle) * mssxy))
+                *mssy + numpy.sin(radial_angle)**2 * mssx
+                - numpy.sin(2 * radial_angle) * mssxy) / (mssx * mssy))
         coeff = R2 / (2 * numpy.cos(rbeam_angle)**4 * numpy.sqrt(mssx * mssy))
         output_var_i['sigma0'] = coeff * numpy.exp(expo)
         coeff_random = p.snr_coeff * output_var_i['sigma0']
