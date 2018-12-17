@@ -969,7 +969,12 @@ class WW3():
             nwr = numpy.sqrt((uwnd - ucur)**2 + (vwnd - vcur)**2)
             wrd = numpy.pi / 2 - numpy.arctan2(vwnd - vcur, uwnd - ucur)
             mssshort = numpy.log(nwr + 0.7) * 0.009
+            # Replace nan values by 0 to avoid a runtime warning (nan values
+            # will be restored afterwards)
+            mssshort_nanmask_ind = numpy.where(numpy.isnan(mssshort))
+            mssshort[mssshort_nanmask_ind] = 0
             mssshort[mssshort < 0] = 0
+            mssshort[mssshort_nanmask_ind] = numpy.nan  # restore nan values
             #Directionality for short wave mss (if 0.5: isotrophic)
             facssdw = 0.6
             mssds = facssdw * mssshort
