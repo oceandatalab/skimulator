@@ -477,5 +477,5 @@ def worker_method_grid(*args, **kwargs):
         if os.path.exists(filesgrid):
             os.remove(filesgrid)
         sgrid.write_swath(p)
-    msg_queue.put((os.getpid(), ipass, None))
+    msg_queue.put((os.getpid(), ipass, None, None))
     return None

@@ -254,6 +254,9 @@ def fromdict(result):
 def update_progress_multiproc(status, info):
     """Creation of progress bar: print on screen progress of run, optimized
     for parrallelised tasks"""
+    if info[3] is not None:
+        # There has been an error
+        return False
     pid = info[0]
     grid_name = info[1]
     if isinstance(grid_name, str):
@@ -262,8 +265,6 @@ def update_progress_multiproc(status, info):
         ipass = '{:03d}'.format(grid_name)
 
     cycle = info[2]
-    if cycle is not None and cycle < 0:
-        return False
 
     count = len(status.keys())
     sys.stdout.write(_term_move_up() * count)
