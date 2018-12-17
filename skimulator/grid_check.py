@@ -173,7 +173,8 @@ def revert_b64_gzipped_hash(b64_str):
     b64_bytes = b64_str.encode('utf-8')
     compressed = base64.b64decode(b64_bytes)
     h = zlib.decompress(compressed)
-    get_grid_params_from_hash(h):
+    p = get_grid_params_from_hash(h)
+    return p
 
 
 if '__main__' == __name__:

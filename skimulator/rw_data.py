@@ -39,6 +39,15 @@ version = skimulator.__version__
 logger = logging.getLogger(__name__)
 
 
+class IncompatibleGridError(Exception):
+    """Raised"""
+    def __init__(self, path, grid_hash, params_hash, *args, **kwargs):
+        """"""
+        self.path = path
+        self.grid = skimulator.grid_check.revert_b64_gzipped_hash(grid_hash)
+        self.p = skimulator.grid_check.revert_b64_gzipped_hash(params_hash)
+
+
 def write_params(params, pfile):
     """ Write parameters that have been selected to run swot_simulator. """
     with open(pfile, 'w') as f:
@@ -328,7 +337,7 @@ class Sat_SKIM():
         Variables are longitude, latitude, number of days in a cycle,
         distance crossed in a cycle, time, along track and across track
         distances are stored.'''
-        grid_params_md5 = skimulator.grid_check.get_b64_gzipped_hash(p)
+        grid_params_hash = skimulator.grid_check.get_b64_gzipped_hash(p)
         # - Open Netcdf file in write mode
         fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
         # - Create Global attribute
@@ -361,7 +370,7 @@ class Sat_SKIM():
         fid.references = ""
         fid.cycle = "{0:d}".format(int(self.al_cycle))
         fid.track = "{} th pass".format(self.ipass)
-        fid.grid_params_md5 = grid_params_md5
+        fid.grid_params_hash = grid_params_hash
         # - Create dimensions
         # if (not os.path.isfile(self.file)):
         dimsample = 'sample'
@@ -672,6 +681,13 @@ class Sat_SKIM():
             logger.error('There was an error opening the file '
                          '{}'.format(self.file))
             sys.exit(1)
+
+        if 'grid_params_hash' in fid.ncattrs():
+            grid_params_hash = skimulator.grid_check.get_b64_gzipped_hash(p)
+            if fid.grid_params_hash != grid_params_hash:
+                raise IncompatibleGridError(self.file, fid.grid_params_hash,
+                                            grid_params_hash)
+
         # fid = Dataset(self.file, 'r')
         time = []
         lon = []
