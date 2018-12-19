@@ -50,8 +50,6 @@ logger = logging.getLogger(__name__)
 #logger = multiprocessing.log_to_stderr()
 #logger.setLevel(logging.DEBUG)
 
-# - Define global variables for progress bars
-
 
 def load_error(p):
     '''Initialize random coefficients that are used to compute
@@ -197,7 +195,7 @@ def interpolate_irregular_pyresample(swath_in, var, grid_out, radius,
 
 def create_SKIMlikedata(cycle, list_file, modelbox,
                         sgrid, model_data, modeltime,
-                        p, progress_bar=True):
+                        p):
     '''Create SKIM and nadir errors err and errnad, interpolate model velocity\
     model_data on swath and nadir track,
     compute SKIM-like and nadir-like data for cycle, SKIM grid sgrid and

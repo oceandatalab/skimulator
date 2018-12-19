@@ -166,7 +166,8 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     # subdomain
     logger.info('Compute SKIM nadir coordinate in the new domain')
     for i in range(0, nop - 1):
-        mod_tools.update_progress(float(i) / float(nop-1), None, None)
+        if p.progress_bar is True:
+            mod_tools.update_progress(float(i) / float(nop-1), None, None)
         if abs(volon[i + 1] - volon[i]) > 1:
             if volon[i + 1] > 180.:
                 volon[i + 1] = volon[i + 1] - 360
@@ -325,12 +326,15 @@ def orbit2swath(modelbox, p, orb):
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
         jobs.append([ipass, p2, passtime, stime, x_al, tcycle, al_cycle, lon,
                      lat, orb.timeshift])
-    make_skim_grid(p.proc_count, jobs)
-    mod_tools.update_progress(1,  'All swaths have been processed', ' ')
+    make_skim_grid(p.proc_count, jobs, p.progress_bar)
+    if p.progress_bar is True:
+        mod_tools.update_progress(1,  'All swaths have been processed', ' ')
+    else:
+        logger.info('All swaths have been processed')
     return None
 
 
-def make_skim_grid(_proc_count, jobs):
+def make_skim_grid(_proc_count, jobs, progress_bar):
     """ Compute SWOT grids for every pass in the domain"""
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
@@ -355,12 +359,14 @@ def make_skim_grid(_proc_count, jobs):
     while not tasks.ready():
         if not msg_queue.empty():
             msg = msg_queue.get()
-            mod_tools.update_progress_multiproc(status, msg)
+            if progress_bar is True:
+                mod_tools.update_progress_multiproc(status, msg)
         time.sleep(0.5)
 
     while not msg_queue.empty():
         msg = msg_queue.get()
-        mod_tools.update_progress_multiproc(status, msg)
+        if progress_bar is True:
+            mod_tools.update_progress_multiproc(status, msg)
 
     pool.close()
     pool.join()

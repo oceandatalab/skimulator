@@ -234,7 +234,7 @@ def run_simulator(p):
     for sgridfile in listsgridfile:
         jobs.append([sgridfile, p2, listsgridfile, list_file,
                      modelbox, model_data, modeltime])
-    ok = make_skim_data(p.proc_count, jobs)
+    ok = make_skim_data(p.proc_count, jobs, p.progress_bar)
 
     # - Write Selected parameters in a txt file
     timestop = datetime.datetime.now()
@@ -243,7 +243,11 @@ def run_simulator(p):
     rw_data.write_params(p, os.path.join(p.outdatadir,
                                          'skim_simulator.output'))
     if ok is True:
-        __ = mod_tools.update_progress(1, 'All passes have been processed', '')
+        if p.progress_bar is True:
+            __ = mod_tools.update_progress(1, 'All passes have been processed',
+                                           '')
+        else:
+            __ = logger.info('All passes have been processed')
         logger.info("\n Simulated skim files have been written in "
                     "{}".format(p.outdatadir))
         logger.info(''.join(['-'] * 61))
@@ -252,7 +256,7 @@ def run_simulator(p):
     sys.exit(1)
 
 
-def make_skim_data(_proc_count, jobs):
+def make_skim_data(_proc_count, jobs, progress_bar):
     """ Compute SWOT-like data for all grids and all cycle, """
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
@@ -277,14 +281,18 @@ def make_skim_data(_proc_count, jobs):
     while not tasks.ready():
         if not msg_queue.empty():
             msg = msg_queue.get()
-            _ok = mod_tools.update_progress_multiproc(status, msg)
+            if progress_bar is True:
+                _ok = mod_tools.update_progress_multiproc(status, msg)
+            else:
+                _ok = True
             ok = ok and _ok
 
         time.sleep(0.1)
 
     while not msg_queue.empty():
         msg = msg_queue.get()
-        mod_tools.update_progress_multiproc(status, msg)
+        if progress_bar is True:
+            mod_tools.update_progress_multiproc(status, msg)
 
     sys.stdout.flush()
     pool.close()
@@ -364,7 +372,7 @@ def worker_method_skim(*args, **kwargs):
                 create = mod.create_SKIMlikedata(cycle, list_file,
                                                  modelbox, sgrid_tmp,
                                                  model_data, modeltime, p,
-                                                 progress_bar=True)
+                                                 )
                 output_var_i, time = create
                 mod.compute_nadir_noise_skim(p, output_var_i, sgrid, cycle)
 
@@ -386,7 +394,7 @@ def worker_method_skim(*args, **kwargs):
                     create = mod.create_SKIMlikedata(cycle, list_file,
                                                      modelbox, sgrid_tmp,
                                                      model_data, modeltime, p,
-                                                     progress_bar=True)
+                                                     )
                     output_var_i, time = create
                     mod.compute_beam_noise_skim(p, output_var_i, radial_angle,
                                                 beam_angle)
