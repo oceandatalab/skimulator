@@ -34,6 +34,7 @@ order_orbit_col = None
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Number of processor for parallelisation
 proc_number = 1
+progress_bar = True
 
 # -----------------------# 
 # SKIM swath parameters 
@@ -89,7 +90,7 @@ model = 'WW3'
 # ------ First time of the model
 first_time = '2011-11-15T00:00:00Z'
 # ------ Grid file name
-file_grid_model = ('ww3.20111115_cur.nc',)
+file_grid_model = (os.path.join(indatadir, 'ww3.20111115_cur.nc'),)
 # ------ Specify if there is a ice mask for high latitudes
 #        (if true, mask is recomputed at each cycle)
 ice_mask = False
