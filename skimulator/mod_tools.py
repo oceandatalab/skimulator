@@ -91,6 +91,8 @@ def initialize_parameters(p):
     p.snr_coeff = getattr(p, 'snr_coeff', 3e-3)
     p.ac_threshold = getattr(p, 'ac_threshold', 20)  # in km
     p.progress_bar = getattr(p, 'progress_bar', True)
+    p.nadir = getattr(p, 'nadir', False)
+    p.ice = getattr(p, 'ice', False)
     return None
 
 

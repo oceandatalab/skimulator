@@ -121,7 +121,7 @@ interpolation = 'linear'
 # ------ List of output variables:
 list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
                'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
-               'ssh_true', 'ssh',
+               'ssh_true', 'ssh', 'ice',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
 # -----------------------# 
 # SKIM error parameters 
@@ -150,6 +150,8 @@ uwb = True
 
 ## -- Geophysical error
 ## ----------------------
+# ------ Consider ice in sigma0 computation
+ice = True
 #### Not implemented yet
 # ------ Rain error (True to compute it):
 wet_tropo = False
