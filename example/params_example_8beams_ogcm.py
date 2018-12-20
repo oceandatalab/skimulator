@@ -7,8 +7,12 @@ import os
 import math
 home = expanduser("~")
 # ------ Name of the configuration (to build output files names) 
-config="WW3_AT_metop_2018_6a"
-# 6 beams, 60 azimuths, 1024 pulses and cycle length of 37 ms
+# 8 beams, 45 azimuths, 1024 pulses and cycle length of 37 ms
+config = "OGCM_metop_2018_8a"
+# 8 beams, 72 azimuths, 0512 pulses and cycle length of 18 ms
+# config = "WW3_23W_metop_2018_8b"
+# 8 beams, 108 azimuths, 1024 pulses and cycle length of 37 ms
+# config = "WW3_23W_metop_2018_8c"
 # ------ Directory that contains orbit file:
 dir_setup = os.path.join(home, 'skimulator', 'data')
 # ------ Directory that contains your own inputs:
@@ -44,18 +48,27 @@ makesgrid = True
 # ------ Give a subdomain if only part of the model is needed:
 #	 (modelbox=[lon_min, lon_max, lat_min, lat_max])
 # 	 (If modelbox is None, the whole domain of the model is considered)
-modelbox = None # [329.,347., -8.,8.]
+modelbox =  [300, 310, 30, 40]
 #------- Rotation speed of the antenna (in tr/min)
-rotation_speed = 9.26
-# ------ Cycle duration
-cycle = 0.0368 / 2
+if '2018_8a' in config:
+    rotation_speed = 4.52
+if '2018_8b' in config:
+    rotation_speed = 5.66
+if '2018_8c' in config:
+    rotation_speed = 1.89
+# Cycle duration
+cycle = 0.0368
+if '2018_8b' in config:
+    cycle = 0.0368 / 2.
+# cycle = 0.0368 / 2. # for 512 pulses configuration
 #------- List of position of beams:
-list_pos = (0, 120*math.pi/180., 240*math.pi/180.,
-            0, math.pi)
+
+list_pos = (0, 72*math.pi/180., 144*math.pi/180., 216*math.pi / 180.,
+            288*math.pi/180., 0, math.pi)
 #------- List of angle of beams in degrees:
-list_angle = (12, 12, 12, 6, 6)
+list_angle = (12, 12, 12, 12, 12, 6, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
-list_shift = (5, 2, 3, 1, 4)
+list_shift = (1, 2, 4, 5, 7, 3, 6)
 # ------ Shift longitude of the orbit file if no pass is in the domain 
 #        (in degree): Default value is None (no shift)
 shift_lon = 0
@@ -74,11 +87,11 @@ file_input = os.path.join(indatadir, 'list_of_file.txt')
 # ------ Type of model data: 
 #	 (Optional, default is NETCDF_MODEL and reads netcdf3 and netcdf4 files)
 #	 (Other options are ROMS, NEMO and CLS to read Nemo, roms or CLS)
-model = 'WW3'
+model = 'NETCDF_MODEL'
 # ------ First time of the model
 first_time = '2011-11-15T00:00:00Z'
 # ------ Grid file name
-file_grid_model = (os.path.join(indatadir, 'ww3.20111115_cur.nc'),)
+file_grid_model = (os.path.join(indatadir, 'model.20111115_grid.nc'),)
 # ------ Specify if there is a ice mask for high latitudes
 #        (if true, mask is recomputed at each cycle)
 ice_mask = False
@@ -87,12 +100,8 @@ ice_mask = False
 #        are extracted from model       
 grid = 'regular'
 # ------ Specify list of variable:
-list_input_var = {'ucur': ['ucur', 'cur'], 'vcur': ['vcur', 'cur'],
-                  'uuss': ['uuss', 'uss'], 'vuss': ['vuss', 'uss'],
-                  'ice': ['ice', 'ice'], 'mssd': ['mssd', 'msd'],
-                  'mssx': ['mssx', 'mss'], 'mssy':['mssy', 'mss'],
-                  'ssh': ['wlv', 'wlv'],
-                  'uwnd': ['uwnd', 'wnd'], 'vwnd': ['vwnd', 'wnd']}
+list_input_var = {'ucur': ['uo', ''], 'vcur': ['vo', ''], 'ssh': ['sla', '']
+                 }
 # ------ Specify longitude variable:
 lonu = 'longitude'
 lonv = 'longitude'
@@ -100,12 +109,12 @@ lonv = 'longitude'
 latu = 'latitude'
 latv = 'latitude'
 # ------ Specify number of time in file:
-dim_time = 24
+dim_time = 1
 # ------ Time step between two model outputs (in days):
-timestep = 1/24.
+timestep = 1
 # ------ Number of outputs to consider:
 #        (timestep*nstep=total number of days)
-nstep = 35*24
+nstep = 20
 # ------ Not a number value:
 model_nan = -32767.
 
@@ -121,10 +130,8 @@ file_output = os.path.join(outdatadir, config)
 #        as it is faster and use less memory.)
 interpolation = 'linear'
 # ------ List of output variables:
-list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
-               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
-               'ssh_true', 'ssh', 'ice',
-               'vindice', 'ur_obs', 'uwnd', 'sigma0']
+list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'radial_angle',
+               'vindice', 'ur_obs', 'ssh_true', 'ssh']
 # -----------------------# 
 # SKIM error parameters 
 # -----------------------# 
@@ -141,19 +148,21 @@ nadir = True
 ncomp1d = 3000
 ncomp2d = 2000
 # ------- Instrument white noise error
-instr = True
+instr = False
 # ------- Coefficient SNR to retrieve instrumental noise from sigma, 
 #         Recommanded value for 1024 pulses: 3e-2, for 512 pulses: 3sqrt(2)e-3
-snr_coeff = 1.4142*6e-3
+snr_coeff = 6e-3
+if '2018_8b' in config:
+    snr_coeff = 1.4142*6e-3
 
 # ------- Wave bias
-uwb = True
+uwb = False
 
 
 ## -- Geophysical error
 ## ----------------------
 # ------ Consider ice in sigma0 computation
-ice = True
+ice = False
 #### Not implemented yet
 # ------ Rain error (True to compute it):
 wet_tropo = False

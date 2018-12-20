@@ -34,6 +34,7 @@ order_orbit_col = None
 # , dir_setup+os.sep+'orbjason.txt', dir_setup+os.sep+'orbaltika.txt' ]
 # ------ Number of processor for parallelisation
 proc_number = 1
+# ------ Deactivate printing of progress bar to avoid huge log
 progress_bar = True
 
 # -----------------------# 
