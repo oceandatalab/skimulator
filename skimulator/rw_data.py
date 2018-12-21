@@ -27,6 +27,7 @@ Contains satellite class: Sat_SKIM \n
 Contains file instrumentation class: file_instr \n
 '''
 import skimulator
+import skimulator.grid_check
 from netCDF4 import Dataset
 import numpy
 import sys
@@ -36,6 +37,15 @@ import datetime
 import os
 version = skimulator.__version__
 logger = logging.getLogger(__name__)
+
+
+class IncompatibleGridError(Exception):
+    """Raised"""
+    def __init__(self, path, grid_hash, params_hash, *args, **kwargs):
+        """"""
+        self.path = path
+        self.grid = skimulator.grid_check.revert_b64_gzipped_hash(grid_hash)
+        self.p = skimulator.grid_check.revert_b64_gzipped_hash(params_hash)
 
 
 def write_params(params, pfile):
@@ -327,6 +337,7 @@ class Sat_SKIM():
         Variables are longitude, latitude, number of days in a cycle,
         distance crossed in a cycle, time, along track and across track
         distances are stored.'''
+        grid_params_hash = skimulator.grid_check.get_b64_gzipped_hash(p)
         # - Open Netcdf file in write mode
         fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
         # - Create Global attribute
@@ -359,6 +370,7 @@ class Sat_SKIM():
         fid.references = ""
         fid.cycle = "{0:d}".format(int(self.al_cycle))
         fid.track = "{} th pass".format(self.ipass)
+        fid.grid_params_hash = grid_params_hash
         # - Create dimensions
         # if (not os.path.isfile(self.file)):
         dimsample = 'sample'
@@ -669,6 +681,13 @@ class Sat_SKIM():
             logger.error('There was an error opening the file '
                          '{}'.format(self.file))
             sys.exit(1)
+
+        if 'grid_params_hash' in fid.ncattrs():
+            grid_params_hash = skimulator.grid_check.get_b64_gzipped_hash(p)
+            if fid.grid_params_hash != grid_params_hash:
+                raise IncompatibleGridError(self.file, fid.grid_params_hash,
+                                            grid_params_hash)
+
         # fid = Dataset(self.file, 'r')
         time = []
         lon = []
@@ -950,7 +969,12 @@ class WW3():
             nwr = numpy.sqrt((uwnd - ucur)**2 + (vwnd - vcur)**2)
             wrd = numpy.pi / 2 - numpy.arctan2(vwnd - vcur, uwnd - ucur)
             mssshort = numpy.log(nwr + 0.7) * 0.009
+            # Replace nan values by 0 to avoid a runtime warning (nan values
+            # will be restored afterwards)
+            mssshort_nanmask_ind = numpy.where(numpy.isnan(mssshort))
+            mssshort[mssshort_nanmask_ind] = 0
             mssshort[mssshort < 0] = 0
+            mssshort[mssshort_nanmask_ind] = numpy.nan  # restore nan values
             #Directionality for short wave mss (if 0.5: isotrophic)
             facssdw = 0.6
             mssds = facssdw * mssshort

@@ -54,6 +54,7 @@ import sys
 import time
 import datetime
 import logging
+import traceback
 import skimulator.build_swath as build_swath
 import skimulator.rw_data as rw_data
 import skimulator.build_error as build_error
@@ -73,7 +74,12 @@ ntot = 1
 ifile = 0
 
 
-def run_simulator(p):
+class DyingOnError(Exception):
+    """"""
+    pass
+
+
+def run_simulator(p, die_on_error=False):
     '''Main routine to run simulator, input is the imported parameter file,
     no outputs are returned but netcdf grid and data files are written as well
     as a skimulator.output file to store all used parameter.
@@ -234,7 +240,12 @@ def run_simulator(p):
     for sgridfile in listsgridfile:
         jobs.append([sgridfile, p2, listsgridfile, list_file,
                      modelbox, model_data, modeltime])
-    ok = make_skim_data(p.proc_count, jobs, p.progress_bar)
+    ok = False
+    try:
+        ok = make_skim_data(p.proc_count, jobs, die_on_error, p.progress_bar)
+    except DyingOnError:
+        logger.error('An error occurred and all errors are fatal')
+        sys.exit(1)
 
     # - Write Selected parameters in a txt file
     timestop = datetime.datetime.now()
@@ -256,17 +267,50 @@ def run_simulator(p):
     sys.exit(1)
 
 
-def make_skim_data(_proc_count, jobs, progress_bar):
+def handle_message(errors_queue, status, msg, pool, die_on_error,
+                   progress_bar):
+    """"""
+    _ok = (msg[3] is None)
+    if progress_bar is True:
+        _ok = mod_tools.update_progress_multiproc(status, msg)
+    if (_ok is False) and (die_on_error is True):
+        # Kill all workers, show error and exit with status 1
+        pool.terminate()
+        show_errors(errors_queue)
+        raise DyingOnError
+    return _ok
+
+
+def show_errors(errors_queue):
+    """"""
+    while not errors_queue.empty():
+        error = errors_queue.get()
+        (pid, sgridfile, cycle, exc) = error
+        if cycle > -1:
+            logger.error('/!\ Error occurred while processing {}'
+                         .format(pid, sgridfile))
+        else:
+            logger.error('/!\ Error occurred while processing cycle {} on {}'
+                         .format(pid, cycle, sgridfile))
+        logger.error('  {}'.format('  \n'.join(exc)))
+
+
+def make_skim_data(_proc_count, jobs, die_on_error, progress_bar):
     """ Compute SWOT-like data for all grids and all cycle, """
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
 
     manager = multiprocessing.Manager()
     msg_queue = manager.Queue()
+    errors_queue = manager.Queue()
     pool = multiprocessing.Pool(proc_count)
     # Add the message queue to the list of arguments for each job
     # (it will be removed later)
     [j.append(msg_queue) for j in jobs]
+    # Add the errors queue to the list of arguments for each job
+    # (it will be removed later)
+    [j.append(errors_queue) for j in jobs]
+
     chunk_size = int(math.ceil(len(jobs) / proc_count))
     status = {}
     for n, w in enumerate(pool._pool):
@@ -281,27 +325,55 @@ def make_skim_data(_proc_count, jobs, progress_bar):
     while not tasks.ready():
         if not msg_queue.empty():
             msg = msg_queue.get()
-            if progress_bar is True:
-                _ok = mod_tools.update_progress_multiproc(status, msg)
-            else:
-                _ok = True
+            _ok = handle_message(errors_queue, status, msg, pool, die_on_error,
+                                 progress_bar)
             ok = ok and _ok
-
         time.sleep(0.1)
 
+    # Make sure all messages have been processed
     while not msg_queue.empty():
         msg = msg_queue.get()
-        if progress_bar is True:
-            mod_tools.update_progress_multiproc(status, msg)
+        _ok = handle_message(errors_queue, status, msg, pool, die_on_error,
+                             progress_bar)
+        ok = ok and _ok
 
     sys.stdout.flush()
     pool.close()
     pool.join()
+
+    # Display errors once the processing is done
+    show_errors(errors_queue)
+
     return ok
 
 
 def worker_method_skim(*args, **kwargs):
+    """Wrapper to handle errors occurring in the workers."""
     _args = list(args)[0]
+    errors_queue = _args.pop()  # not used by the actual implementation
+    msg_queue = _args[-1]
+    sgridfile = _args[0]
+    try:
+        _worker_method_skim(*_args, **kwargs)
+    except:
+        # Error sink
+        import sys
+        exc = sys.exc_info()
+        # Format exception as a string because pickle cannot serialize stack
+        # traces
+        exc_str = traceback.format_exception(exc[0], exc[1], exc[2])
+
+        # Pass the error message to both the messages queue and the errors
+        # queue
+        msg_queue.put((os.getpid(), sgridfile, -1, exc_str))
+        errors_queue.put((os.getpid(), sgridfile, -1, exc_str))
+        return False
+
+    return True
+
+
+def _worker_method_skim(*args, **kwargs):
+    _args = list(args)  #[0]
     msg_queue = _args.pop()
     sgridfile = _args[0]
     p2, listsgridfile, list_file, modelbox, model_data, modeltime = _args[1:]
@@ -311,6 +383,7 @@ def worker_method_skim(*args, **kwargs):
     # duplicate SKIM grids to assure that data are not modified and are
     # saved properly
     sgrid_tmp = mod.load_sgrid(sgridfile, p)
+
     sgrid.gridfile = sgridfile
     # Convert cycle in days
     sgrid.cycle /= 86400.
@@ -329,7 +402,7 @@ def worker_method_skim(*args, **kwargs):
         # if ifile > (p.nstep*p.timestep + 1):
         #    break
         # Create SKIM-like data
-        msg_queue.put((os.getpid(), sgridfile, cycle + 1))
+        msg_queue.put((os.getpid(), sgridfile, cycle + 1, None))
         if p.file_input is None:
             model_data = []
         # Initialize all list of variables (each beam is appended to the
@@ -387,23 +460,17 @@ def worker_method_skim(*args, **kwargs):
                 ac_angle =  sgrid.angle[:, i - 1]
                 ##############################
                 # Compute SKIM like data data
-                try:
-                    # TODO remove the next line
-                    # shape_all = (numpy.shape(listsgridfile)[0] * rcycle
-                    #              * (len(p.list_pos) + 1))
-                    create = mod.create_SKIMlikedata(cycle, list_file,
-                                                     modelbox, sgrid_tmp,
-                                                     model_data, modeltime, p,
-                                                     )
-                    output_var_i, time = create
-                    mod.compute_beam_noise_skim(p, output_var_i, radial_angle,
-                                                beam_angle)
+                # TODO remove the next line
+                # shape_all = (numpy.shape(listsgridfile)[0] * rcycle
+                #              * (len(p.list_pos) + 1))
+                create = mod.create_SKIMlikedata(cycle, list_file,
+                                                 modelbox, sgrid_tmp,
+                                                 model_data, modeltime, p,
+                                                 )
+                output_var_i, time = create
+                mod.compute_beam_noise_skim(p, output_var_i, radial_angle,
+                                            beam_angle)
 
-                except:
-                    import sys
-                    e = sys.exc_info()
-                    logger.error('bouh', exc_info=e)
-                    msg_queue.put((os.getpid(), sgridfile, -1))
             # Append variables for each beam
             time_all.append(time)
             for key in p.list_output:
@@ -432,15 +499,12 @@ def worker_method_skim(*args, **kwargs):
         if ((~numpy.isnan(numpy.array(output_var['vindice']))).any()
               or not p.file_input):
             sgrid.ncycle = cycle
-            try:
-                mod.save_SKIM(cycle, sgrid, time_all, output_var, p)
-                          #    time=time, vindice=vindice_all,
-                      #ur_model=ur_true_all, ur_obs=ur_obs, std_uss=std_uss,
-                      #err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss2,
-                      #u_model=u_true_all, v_model=v_true_all,
-                      #errdcos=errdcos_tot)
-            except:
-                msg_queue.put((os.getpid(), sgridfile, -1))
+            mod.save_SKIM(cycle, sgrid, time_all, output_var, p)
+                      #    time=time, vindice=vindice_all,
+                  #ur_model=ur_true_all, ur_obs=ur_obs, std_uss=std_uss,
+                  #err_instr=err_instr, ur_uss=ur_uss, err_uss=err_uss2,
+                  #u_model=u_true_all, v_model=v_true_all,
+                  #errdcos=errdcos_tot)
         del time
         # if p.file_input: del index
 
@@ -451,5 +515,5 @@ def worker_method_skim(*args, **kwargs):
     modelbox[0] = (modelbox[0] + 360) % 360
     modelbox[1] = (modelbox[1] + 360) % 360
     del sgrid
-    msg_queue.put((os.getpid(), sgridfile, None))
+    msg_queue.put((os.getpid(), sgridfile, None, None))
 
