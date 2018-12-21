@@ -288,7 +288,7 @@ def show_errors(errors_queue):
         logger.error('  {}'.format('  \n'.join(exc)))
 
 
-def make_skim_data(_proc_count, jobs, die_on_error=True):
+def make_skim_data(_proc_count, jobs, die_on_error=False):
     """ Compute SWOT-like data for all grids and all cycle, """
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
