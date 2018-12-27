@@ -204,7 +204,22 @@ def run_simulator(p, die_on_error=False):
         # make nadir orbit
         orb = build_swath.makeorbit(modelbox, p, orbitfile=p.filesat)
         # build swath around this orbit
-        build_swath.orbit2swath(modelbox, p, orb)
+        ok = False
+        try:
+            ok = build_swath.orbit2swath(modelbox, p, orb, die_on_error)
+        except skimulator.mod_parallel.MultiprocessingError:
+            logger.error('An error occurred with the multiprocessing '
+                         'framework')
+            traceback.print_exception(*sys.exc_info())
+            sys.exit(1)
+        except skimulator.mod_parallel.DyingOnError:
+            logger.error('An error occurred and all errors are fatal')
+            sys.exit(1)
+
+        if not ok:
+            logger.error('Errors occurred while generating grid files')
+            sys.exit(1)
+
         logger.info("\n SKIM Grids and nadir tracks have been written in"
                     "{}".format(p.outdatadir))
         logger.info("-----------------------------------------------")

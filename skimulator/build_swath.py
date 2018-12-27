@@ -23,9 +23,10 @@ from scipy import interpolate
 import skimulator.mod_tools as mod_tools
 import skimulator.const as const
 import skimulator.rw_data as rw_data
-import multiprocessing
+import skimulator.mod_parallel
 import time
 import logging
+import traceback
 
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
@@ -285,7 +286,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     return orb
 
 
-def orbit2swath(modelbox, p, orb):
+def orbit2swath(modelbox, p, orb, die_on_error):
     '''Computes the swath of SKIM satellites on a subdomain from an orbit.
     The path of the satellite is given by the orbit file and the subdomain
     corresponds to the one in the model. Note that a subdomain can be manually
@@ -326,57 +327,55 @@ def orbit2swath(modelbox, p, orb):
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
         jobs.append([ipass, p2, passtime, stime, x_al, tcycle, al_cycle, lon,
                      lat, orb.timeshift])
-    make_skim_grid(p.proc_count, jobs, p.progress_bar)
+    ok = make_skim_grid(p.proc_count, jobs, die_on_error, p.progress_bar)
     if p.progress_bar is True:
         mod_tools.update_progress(1,  'All swaths have been processed', ' ')
     else:
         logger.info('All swaths have been processed')
-    return None
+    return ok
 
 
-def make_skim_grid(_proc_count, jobs, progress_bar):
+def make_skim_grid(_proc_count, jobs, die_on_error, progress_bar):
     """ Compute SWOT grids for every pass in the domain"""
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
 
-    manager = multiprocessing.Manager()
-    msg_queue = manager.Queue()
-    pool = multiprocessing.Pool(proc_count)
-    # Add the message queue to the list of arguments for each job
-    # (it will be removed later)
-    [j.append(msg_queue) for j in jobs]
-    chunk_size = int(math.ceil(len(jobs) / proc_count))
-    status = {}
-    for n, w in enumerate(pool._pool):
-        status[w.pid] = {'done': 0, 'total': 0, 'grids': None, 'extra': ''}
-        total = min(chunk_size, (len(jobs) - n * chunk_size))
-        proc_jobs = jobs[n::proc_count]
-        status[w.pid]['grids'] = [j[0] for j in proc_jobs]
-        status[w.pid]['total'] = total
-    sys.stdout.write('\n' * proc_count)
-    tasks = pool.map_async(worker_method_grid, jobs, chunksize=chunk_size)
-    sys.stdout.flush()
-    while not tasks.ready():
-        if not msg_queue.empty():
-            msg = msg_queue.get()
-            if progress_bar is True:
-                mod_tools.update_progress_multiproc(status, msg)
-        time.sleep(0.5)
+    status_updater = mod_tools.update_progress_multiproc
+    jobs_manager = skimulator.mod_parallel.JobsManager(proc_count,
+                                                       status_updater,
+                                                       exc_formatter,
+                                                       err_formatter)
+    ok = jobs_manager.submit_jobs(worker_method_grid, jobs, die_on_error,
+                                  progress_bar)
 
-    while not msg_queue.empty():
-        msg = msg_queue.get()
-        if progress_bar is True:
-            mod_tools.update_progress_multiproc(status, msg)
+    if not ok:
+        # Display errors once the processing is done
+        jobs_manager.show_errors()
 
-    pool.close()
-    pool.join()
+    return ok
+
+
+def exc_formatter(exc):
+    """Format exception returned by sys.exc_info() as a string so that it can
+    be serialized by pickle and stored in the JobsManager."""
+    error_msg = traceback.format_exception(exc[0], exc[1], exc[2])
+    return error_msg
+
+
+def err_formatter(pid, ipass, cycle, exc):
+    """Transform errors stored by the JobsManager into readable messages."""
+    msg = None
+    if cycle < 0:
+        msg = '/!\ Error occurred while processing pass {}'.format(ipass)
+    else:
+        _msg = '/!\ Error occurred while processing cycle {} on pass {}'
+        msg = _msg.format(cycle, ipass)
+    return msg
 
 
 def worker_method_grid(*args, **kwargs):
-    _args = list(args)[0]
-    msg_queue = _args.pop()
-    ipass = _args[0]
-    p2, passtime, stime, x_al, tcycle, al_cycle, lon, lat, timeshift = _args[1:]
+    msg_queue, ipass, p2 = args[:3]
+    passtime, stime, x_al, tcycle, al_cycle, lon, lat, timeshift = args[3:]
 
     p = mod_tools.fromdict(p2)
     # Compute rotating beams
