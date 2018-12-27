@@ -61,8 +61,8 @@ import skimulator.build_error as build_error
 import skimulator.mod_tools as mod_tools
 import skimulator.const as const
 import skimulator.mod_run as mod
+import skimulator.mod_parallel
 import skimulator.mod_uwb_corr as mod_uwb_corr
-import multiprocessing
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
 #logger = multiprocessing.log_to_stderr()
@@ -72,11 +72,6 @@ logger = logging.getLogger(__name__)
 istep = 0
 ntot = 1
 ifile = 0
-
-
-class DyingOnError(Exception):
-    """"""
-    pass
 
 
 def run_simulator(p, die_on_error=False):
@@ -243,7 +238,11 @@ def run_simulator(p, die_on_error=False):
     ok = False
     try:
         ok = make_skim_data(p.proc_count, jobs, die_on_error, p.progress_bar)
-    except DyingOnError:
+    except skimulator.mod_parallel.MultiprocessingError:
+        logger.error('An error occurred with the multiprocessing framework')
+        traceback.print_exception(*sys.exc_info())
+        sys.exit(1)
+    except skimulator.mod_parallel.DyingOnError:
         logger.error('An error occurred and all errors are fatal')
         sys.exit(1)
 
@@ -267,116 +266,47 @@ def run_simulator(p, die_on_error=False):
     sys.exit(1)
 
 
-def handle_message(errors_queue, status, msg, pool, die_on_error,
-                   progress_bar):
-    """"""
-    _ok = (msg[3] is None)
-    if progress_bar is True:
-        _ok = mod_tools.update_progress_multiproc(status, msg)
-    if (_ok is False) and (die_on_error is True):
-        # Kill all workers, show error and exit with status 1
-        pool.terminate()
-        show_errors(errors_queue)
-        raise DyingOnError
-    return _ok
-
-
-def show_errors(errors_queue):
-    """"""
-    while not errors_queue.empty():
-        error = errors_queue.get()
-        (pid, sgridfile, cycle, exc) = error
-        if cycle > -1:
-            logger.error('/!\ Error occurred while processing {}'
-                         .format(pid, sgridfile))
-        else:
-            logger.error('/!\ Error occurred while processing cycle {} on {}'
-                         .format(pid, cycle, sgridfile))
-        logger.error('  {}'.format('  \n'.join(exc)))
-
-
 def make_skim_data(_proc_count, jobs, die_on_error, progress_bar):
     """ Compute SWOT-like data for all grids and all cycle, """
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
 
-    manager = multiprocessing.Manager()
-    msg_queue = manager.Queue()
-    errors_queue = manager.Queue()
-    pool = multiprocessing.Pool(proc_count)
-    # Add the message queue to the list of arguments for each job
-    # (it will be removed later)
-    [j.append(msg_queue) for j in jobs]
-    # Add the errors queue to the list of arguments for each job
-    # (it will be removed later)
-    [j.append(errors_queue) for j in jobs]
+    status_updater = mod_tools.update_progress_multiproc
+    jobs_manager = skimulator.mod_parallel.JobsManager(proc_count,
+                                                       status_updater,
+                                                       exc_formatter,
+                                                       err_formatter)
+    ok = jobs_manager.submit_jobs(worker_method_skim, jobs, die_on_error,
+                                  progress_bar)
 
-    chunk_size = int(math.ceil(len(jobs) / proc_count))
-    status = {}
-    for n, w in enumerate(pool._pool):
-        status[w.pid] = {'done': 0, 'total': 0, 'grids': None, 'extra': ''}
-        proc_jobs = jobs[n::proc_count]
-        status[w.pid]['grids'] = [j[0] for j in proc_jobs]
-        status[w.pid]['total'] = len(proc_jobs)
-    sys.stdout.write('\n' * proc_count)
-    tasks = pool.map_async(worker_method_skim, jobs, chunksize=chunk_size)
-    sys.stdout.flush()
-    ok = True
-    while not tasks.ready():
-        if not msg_queue.empty():
-            msg = msg_queue.get()
-            _ok = handle_message(errors_queue, status, msg, pool, die_on_error,
-                                 progress_bar)
-            ok = ok and _ok
-        time.sleep(0.1)
-
-    # Make sure all messages have been processed
-    while not msg_queue.empty():
-        msg = msg_queue.get()
-        _ok = handle_message(errors_queue, status, msg, pool, die_on_error,
-                             progress_bar)
-        ok = ok and _ok
-
-    sys.stdout.flush()
-    pool.close()
-    pool.join()
-
-    # Display errors once the processing is done
-    show_errors(errors_queue)
+    if not ok:
+        # Display errors once the processing is done
+        jobs_manager.show_errors()
 
     return ok
 
 
+def exc_formatter(exc):
+    """Format exception returned by sys.exc_info() as a string so that it can
+    be serialized by pickle and stored in the JobsManager."""
+    error_msg = traceback.format_exception(exc[0], exc[1], exc[2])
+    return error_msg
+
+
+def err_formatter(pid, grid, cycle, exc):
+    """Transform errors stored by the JobsManager into readable messages."""
+    msg = None
+    if cycle < 0:
+        msg = '/!\ Error occurred while processing grid {}'.format(grid)
+    else:
+        _msg = '/!\ Error occurred while processing cycle {} on grid {}'
+        msg = _msg.format(cycle, grid)
+    return msg
+
+
 def worker_method_skim(*args, **kwargs):
-    """Wrapper to handle errors occurring in the workers."""
-    _args = list(args)[0]
-    errors_queue = _args.pop()  # not used by the actual implementation
-    msg_queue = _args[-1]
-    sgridfile = _args[0]
-    try:
-        _worker_method_skim(*_args, **kwargs)
-    except:
-        # Error sink
-        import sys
-        exc = sys.exc_info()
-        # Format exception as a string because pickle cannot serialize stack
-        # traces
-        exc_str = traceback.format_exception(exc[0], exc[1], exc[2])
-
-        # Pass the error message to both the messages queue and the errors
-        # queue
-        msg_queue.put((os.getpid(), sgridfile, -1, exc_str))
-        errors_queue.put((os.getpid(), sgridfile, -1, exc_str))
-        return False
-
-    return True
-
-
-def _worker_method_skim(*args, **kwargs):
-    _args = list(args)  #[0]
-    msg_queue = _args.pop()
-    sgridfile = _args[0]
-    p2, listsgridfile, list_file, modelbox, model_data, modeltime = _args[1:]
+    msg_queue, sgridfile, p2 = args[:3]
+    listsgridfile, list_file, modelbox, model_data, modeltime = args[3:]
     p = mod_tools.fromdict(p2)
     #   Load SKIM grid files (Swath and nadir)
     sgrid = mod.load_sgrid(sgridfile, p)
