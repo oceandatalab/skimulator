@@ -80,7 +80,7 @@ class JobsManager():
         if (_ok is False) and (die_on_error is True):
             # Kill all workers, show error and exit with status 1
             self.pool.terminate()
-            self.show_errors(errors_queue)
+            self.show_errors()
             raise DyingOnError
         return _ok
 

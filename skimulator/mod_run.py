@@ -249,6 +249,7 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
             # if output from ww3, time dimension is >1 (hourly outputs,
             # one file per month): conversion of ifile into file number
             # and record number
+            ## TODO : Clean
             filetime = (ifile - time_offset)%p.dim_time
             # read next file when the time dimension is reached
             if filetime >= (time_offset + p.dim_time):
