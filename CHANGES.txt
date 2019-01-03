@@ -2,6 +2,32 @@ Changelog for skimulator
 ===========================
 
 
+
+2.4
+---
+2019/01/03
+- Fix bug when ice Flag is True
+
+- Enable interpolation of variables with different coordinates
+
+- Change listing of files: does not inculde the extension and suffix anymore
+
+2018/12/31
+- Refactoring to use the parallelization module in the grids generation step
+
+- Isolate parallelisation code
+
+2018/12/21
+- Add option to avoid displaying progress bar while outputs are saved in a log
+file
+
+- Raise error while using multiprocessing to make debugging easier
+
+- Add ice floes consideration
+
+- Save grid hash to detect if already processed grid are compliant with current
+parameter file
+
 2.3
 ---
 2018/12/14

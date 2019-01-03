@@ -43,7 +43,7 @@ along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 
 # - Set module version to package version:
 
-__version__ = '1.0'
+__version__ = '2.4'
 __author__ = 'Lucile Gaultier <lucile.gaultier@oceandatalab.com>'
 __date__ = '2017-03-01'
 __email__ = 'lucile.gaultier@oceandatalab.com'
