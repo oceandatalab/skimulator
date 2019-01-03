@@ -382,7 +382,7 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
                 - numpy.sin(2 * radial_angle) * mssxy) / (mssx * mssy))
         coeff = R2 / (2 * numpy.cos(rbeam_angle)**4 * numpy.sqrt(mssx * mssy))
         sigma_water = coeff * numpy.exp(expo)
-        if p.ice is True:
+        if (p.ice is True) and ('ice' in output_var_i.keys()):
             if beam_angle == 6:
                 sigma_ice = 2.5
             elif beam_angle == 12:
@@ -390,7 +390,9 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
             else:
                 logger.info('beam angle is {} but should be either 6 or 12, '
                             'sigma_ice is set to 1'.format(beam_angle))
-            c_ice = output_var_i['ice']
+            mask = (numpy.isnan(output_var_i['ice']))
+            c_ice = numpy.ma.MaskedArray(output_var_i['ice'], mask=mask)
+            c_ice[c_ice.mask] = 0
             sigma0 = (1 - c_ice) * sigma_water + c_ice * sigma_ice
         else:
             sigma0 = sigma_water

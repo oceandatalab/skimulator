@@ -181,9 +181,15 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
 
     fid.close()
     # - Mask value that are NaN
+    #try:
+    #    mask = (fid.variables[var]._fill_value == fill_value)
+    #except:
+    #        mask = (T == model_nan)
+    #    else:
+    #        mask = (T == numpy.nan)
     if model_nan is not None:
         T[numpy.where(T == model_nan)] = numpy.nan
-    return T
+    return T #numpy.ma.MaskedArray(T, mask=mask)
 
 
 def write_l2c(metadata, geolocation, **kwargs):
@@ -819,10 +825,9 @@ class NETCDF_MODEL():
             nfile0 = self.nfile[0]
             _nfile = '{}{}.nc'.format(nfile0, value[1])
             if os.path.exists(_nfile):
-                self.input_var[key] = read_var(_nfile, value[0], index=index,
-                                               time=self.time,
-                                               depth=self.depth,
-                                               model_nan=self.model_nan)
+                _tmp = read_var(_nfile, value[0], index=index, time=self.time,
+                                depth=self.depth, model_nan=self.model_nan)
+                self.input_var[key] = _tmp
                 if len(value) == 3:
                     self.numgrid[key] = value[2]
                 else:
@@ -840,7 +845,6 @@ class NETCDF_MODEL():
         self.vlat = {}
         for ikey in range(len(list(self.nfile))):
             ifile = self.nfile[ikey]
-            print(ikey, ifile,  self.nlon[ikey])
             if p.grid == 'regular':
                 lon, lat = read_coordinates(ifile, self.nlon[ikey],
                                             self.nlat[ikey], twoD=False)
@@ -908,10 +912,9 @@ class WW3():
             nfile0 = self.nfile[0]
             _nfile = '{}{}.nc'.format(nfile0, value[1])
             if os.path.exists(_nfile):
-                self.input_var[key] = read_var(_nfile, value[0], index=index,
-                                               time=self.time,
-                                               depth=self.depth,
-                                               model_nan=self.model_nan)
+                _tmp = read_var(_nfile, value[0], index=index, time=self.time,
+                                depth=self.depth, model_nan=self.model_nan)
+                self.input_var[key] = _tmp
                 if len(value) == 3:
                     self.numgrid[key] = value[2]
                 else:
