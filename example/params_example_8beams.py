@@ -22,10 +22,10 @@ outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 # ------ Orbit file:
 #filesat = os.path.join(dir_setup,'orbs1a.txt')
 filesat = os.path.join(dir_setup,'orbmetop.txt')
-# ------ Number of days in orbit
+# ------ Number of days in orbit (optional if specified in orbit file)
 satcycle = 29
 #satcycle = 12
-# ------ Satellite elevation
+# ------ Satellite elevation (optional if specified in orbit file)
 sat_elev = 817 * 10**3
 #sat_elev = 699 * 10**3
 # ------ Order of columns (lon, lat, time) in orbit file
@@ -84,9 +84,9 @@ shift_time = None
 #        To generate the noise alone, file_input=None and specify region 
 #        in modelbox
 file_input = os.path.join(indatadir, 'list_of_file.txt')
-# ------ Type of model data: 
+# ------ Type of model data:
 #	 (Optional, default is NETCDF_MODEL and reads netcdf3 and netcdf4 files)
-#	 (Other options are ROMS, NEMO and CLS to read Nemo, roms or CLS)
+#	 (Other option is WW3)
 model = 'WW3'
 # ------ First time of the model
 first_time = '2011-11-15T00:00:00Z'

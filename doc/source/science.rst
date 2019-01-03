@@ -1,4 +1,5 @@
 .. _science:
+
 ################################
 SKIM Simulator
 ################################
@@ -26,6 +27,7 @@ The software is scalable and designed to support future evolution of orbital
 parameters, error budget estimates from the project team and suggestions from
 the science community.
 
+
 Simulation of the SKIM sampling over synthetic Sea Surface current
 ==================================================================
 From a global or regional OGCM configuration, the software generates radial
@@ -38,8 +40,7 @@ are needed such as mean square slope, Stockes drift, wind, ice ...
 .. figure:: ../images/Fig1.png 
    :alt: Science SKIM orbit
 
-   FIG. 1: 5-day worth of SKIM simulated data in a global configuration with
-             the science orbit.
+   FIG. 1: 5-day worth of SKIM simulated data in a global configuration with the science orbit.
 
 .. _ProposedSKIMorbits:
 
@@ -75,7 +76,8 @@ Note that the first two commented lines of the files concerns the satellite
 cycle (in days) and elevation (in km).
 
 
-.. code-block:: python
+::
+
     cycle = 29
     elevation = 817000
 
@@ -102,16 +104,15 @@ passes are even numbers.
 .. figure:: ../images/Fig2.png
    :alt: SKIM geometry
 
-   FIG. 2: scheme of the SKIM geometry with 4 beams at 12 degrees and 1 beam at
-           6 degree for figure a and 5 beams at 12 degrees and 2 beams at 6
-           degree for figure b.
+   FIG. 2: scheme of the SKIM geometry with 4 beams at 12 degrees and 1 beam at 6 degree for figure a and 5 beams at 12 degrees and 2 beams at 6 degree for figure b.
 
 Interpolation of model variables on the SKIM grid and nadir track
 --------------------------------------------------------------------------
-A list of model variables can be given to the skimulator. All the variables
-should have the same coordinates. The naming of the netcdf files should be
+A list of model variables should be given to the skimulator, as well as a list
+grids if the coordinates differ from one variable to another.
+ The naming of the netcdf files should be
 :math:`[pattern\_model]\_[pattern\_variable].nc`, where :math:`pattern\_variable`
-is a 3-character string.
+is a string.
 All input variables must be given at the same regular time step.
 
 The absolute time of the first time step is zero
@@ -254,8 +255,7 @@ available and thus the drift remaining bias is higher than in the open ocean.
 .. figure:: ../images/Fig5.png
    :alt: Model current geophysical noise
 
-   FIG. 5: Model interpolated currents and the corresponding wave remaining
-           bias.
+   FIG. 5: Model interpolated currents and the corresponding wave remaining bias.
 
 Total error
 ```````````
@@ -266,14 +266,13 @@ All previous errors are added to compute the total error.
 .. figure:: ../images/Fig6.png
    :alt: Model current with noise
 
-   FIG. 5: Model interpolated currents and the corresponding total noise
-           (instrumental + geophysical).
+   FIG. 6: Model interpolated currents and the corresponding total noise (instrumental + geophysical).
 
 
 Simulation of errors for the nadir altimeter
 ============================================
 Two main components of the nadir altimetry error budget are simulated: the
- altimeter noise and residual wet-tropospheric errors. For the altimeter noise,
+altimeter noise and residual wet-tropospheric errors. For the altimeter noise,
 the noise follow a spectrum of error consistent with global estimates from the
 Jason-2 altimeter.
 The wet-tropospheric residual errors (not implemented yet) are generated using
@@ -300,26 +299,22 @@ The software is divided in 6 modules:
 
 * :mod:`mod_run.py` contains interpolations and data construction functions.
 
-* :mod:`build_swath.py` generates the SKIM geometry and save several
-coordinates and angular variables in a netcdf file.
+* :mod:`build_swath.py` generates the SKIM geometry and save several coordinates and angular variables in a netcdf file.
 
 * :mod:`build_error.py` generates all the errors on the swath.
 
-* :mod:`rw_data.py` contains all the classes to read and write model and SKIM
-data (in netcdf).
+* :mod:`rw_data.py` contains all the classes to read and write model and SKIM data (in netcdf).
 
-* :mod:`mod_tools.py` contains miscellaneous functions (algebraic functions and
-generation of random coefficients).
+* :mod:`mod_tools.py` contains miscellaneous functions (algebraic functions and generation of random coefficients).
 
 * :mod:`regridding.py` contains reconstruction for L2c products functions
 
-* :mod:`mod_uwb_corr.py` contains function to correct the wave bias using
-neighbors
+* :mod:`mod_uwb_corr.py` contains function to correct the wave bias using neighbors
 
 
 Inputs
 -------
-You can provide to the simulator a list of model outputs in netcdf. You need 
+You can provide to the simulator a list of model outputs in netcdf. You need
 to have at least the meridional and zonal currents to compute error-free radial
 L2B velocities and SSH if you want to simulate nadir data. Wind and MSS
 are necessary to compute instrumental noise (proportional to :math:`sigma^0`),
@@ -330,39 +325,31 @@ SKIM points.
 
 A list of files (in .txt format) is provided using :ref:`file_input <params-file>`
 in the parameter file.
-For WW3 data, you should provide a list following this format:
 
-.. code-block:: python
+The extension should not be provided in the list_of_files:
 
-   model_0001_var.nc
-   model_0002_var.nc
-   model_0003_var.nc 
-
-with var any three-characters variable (eg cur, uss, wnd ... )
-
-For any other model type, the extension does not need to be provided
-
-.. code-block:: python
+::
 
    model_0001_
    model_0002_
    model_0003_
 
-The model file should be model_0001_var.nc with variable the extension of the
-file. For example, if all the variables are in the same file
+The corresponding model file for a variable `var` should be  model_0001_var.nc
+For example, if all the variables are in the same file
 :math:`myfile\_[date].nc`, the list of file will be:
 
-.. code-block:: python
+::
 
    myfile_date1
    myfile_date2
    myfile_date3
 
-FIG 19: Example of a list of files, a real example is located in the example directory.
+FIG 19: Example of a list of files, a list is provided in the example directory.
 
 The grid files are provided as a list in the parameter file, using the key
-:ref:`file_grid_model`. Provide one file in this list if meridional and zonal
-velocities are on the same grid, two otherwise. 
+:ref:`file_grid_model  <params-model>`. Make a list of all grid files that are necessary for
+your variables, the correspondance between the variable and the grid is given
+in a number in the :ref:`list_input_var  <params-model>`.
 If no file_grid_model is provided, The skimulator is going to use the first
 file of your list and data in this file will be ignored.
 
@@ -376,15 +363,16 @@ will be generated.
 The module :mod:`rw_data.py` is used to read model data. For any standard
 netcdf format, the data can be read using
 :ref:`model <params-model>` = MODEL_NETCDF, which is the
-:ref:`model<params-model>` default value. The user needs to specify the
-latitude (:ref:`latu <params-model>` and :ref:`latv <params-model>`), longitude
-(:ref:`lonu <params-model>` and :ref:`lonv <params-model>`) variables names.
+:ref:`model<params-model>` default value. The user needs to specify the list of
+latitude (:ref:`lat <params-model>`) and longitude
+(:ref:`lon <params-model>`) variables names corresponding to the list of grid
+files provided in :ref:`file_grid_model  <params-model>`.
 All other variables that are to be read, are added to the dictionnary
 :ref:`list_input_var <params-model>`:
 
-.. code-block:: python
+::
 
-  list_input_var = {'key': [[variable\_name], [variable\_extension_file]]}
+  list_input_var = {'key': [[variable\_name], [variable\_extension_file], [number\_corresponding\_to_grid_file]]}
 
 The following table summarizes the key that are required to compute
 instrumental noise and wave bias:
@@ -420,30 +408,50 @@ instrumental noise and wave bias:
 Netcdf data that follow WW3 format can automatically be read
 using :ref:`model <params-model>` = WW3 and there is no need to specify the
 longitude or latitude variables name.
-Below is an example of :ref:`list_input_var  <params-model>` for WW3 model:
+Below is an example of :ref:`list_input_var  <params-model>` for WW3 model
+(all variables are on the same grid):
 
-.. code:: python
+::
 
-  list_input_var = {'ucur': ['ucur', 'cur'],
-                    'vcur': ['vcur', 'cur'],
-                    'uuss': ['uuss', 'uss'],
-                    'vuss': ['vuss', 'uss'],
-                    'ice': ['ice', 'ice'],
-                    'mssd': ['mssd', 'msd'],
-                    'mssx': ['mssx', 'mss'],
-                    'mssy':['mssy', 'mss'],
-                    'ssh': ['wlv', 'wlv'],
-                    'uwnd': ['uwnd', 'wnd'],
-                    'vwnd': ['vwnd', 'wnd']}
+  file_grid_model = ('grid.nc', )
+  lon = ('longitude', )
+  lat = ('latitude', )
+  list_input_var = {'ucur': ['ucur', 'cur', 0],
+                    'vcur': ['vcur', 'cur', 0],
+                    'uuss': ['uuss', 'uss', 0],
+                    'vuss': ['vuss', 'uss', 0],
+                    'ice': ['ice', 'ice', 0],
+                    'mssd': ['mssd', 'msd', 0],
+                    'mssx': ['mssx', 'mss', 0],
+                    'mssy':['mssy', 'mss', 0],
+                    'ssh': ['wlv', 'wlv', 0],
+                    'uwnd': ['uwnd', 'wnd', 0],
+                    'vwnd': ['vwnd', 'wnd', 0]}
 
+Below is an example of :ref:`list_input_var  <params-model>` for a model with
+an Arakawa grid (type C):
+
+::
+
+  file_grid_model = ('grid_u.nc', 'grid_v.nc', 'grid_T.nc')
+  lon = ('lon_u', 'lon_v', 'lon_t')
+  lat = ('lat_u', 'lat_v', 'lat_t')
+  list_input_var = {'ucur': ['u', 'cur', 0],
+                    'vcur': ['v', 'cur', 1],
+                    'uuss': ['uuss', 'uss', 0],
+                    'vuss': ['vuss', 'uss', 1],
+                    'ice': ['ice', 'ice', 2],
+                    'ssh': ['wlv', 'wlv', 2],
+                    'uwnd': ['u10', 'wnd', 0],
+                    'vwnd': ['v10', 'wnd', 1]}
 
 The coordinates are supposed to
 be in degrees and current variables in m/s in the program.
 
 To refer timestamp properly in netcdf files, fill in the
 :ref:`first_time  <params-model>` key
-following  :ref:`first_time`='yyyy-mm-ddTHH:MM:SSZ". By default,
-:ref:`first_time`='2011-11-15T00:00:00Z'
+following  :ref:`first_time`='yyyy-mm-ddTHH:MM:SSZ'  <params-model>`.  By default,
+:ref:`first_time`='2011-11-15T00:00:00Z'  <params-model>`.
 
 If there is a ice_mask varying in time, set :ref:`ice_mask  <params-model>`
 to False to
@@ -467,7 +475,7 @@ rotation speed of the antenna is specified in
 :ref:`rotation_speed <params-skimswath>` in tr/min. The provided value has been
 computed to keep an integer number of illumination in the macro-cycle. The
 geometry of beams is provided with lists and give for each beam a position in
-radian (:ref:`list_pos` <params-skimswath>), an angle on the sensor in degree
+radian (:ref:`list_pos <params-skimswath>`), an angle on the sensor in degree
 (:ref:`list_angle <params-skimswath>`), an order for the illumination
 (:ref:`list_shift <params-skimswath>`) with the macro-cycle starting with the
 nadir beam.
@@ -504,8 +512,8 @@ and the different errors are created. The output file names are
 :ref:`file_output <params-output>` _c[cycle]_p[pass].nc for the swath and
 :ref:`file_output <params-output>` _c[cycle]_p[pass].nc for the nadir. The SSH
 is interpolated on the SKIM grid. If the model grid is regular, option
-:ref:`grid <param-file>` can bet set to `regular` and RectBivariateSpline
-interpolation from scipy is used. In all cases, :ref:`grid <param-file>` option
+:ref:`grid <params-file>` can bet set to `regular` and RectBivariateSpline
+interpolation from scipy is used. In all cases, :ref:`grid <params-file>` option
 can be set to `irregular` and pyresample is used for the interpolation if the
 module is installed. If the grid is irregular and pyresample is not installed,
 mgriddata from scipy interpolates data is used with either the 'linear'
@@ -576,11 +584,7 @@ the model (SSH_model) when model data are provided.
 Two errors are considered in the nadir. The first one is the instrument error,
 which follows the 1d spectrum computed from the current altimeters. You have
 to set (:ref:`nadir <params-error>`) to True to compute this error.
-.. comment::
-  The second
-  error is the path delay due to the wet troposphere and this error is computed
-  with the residual path delay error in the swath. The observed SSH (SSH_obs) is
-  computing by adding these two errors to the SSH interpolated from the model (SSH_model).
+
 
 L2C 2d currents
 ---------------
@@ -644,32 +648,33 @@ Example of Params.txt for SKIM-like data
 .. _params-file:
 
 .. literalinclude:: params.py
-   :lines: 1-19
+   :lines: 1-32
 
-.. _params-swotswath:
+.. _params-skimswath:
 
 .. literalinclude:: params.py
-   :lines: 20-51
+   :lines: 34-62
 
 .. _params-model:
 
 .. literalinclude:: params.py
-   :lines: 53-90
+   :lines: 64-107
 
 .. _params-output:
 
 .. literalinclude:: params.py
-   :lines: 92-104
+   :lines: 109-124
 
 .. _params-error:
 
 .. literalinclude:: params.py
-   :lines: 106-
+   :lines: 125-160
 
 .. _params-l2c:
 
 .. literalinclude:: params.py
-   :lines: 106-
+   :lines: 159-
+
 
 References:
 ===========
