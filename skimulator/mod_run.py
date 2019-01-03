@@ -265,8 +265,6 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
             input_var_i = {}
             if p.grid == 'regular':
                 model_step.read_var(p)
-                if p.instr is True:
-                    model_step.compute_mss()
                 for key in model_step.input_var.keys():
                     grid_key = model_step.numgrid[key]
                     _indlat = model_data.model_index_lat[grid_key]
@@ -276,8 +274,6 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
 
             else:
                 model_step.read_var(p, index=None)
-                if p.instr is True:
-                    model_step.compute_mss()
                 for key in model_step.input_var.keys():
                     _ind = model_data.model_index[model_step.numgrid[key]]
                     input_var_i[key] = + model_step.input_var[key][_ind]
@@ -372,30 +368,7 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
     output_var_i['radial_angle'] = radial_angle
     if p.instr is True:
         # Compute sigma0:
-        R2 = 0.55
-        rbeam_angle = numpy.deg2rad(beam_angle)
-        mssx = output_var_i['mssx']
-        mssy = output_var_i['mssy']
-        mssxy = output_var_i['mssxy']
-        expo = (-0.5 * numpy.tan(rbeam_angle)**2 * (numpy.cos(radial_angle)**2
-                *mssy + numpy.sin(radial_angle)**2 * mssx
-                - numpy.sin(2 * radial_angle) * mssxy) / (mssx * mssy))
-        coeff = R2 / (2 * numpy.cos(rbeam_angle)**4 * numpy.sqrt(mssx * mssy))
-        sigma_water = coeff * numpy.exp(expo)
-        if (p.ice is True) and ('ice' in output_var_i.keys()):
-            if beam_angle == 6:
-                sigma_ice = 2.5
-            elif beam_angle == 12:
-                sigma_ice = 1
-            else:
-                logger.info('beam angle is {} but should be either 6 or 12, '
-                            'sigma_ice is set to 1'.format(beam_angle))
-            mask = (numpy.isnan(output_var_i['ice']))
-            c_ice = numpy.ma.MaskedArray(output_var_i['ice'], mask=mask)
-            c_ice[c_ice.mask] = 0
-            sigma0 = (1 - c_ice) * sigma_water + c_ice * sigma_ice
-        else:
-            sigma0 = sigma_water
+        sigma0 = compute_sigma(output_var_i, beam_angle, radial_angle, p)
         output_var_i['sigma0'] = sigma0
         coeff_random = p.snr_coeff * output_var_i['sigma0']
         cshape = numpy.shape(coeff_random)
@@ -439,6 +412,86 @@ def compute_nadir_noise_skim(p, output_var_i, sgrid, cycle):
     #    output_var_i['wet_tropo'] = 
     return None
 
+
+def compute_sigma_water(input_var, beam_angle, radial_angle):
+    required = ('mssx', 'mssy', 'mssd', 'uwnd', 'vwnd', 'uwnd', 'ucur',
+                'vcur')
+    missing = [_ for _ in required if _ not in input_var.keys()]
+    if 0 < len(missing):
+        logger.info('Missing file to compute sigma, instrumental error not'
+                    ' computed')
+        logger.info('Missing parameters: {}'.format(', '.join(missing)))
+        return None
+    else:
+        mssd = numpy.deg2rad(input_var['mssd'])
+        mssu = + input_var['mssx']
+        mssc = + input_var['mssy']
+        uwnd = + input_var['uwnd']
+        vwnd = + input_var['vwnd']
+        ucur = + input_var['ucur']
+        vcur = + input_var['vcur']
+        mssxl = mssu * numpy.cos(mssd)**2 + mssc * numpy.sin(mssd)**2
+        mssyl = mssu * numpy.sin(mssd)**2 + mssc * numpy.cos(mssd)**2
+        mssxyl = (mssu - mssc) * numpy.sin(2 * mssd) / 2
+        nwr = numpy.sqrt((uwnd - ucur)**2 + (vwnd - vcur)**2)
+        mask = (nwr == 0)
+        nwr[mask] = numpy.nan
+        uwnd[mask] = numpy.nan
+        vwnd[mask] = numpy.nan
+        ucur[mask] = numpy.nan
+        vcur[mask] = numpy.nan
+        wrd = numpy.pi / 2 - numpy.arctan2(vwnd - vcur, uwnd - ucur)
+        mssshort = numpy.log(nwr + 0.7) * 0.009
+        # Replace nan values by 0 to avoid a runtime warning (nan values
+        # will be restored afterwards)
+        mssshort_nanmask_ind = numpy.where(numpy.isnan(mssshort))
+        mssshort[mssshort_nanmask_ind] = 0
+        mssshort[mssshort < 0] = 0
+        mssshort[mssshort_nanmask_ind] = numpy.nan  # restore nan values
+        # Directionality for short wave mss (if 0.5: isotrophic)
+        facssdw = 0.6
+        mssds = facssdw * mssshort
+        msscs = mssshort - mssds
+        mssxs = msscs * numpy.sin(wrd)**2 + mssds * numpy.cos(wrd)**2
+        mssys = mssds * numpy.sin(wrd)**2 + msscs * numpy.cos(wrd)**2
+        mssxys = abs(mssds - msscs) * numpy.sin(2* wrd)
+        input_var['mssx'] = mssxs + mssxl
+        input_var['mssy'] = mssys + mssyl
+        input_var['mssxy'] = mssxys + mssxyl
+        R2 = 0.55
+        rbeam_angle = numpy.deg2rad(beam_angle)
+        mssx = mssxs + mssxl
+        mssy = mssys + mssyl
+        mssxy = mssxys + mssxyl
+        mask = (mssx == 0 | mssy == 0)
+        mssx[mask] = numpy.nan
+        mssy[mask] = numpy.nan
+        expo = (-0.5 * numpy.tan(rbeam_angle)**2 * (numpy.cos(radial_angle)**2
+                *mssy + numpy.sin(radial_angle)**2 * mssx
+                - numpy.sin(2 * radial_angle) * mssxy) / (mssx * mssy))
+        coeff = R2 / (2 * numpy.cos(rbeam_angle)**4 * numpy.sqrt(mssx * mssy))
+        sigma_water = coeff * numpy.exp(expo)
+        del input_var['mssd']
+        return sigma_water
+
+
+def compute_sigma(output_var_i, beam_angle, radial_angle, p):
+    sigma_water = compute_sigma_water(output_var_i, beam_angle, radial_angle)
+    if (p.ice is True) and ('ice' in output_var_i.keys()):
+        if beam_angle == 6:
+            sigma_ice = 2.5
+        elif beam_angle == 12:
+            sigma_ice = 1
+        else:
+            logger.info('beam angle is {} but should be either 6 or 12, '
+                        'sigma_ice is set to 1'.format(beam_angle))
+        mask = (numpy.isnan(output_var_i['ice']))
+        c_ice = numpy.ma.MaskedArray(output_var_i['ice'], mask=mask)
+        c_ice[c_ice.mask] = 0
+        sigma0 = (1 - c_ice) * sigma_water + c_ice * sigma_ice
+    else:
+        sigma0 = sigma_water
+    return sigma0
 
 def save_SKIM(cycle, sgrid, time, outdata, p):
     file_output = '{}_c{:02d}_p{:03d}.nc'.format(p.file_output, cycle + 1,
