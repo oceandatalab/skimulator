@@ -791,9 +791,8 @@ class NETCDF_MODEL():
     Argument file is mandatory, arguments var, lon, lat
     are specified in params file. \n
     '''
-    def __init__(self, p, ifile=None, list_input_var=None, lonu='longitude',
-                 latu='latitude', lonv='longitude', latv='latitude', depth=0,
-                 time=0):
+    def __init__(self, p, ifile=None, list_input_var=None, lon=('longitude', ),
+                 lat=('latitude', ), depth=0, time=0):
         if p.list_input_var is None:
             logger.error('Specify your list_input_var in parameter file')
             sys.exit(1)
@@ -803,10 +802,9 @@ class NETCDF_MODEL():
         else:
             self.input_var_list = p.list_input_var
         self.input_var = {}
-        self.nlonu = lonu
-        self.nlatu = latu
-        self.nlonv = lonv
-        self.nlatv = latv
+        self.numgrid = {}
+        self.nlon = list(lon)
+        self.nlat = list(lat)
         self.nfile = ifile
         self.depth = depth
         self.time = time
@@ -825,6 +823,11 @@ class NETCDF_MODEL():
                                                time=self.time,
                                                depth=self.depth,
                                                model_nan=self.model_nan)
+                if len(value) == 3:
+                    self.numgrid[key] = value[2]
+                else:
+                    self.numgrid[key] = 0
+
             else:
                 logger.info('{} not found'.format(_nfile))
         # self.vvar[numpy.where(numpy.isnan(self.vvar))]=0
@@ -833,33 +836,34 @@ class NETCDF_MODEL():
     def read_coordinates(self, p, index=None):
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        if p.grid == 'regular':
-            lonu, latu = read_coordinates(self.nfile[0], self.nlonu, self.nlatu,
-                                          twoD=False)
-            lonv, latv = read_coordinates(self.nfile[1], self.nlonv, self.nlatv,
-                                          twoD=False)
-        else:
-            lonu, latu = read_coordinates(self.nfile[0], self.nlonu, self.nlatu)
-            lonv, latv = read_coordinates(self.nfile[1], self.nlonv, self.nlatv)
-        self.vlatu = latu
-        self.vlonu = (lonu + 360) % 360
-        self.vlatv = latv
-        self.vlonv = (lonv + 360) % 360
+        self.vlon = {}
+        self.vlat = {}
+        for ikey in range(len(list(self.nfile))):
+            ifile = self.nfile[ikey]
+            print(ikey, ifile,  self.nlon[ikey])
+            if p.grid == 'regular':
+                lon, lat = read_coordinates(ifile, self.nlon[ikey],
+                                            self.nlat[ikey], twoD=False)
+            else:
+                lon, lat = read_coordinates(ifile, self.nlon[ikey],
+                                            self.nlat[ikey])
+            self.vlat[ikey] = lat
+            self.vlon[ikey] = (lon + 360) % 360
         return None
 
     def calc_box(self, p):
         '''Calculate subdomain coordinates from netcdf file
         Return minimum, maximum longitude and minimum, maximum latitude'''
         self.read_coordinates(p)
-        if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
-            _ind = numpy.where(self.vlonu > 180.)
-            self.vlonu[_ind] = self.vlonu[_ind] - 360
-            lon1 = (numpy.min(self.vlonu) + 360) % 360
-            lon2 = (numpy.max(self.vlonu) + 360) % 360
+        if (numpy.min(self.vlon[0]) < 1.) and (numpy.max(self.vlon[0]) > 359.):
+            _ind = numpy.where(self.vlon[0] > 180.)
+            self.vlonu[_ind] = self.vlonu[0][_ind] - 360
+            lon1 = (numpy.min(self.vlonu[0]) + 360) % 360
+            lon2 = (numpy.max(self.vlonu[0]) + 360) % 360
         else:
-            lon1 = numpy.min(self.vlonu)
-            lon2 = numpy.max(self.vlonu)
-        return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
+            lon1 = numpy.min(self.vlonu[0])
+            lon2 = numpy.max(self.vlonu[0])
+        return [lon1, lon2, numpy.min(self.vlatu[0]), numpy.max(self.vlatu[0])]
 
 
 class WW3():
@@ -869,31 +873,29 @@ class WW3():
     Argument file is mandatory, arguments var, lon, lat
     are specified in params file. \n
     '''
-    def __init__(self, p, ifile=None, list_input_var=None, lonu='longitude',
-                 latu='latitude', lonv='longitude',
-                 latv='latitude', depth=0, time=0):
-        self.nlonu = 'longitude'
-        self.nlatu = 'latitude'
-        self.nlonv = self.nlonu
-        self.nlatv = self.nlatu
+    def __init__(self, p, ifile=None, list_input_var=None, lon=('longitude',),
+                 lat=('latitude',), depth=0, time=0):
+        self.nlon = list(lon)
+        self.nlat = list(lat)
         self.nfile = ifile
         self.depth = depth
         self.time = time
         if list_input_var is None:
-            self.input_var_list = {'ucur': ['ucur', 'cur'],
-                                   'vcur': ['vcur', 'cur'],
-                                   'uuss': ['uuss', 'uss'],
-                                   'vuss': ['vuss', 'uss'],
-                                   'ice': ['ice', 'ice'],
-                                   'mssd': ['mssd', 'msd'],
-                                   'mssx': ['mssx', 'mss'],
-                                   'mssy':['mssy', 'mss'],
-                                   'ssh': ['wlv', 'wlv'],
-                                   'uwnd': ['uwnd', 'wnd'],
-                                   'vwnd': ['vwnd', 'wnd']}
+            self.input_var_list = {'ucur': ['ucur', 'cur', 0],
+                                   'vcur': ['vcur', 'cur', 0],
+                                   'uuss': ['uuss', 'uss', 0],
+                                   'vuss': ['vuss', 'uss', 0],
+                                   'ice': ['ice', 'ice', 0],
+                                   'mssd': ['mssd', 'msd', 0],
+                                   'mssx': ['mssx', 'mss', 0],
+                                   'mssy':['mssy', 'mss', 0],
+                                   'ssh': ['wlv', 'wlv', 0],
+                                   'uwnd': ['uwnd', 'wnd', 0],
+                                   'vwnd': ['vwnd', 'wnd', 0]}
         else:
             self.input_var_list = p.list_input_var
         self.input_var = {}
+        self.numgrid = {}
         self.model_nan = getattr(p, 'model_nan', 0.)
         p.model_nan = self.model_nan
         logger.debug('Nan Values {}, {}'.format(p.model_nan, self.model_nan))
@@ -904,30 +906,37 @@ class WW3():
         Argument is index=index to load part of the variable.'''
         for key, value in self.input_var_list.items():
             nfile0 = self.nfile[0]
-            _nfile = '{}{}.nc'.format(nfile0[:-6], value[1])
+            _nfile = '{}{}.nc'.format(nfile0, value[1])
             if os.path.exists(_nfile):
                 self.input_var[key] = read_var(_nfile, value[0], index=index,
                                                time=self.time,
                                                depth=self.depth,
                                                model_nan=self.model_nan)
+                if len(value) == 3:
+                    self.numgrid[key] = value[2]
+                else:
+                    self.numgrid[key] = 0
+            else:
+                logger.info('{} not found'.format(_nfile))
+
         return None
 
 
     def read_coordinates(self, p, index=None):
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
-        if p.grid == 'regular':
-            lonu, latu = read_coordinates(self.nfile[0], self.nlonu, self.nlatu,
-                                          twoD=False)
-            lonv, latv = read_coordinates(self.nfile[1], self.nlonv, self.nlatv,
-                                          twoD=False)
-        else:
-            lonu, latu = read_coordinates(self.nfile, self.nlonu, self.nlatu)
-            lonv, latv = read_coordinates(self.nfile, self.nlonv, self.nlatv)
-        self.vlatu = latu
-        self.vlonu = (lonu + 360) % 360
-        self.vlatv = latv
-        self.vlonv = (lonv + 360) % 360
+        self.vlon = {}
+        self.vlat = {}
+        for ikey in range(len(list(self.nfile))):
+            ifile = self.nfile[ikey]
+            if p.grid == 'regular':
+                lon, lat = read_coordinates(ifile, self.nlon[ikey],
+                                            self.nlat[ikey], twoD=False)
+            else:
+                lon, lat = read_coordinates(ifile, self.nlon[ikey],
+                                            self.nlat[ikey])
+            self.vlat[ikey] = lat
+            self.vlon[ikey] = (lon + 360) % 360
         return None
 
 
@@ -935,15 +944,15 @@ class WW3():
         '''Calculate subdomain coordinates from netcdf file
         Return minimum, maximum longitude and minimum, maximum latitude'''
         self.read_coordinates(p)
-        if (numpy.min(self.vlonu) < 1.) and (numpy.max(self.vlonu) > 359.):
-            _ind = numpy.where(self.vlonu > 180.)
-            self.vlonu[_ind] = self.vlonu[_ind] - 360
-            lon1 = (numpy.min(self.vlonu) + 360) % 360
-            lon2 = (numpy.max(self.vlonu) + 360) % 360
+        if (numpy.min(self.vlon[0]) < 1.) and (numpy.max(self.vlon[0]) > 359.):
+            _ind = numpy.where(self.vlon[0] > 180.)
+            self.vlon[0][_ind] = self.vlon[0][_ind] - 360
+            lon1 = (numpy.min(self.vlon[0]) + 360) % 360
+            lon2 = (numpy.max(self.vlon[0]) + 360) % 360
         else:
-            lon1 = numpy.min(self.vlonu)
-            lon2 = numpy.max(self.vlonu)
-        return [lon1, lon2, numpy.min(self.vlatu), numpy.max(self.vlatu)]
+            lon1 = numpy.min(self.vlon[0])
+            lon2 = numpy.max(self.vlon[0])
+        return [lon1, lon2, numpy.min(self.vlat[0]), numpy.max(self.vlat[0])]
 
 
     def compute_mss(self):
@@ -985,6 +994,7 @@ class WW3():
             self.input_var['mssx'] = mssxs + mssxl
             self.input_var['mssy'] = mssys + mssyl
             self.input_var['mssxy'] = mssxys + mssxyl
+            self.numgrid['mssxy'] = self.numgrid['mssx']
             del self.input_var['mssd']
 
 

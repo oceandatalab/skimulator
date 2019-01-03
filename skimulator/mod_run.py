@@ -100,16 +100,13 @@ def load_coordinate_model(p):
             logger.info("WARNING: First file of list of files is used for"
                         "coordinates only")
             _filename = list_file[0].split(',')
-        if len(_filename) > 1:
-            filename_u = os.path.join(p.indatadir, _filename[0])
-            filename_v = os.path.join(p.indatadir, _filename[1])
-        else:
-            filename_u = os.path.join(p.indatadir, _filename[0])
-            filename_v = os.path.join(p.indatadir, _filename[0])
+        filename = []
+        for ifile in _filename:
+            filename.append(os.path.join(p.indatadir, ifile))
+
         #filename = os.path.join(p.indatadir, list_file[0])
-        model_data = model_data_ctor(p, ifile=(filename_u, filename_v),
-                                     lonu=p.lonu, lonv=p.lonv, latu=p.latu,
-                                     latv=p.latv)
+        model_data = model_data_ctor(p, ifile=filename,
+                                     lon=list(p.lon), lat=list(p.lat))
     return model_data, list_file
 
 
@@ -217,14 +214,13 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
     # Look for satellite data that are beween step-p.timestep/2 and
     # step+p.timestep/2
     if p.file_input is not None:
+        lon2D = {}
+        lat2D = {}
         # meshgrid in 2D for interpolation purposes
-        if p.grid == 'irregular':
-            lon2Du, lat2Du = numpy.meshgrid(model_data.vlonu, model_data.vlatu)
-            if (p.lonu == p.lonv) and (p.latu == p.latv):
-                lon2Dv, lat2Dv = lon2Du, lat2Du
-            else:
-                lon2Dv, lat2Dv = numpy.meshgrid(model_data.vlonv,
-                                                model_data.vlatv)
+        for key in model_data.vlon.keys():
+            if p.grid == 'irregular':
+                lon2D[key], lat2D[key] = numpy.meshgrid(model_data.vlon[key],
+                                                        model_data.vlat[key])
         index_filemodel = numpy.where(((time[-1] - timeshift) >=
                                       (modeltime-p.timestep/2.))
                                       & ((time[0] - timeshift) <
@@ -259,16 +255,11 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
             nfile = int(ifile /p.dim_time)
             filetime = ifile - nfile * p.dim_time
 
-            _tmpfilename = list_file[nfile].split(',')
-            if len(_tmpfilename) > 1:
-                filename_u = os.path.join(p.indatadir, _tmpfilename[0])
-                filename_v = os.path.join(p.indatadir, _tmpfilename[1])
-            else:
-                filename_u = os.path.join(p.indatadir, _tmpfilename[0])
-                filename_v = os.path.join(p.indatadir, _tmpfilename[0])
+            _tmpfilename = list_file[nfile]
+            filename = os.path.join(p.indatadir, _tmpfilename)
 
             model_step_ctor = getattr(rw_data, model_data.model)
-            model_step = model_step_ctor(p, ifile=(filename_u, filename_v),
+            model_step = model_step_ctor(p, ifile=(filename, ),
                                          list_input_var=p.list_input_var,
                                          time=filetime)
             input_var_i = {}
@@ -277,83 +268,79 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
                 if p.instr is True:
                     model_step.compute_mss()
                 for key in model_step.input_var.keys():
-                    _indlat = model_data.model_index_latu
+                    grid_key = model_step.numgrid[key]
+                    _indlat = model_data.model_index_lat[grid_key]
                     _tmp = model_step.input_var[key][_indlat, :]
-                    input_var_i[key] = +_tmp[:, model_data.model_index_lonu]
+                    _indlon = model_data.model_index_lon[grid_key]
+                    input_var_i[key] = +_tmp[:, _indlon]
 
             else:
                 model_step.read_var(p, index=None)
                 if p.instr is True:
                     model_step.compute_mss()
                 for key in model_step.input_var.keys():
-                    _ind = model_data.model_indexu
+                    _ind = model_data.model_index[model_step.numgrid[key]]
                     input_var_i[key] = + model_step.input_var[key][_ind]
             # - Interpolate Model data on a SKIM grid and/or along the
             #   nadir track
             # if grid is regular, use interpolate.RectBivariateSpline to
             # interpolate
             if p.grid == 'regular' and \
-                    len(numpy.shape(model_data.vlonu)) == 1:
+                    len(numpy.shape(model_data.vlon[0])) == 1:
                 # Flatten satellite grid and select part of the track
                 # corresponding to the model time
                 for key in model_step.input_var.keys():
-                    _tmp, Teval_u = interpolate_regular_1D(
-                                                         model_data.vlonu,
-                                                         model_data.vlatu,
-                                                         input_var_i[key],
-                                                         lon[ind_time[0]],
-                                                         lat[ind_time[0]])
+                    mlon = model_data.vlon[model_step.numgrid[key]]
+                    mlat = model_data.vlat[model_step.numgrid[key]]
+                    _tmp, Teval_u = interpolate_regular_1D(mlon, mlat,
+                                                           input_var_i[key],
+                                                           lon[ind_time[0]],
+                                                           lat[ind_time[0]])
                     output_var_i[key][ind_time[0]] = + _tmp
             else:
                 # Grid is irregular, interpolation can be done using
                 # pyresample module if it is installed or griddata
                 # function from scipy.
                 # Note that griddata is slower than pyresample functions.
-                lonuravel = + model_data.vlonu.ravel()
-                laturavel = + model_data.vlatu.ravel()
-                if p.lonu == p.lonv:
-                    lonvravel = lonuravel
-                    latvravel = laturavel
-                else:
-                    lonvravel = lon2Dv.ravel()
-                    latvravel = lat2Dv.ravel()
-
                 try:
                     import pyresample as pr
-                    model_data.vlonu = pr.utils.wrap_longitudes(
-                                                              model_data.vlonu)
-                    lon = pr.utils.wrap_longitudes(lon)
-                    if len(numpy.shape(model_data.vlonu)) <= 1:
-                        model_data.vlonu = lon2Du
-                        model_data.vlatu = lat2Du
-                        if p.lonu == p.lonv:
-                            model_data.vlonv = model_data.vlonu
-                            model_data.vlatv = model_data.vlatu
-                        else:
-                            model_data.vlonv = lon2Dv
-                            model_data.vlatv = lat2Dv
+                    lon_wrap = pr.utils.wrap_longitudes
+                    geom = pr.geometry.SwathDefinition
+                    lon = lon_wrap(lon)
 
-                    swath_defu = pr.geometry.SwathDefinition(
-                                 lons=model_data.vlonu, lats=model_data.vlatu)
-                    swath_defv = pr.geometry.SwathDefinition(
-                                 lons=model_data.vlonv, lats=model_data.vlatv)
-                    grid_def = pr.geometry.SwathDefinition(lons=lon,
-                                                           lats=lat)
+                    grid_def = geom(lons=lon, lats=lat)
                     for key in model_step.input_var.keys():
+                        grid_key = model_step.numgrid[key]
+                        _ind =  model_data.model_index[grid_key]
+                        _mlon = lon_wrap(model_data.vlon[grid_key])
+                        _mlat = model_data.vlat[grid_key]
+                        if len(_mlon[0]) <= 1:
+                            _mlon = lon_wrap(lon2D[grid_key])
+                            _mlat = lat2D[grid_key]
+                        swath_def = geom(lons=_mlon[_ind], lats=_mlat[_ind])
                         _tmp = interpolate_irregular_pyresample(
-                                          swath_defu, input_var_i[key],
+                                          swath_def, input_var_i[key],
                                           grid_def,
                                           p.posting,
                                           interp_type=p.interpolation)
                         output_var_i[key][ind_time[0]] = + _tmp
                 except ImportError:
                     for key in model_step.input_var.keys():
-                         _tmp = + input_var_i[key].ravel()
-                    interp = interpolate.griddata((lonuravel, laturavel),
-                                                  _tmp, (lon[ind_time[0]],
-                                                  lat[ind_time[0]]),
-                                                  method=p.interpolation)
-                    output_var_i[key][ind_time[0]] = + interp
+                        grid_key = model_step.numgrid[key]
+                        _ind =  model_data.model_index[grid_key]
+                        _mlon = model_data.vlon[grid_key]
+                        _mlat = model_data.vlat[grid_key]
+                        if len(_mlon) <= 1:
+                            _mlon = lon2D[grid_key]
+                            _mlat = lat2D[grid_key]
+                        lonravel = + _mlon[_ind].ravel()
+                        latravel = + _mlat[_ind].ravel()
+                        _tmp = + input_var_i[key].ravel()
+                        interp = interpolate.griddata((lonravel, latravel),
+                                                      _tmp, (lon[ind_time[0]],
+                                                      lat[ind_time[0]]),
+                                                      method=p.interpolation)
+                        output_var_i[key][ind_time[0]] = + interp
             # Force value outside modelbox at nan
             if modelbox[0] > modelbox[1]:
                 for key in model_step.input_var.keys():

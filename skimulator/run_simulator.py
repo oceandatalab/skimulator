@@ -113,85 +113,45 @@ def run_simulator(p, die_on_error=False):
     if p.file_input is not None:
         model_data.read_coordinates(p)
         # Select model data in the region modelbox
-        if p.grid == 'regular':
-            if modelbox[0] < modelbox[1]:
-                _tmp = numpy.where(((modelbox[0]-1) <= model_data.vlonu)
-                                   & (model_data.vlonu <= (modelbox[1]+1)))[0]
-                model_data.model_index_lonu = + _tmp
-            else:
-                _tmp = numpy.where(((modelbox[0]-1) <= model_data.vlonu)
-                                   | (model_data.vlonu <= (modelbox[1]+1)))[0]
-                model_data.model_index_lonu = + _tmp
-            _tmp = numpy.where(((modelbox[2]-1) <= model_data.vlatu)
-                               & (model_data.vlatu <= (modelbox[3]+1)))[0]
-            model_data.model_index_latu = + _tmp
-            model_data.vlonu = model_data.vlonu[model_data.model_index_lonu]
-            model_data.vlatu = model_data.vlatu[model_data.model_index_latu]
-            if p.lonu != p.lonv:
+        model_data.model_index_lon = {}
+        model_data.model_index_lat = {}
+        model_data.model_index = {}
+        model_data.vloncirc = {}
+        for key in model_data.vlon.keys():
+            _lon = + model_data.vlon[key]
+            _lat = + model_data.vlat[key]
+            if p.grid == 'regular':
                 if modelbox[0] < modelbox[1]:
-                    _tmp = numpy.where(((modelbox[0]-1) <= model_data.vlonv)
-                                       & (model_data.vlonv
-                                          <= (modelbox[1]+1)))[0]
-                    model_data.model_index_lonv = + _tmp
+                    _tmp = numpy.where(((modelbox[0]-1) <= _lon)
+                                       & (_lon <= (modelbox[1]+1)))[0]
+                    model_data.model_index_lon[key] = + _tmp
                 else:
-                    _tmp = numpy.where(((modelbox[0]-1) <= model_data.vlonv)
-                                       | (model_data.vlonv
-                                          <= (modelbox[1]+1)))[0]
-                    model_data.model_index_lonv = + _tmp
+                    _tmp = numpy.where(((modelbox[0]-1) <= _lon)
+                                       | (_lon <= (modelbox[1]+1)))[0]
+                    model_data.model_index_lon[key] = + _tmp
+                _tmp = numpy.where(((modelbox[2]-1) <= _lat)
+                                   & (_lat <= (modelbox[3]+1)))[0]
+                model_data.model_index_lat[key] = + _tmp
+                model_data.vlon[key] = + _lon[model_data.model_index_lon[key]]
+                model_data.vlat[key] = + _lat[model_data.model_index_lat[key]]
             else:
-                model_data.model_index_lonv = model_data.model_index_lonu
-            if p.latu != p.latv:
-                _tmp = numpy.where(((modelbox[2]-1) <= model_data.vlatv)
-                                   & (model_data.vlatv <= (modelbox[3]+1)))[0]
-                model_data.model_index_latv = + _tmp
-            else:
-                model_data.model_index_latv = model_data.model_index_latu
-            model_data.vlonv = model_data.vlonv[model_data.model_index_lonv]
-            model_data.vlatv = model_data.vlatv[model_data.model_index_latv]
-
-        else:
-            if modelbox[0] < modelbox[1]:
-                _tmp = numpy.where(((modelbox[0]-1) <= model_data.vlonu)
-                                   & (model_data.vlonu <= (modelbox[1]+1))
-                                   & ((modelbox[2]-1) <= model_data.vlatu)
-                                   & (model_data.vlatu <= (modelbox[3]+1)))
-                model_data.model_indexu = + _tmp
-                model_data.model_indexv = model_data.model_indexu
-                if p.lonu != p.lonv:
-                    _tmp = numpy.where(((modelbox[0]-1) <= model_data.vlonv)
-                                       & (model_data.vlonv <= (modelbox[1]+1))
-                                       & ((modelbox[2]-1) <= model_data.vlatv)
-                                       & (model_data.vlatv <= (modelbox[3]+1)))
-                    model_data.model_indexv = + _tmp
-            else:
-                _tmp = numpy.where(((modelbox[0]-1) <= model_data.vlonu)
-                                   | (model_data.vlonu <= (modelbox[1]+1))
-                                   & ((modelbox[2]-1) <= model_data.vlatu)
-                                   & (model_data.vlatu <= (modelbox[3]+1)))
-                model_data.model_indexu = + _tmp
-                model_data.model_indexv = model_data.model_indexu
-                if p.lonu != p.lonv:
-                    _tmp = numpy.where(((modelbox[0]-1) <= model_data.vlonv)
-                                       | (model_data.vlonv <= (modelbox[1]+1))
-                                       & ((modelbox[2]-1) <= model_data.vlatv)
-                                       & (model_data.vlatv <= (modelbox[3]+1)))
-                    model_data.model_indexv = + _tmp
+                if modelbox[0] < modelbox[1]:
+                    _tmp = numpy.where(((modelbox[0]-1) <= _lon)
+                                       & (_lon <= (modelbox[1]+1))
+                                       & ((modelbox[2]-1) <= _lat)
+                                       & (_lat <= (modelbox[3]+1)))
+                    model_data.model_index[key] = + _tmp
+                else:
+                    _tmp = numpy.where(((modelbox[0]-1) <= _lon)
+                                       | (_lon <= (modelbox[1]+1))
+                                       & ((modelbox[2]-1) <= _lat)
+                                       & (_lat <= (modelbox[3]+1)))
+                    model_data.model_index[key] = + _tmp
+            # prevent IDL issues
+            _wlon = model_data.vlon[key]
+            model_data.vloncirc[key] = numpy.rad2deg(numpy.unwrap(_wlon))
 
         model_data.model = model
-        # prevent IDL issues
-        model_data.vloncircu = numpy.rad2deg(numpy.unwrap(model_data.vlonu))
-        model_data.vloncircv = numpy.rad2deg(numpy.unwrap(model_data.vlonv))
-        # If corrdinates are 1D and local std needs to be computed for uss bias
-        # Grid coordinates in 2D
-        # if (p.uss is True and p.footprint_std is not None
-        #     and p.footprint_std != 0):
-        #    if len(numpy.shape(model_data.vlonu)) == 1:
-        #        model_data.lon2D, model_data.lat2D = numpy.meshgrid(
-        #                                                model_data.vlonu,
-        #                                                model_data.vlatu)
-        #    else:
-        #        model_data.lon2D = model_data.vlonu
-        #        model_data.lat2D = model_data.vlatu
     else:
         model_data = []
 
@@ -454,8 +414,8 @@ def worker_method_skim(*args, **kwargs):
         # if p.file_input: del index
 
     if p.file_input is not None:
-        model_data.vlonu = (model_data.vlonu + 360) % 360
-        model_data.vlonv = (model_data.vlonv + 360) % 360
+        for key in model_data.vlon.keys():
+            model_data.vlon[key] = (model_data.vlon[key] + 360) % 360
 
     modelbox[0] = (modelbox[0] + 360) % 360
     modelbox[1] = (modelbox[1] + 360) % 360
