@@ -3,11 +3,14 @@ import os
 import glob
 import scipy.interpolate
 import datetime
+import time
 import skimulator.const as const
 import skimulator.rw_data as rw
 import skimulator.mod_tools as mod_tools
 import skimulator.mod_run as mod
+import skimulator.mod_parallel
 import logging
+import traceback
 logger = logging.getLogger(__name__)
 
 
@@ -228,46 +231,34 @@ def read_model(p, indice):
 def interpolate_model(p, model_data, list_model_step, grd, list_obs,
                       desc=False):
     import pyresample as pr
-    model_data.vlonu = pr.utils.wrap_longitudes(model_data.vlonu)
-    lon = pr.utils.wrap_longitudes(grd['lon'])
-    if len(numpy.shape(model_data.vlonu)) <= 1:
-        model_data.vlonu, model_data.vlatu = numpy.meshgrid(model_data.vlonu,
-                                                            model_data.vlatu)
-        if p.lonu == p.lonv:
-            model_data.vlonv = model_data.vlonu
-            model_data.vlatv = model_data.vlatu
-        else:
-            model_data.vlonv, model_data.vlatv = numpy.meshgrid(model_data.vlonu,
-                                                                model_data.vlatu)
-    swath_defu = pr.geometry.SwathDefinition(lons=model_data.vlonu,
-                                             lats=model_data.vlatu)
-    swath_defv = pr.geometry.SwathDefinition(lons=model_data.vlonv,
-                                             lats=model_data.vlatv)
-    grd['u_model'] = numpy.full(numpy.shape(grd['lat']), numpy.nan)
-    grd['v_model'] = numpy.full(numpy.shape(grd['lat']), numpy.nan)
-    for i in range(len(list_model_step)):
-        model_step = list_model_step[i]
-        if desc is False:
-            ind_lat = numpy.where(grd['lat']> list_obs[i])
-        else:
-            ind_lat = numpy.where(grd['lat']< list_obs[i])
-        model_step.read_var(p)
-        grid_def = pr.geometry.SwathDefinition(lons=lon[ind_lat],
-                                               lats=grd['lat'][ind_lat])
-        #grid_def = pr.geometry.SwathDefinition(lons=lon, #[ind_lat],
-        #                                       lats=grd['lat']) #[ind_lat])
-        var = model_step.input_var['ucur']
-        _tmp = mod.interpolate_irregular_pyresample(swath_defu, var, grid_def,
-                                                    p.resol,
-                                                    interp_type=p.interpolation)
-        grd['u_model'][ind_lat] = _tmp
-        # grd['u_model'] = _tmp
-        var = model_step.input_var['vcur']
-        _tmp = mod.interpolate_irregular_pyresample(swath_defu, var,
-                                                    grid_def, p.resol,
-                                                    interp_type=p.interpolation)
-        grd['v_model'][ind_lat] = _tmp
-        # grd['v_model'] = _tmp
+    wrap_lon = pr.utils.wrap_longitudes
+    geom = pr.geometry.SwathDefinition
+    interp = mod.interpolate_irregular_pyresample
+    lon = wrap_lon(grd['lon'])
+    list_key = {'ucur':'u_model', 'vcur':'v_model'}
+
+    for ikey, okey in list_key.items():
+        grd[okey] = numpy.full(numpy.shape(grd['lat']), numpy.nan)
+        grid_number = p.list_input_var[ikey][2]
+        _lon = wrap_lon(model_data.vlon[grid_number])
+        _lat = model_data.vlat[grid_number]
+        if len(numpy.shape(_lon)) <= 1:
+            _lon, _lat = numpy.meshgrid(_lon, _lat)
+        swath_def = geom(lons=_lon, lats=_lat)
+        for i in range(len(list_model_step)):
+            model_step = list_model_step[i]
+            if desc is False:
+                ind_lat = numpy.where(grd['lat']> list_obs[i])
+            else:
+                ind_lat = numpy.where(grd['lat']< list_obs[i])
+            model_step.read_var(p)
+            grid_def = geom(lons=lon[ind_lat], lats=grd['lat'][ind_lat])
+            #grid_def = pr.geometry.SwathDefinition(lons=lon, #[ind_lat],
+            #                                     lats=grd['lat']) #[ind_lat])
+            var = model_step.input_var[ikey]
+            _tmp = interp(swath_def, var, grid_def, p.resol,
+                          interp_type=p.interpolation)
+            grd[okey][ind_lat] = _tmp
     return grd
 
 
@@ -308,94 +299,166 @@ def write_l2(outfile, grd, obs, cycle, passn, firsttime):
                  )
 
 
-def run_l2c(p):
+def run_l2c(p, die_on_error=False):
+    timestart = datetime.datetime.now()
     pattern = os.path.join(p.outdatadir, '{}_c*'.format(p.config))
     list_file = glob.glob(pattern)
     gpath = os.path.join(p.outdatadir, '{}_grid'.format(p.config))
     mod_tools.initialize_parameters(p)
     iterate = 0
+
+    # - Loop on SKIM grid files
+    jobs = []
+    p2 = mod_tools.todict(p)
     for ifile in list_file:
-        progress = iterate / numpy.float(len(list_file))
-        arg1 = os.path.basename(ifile)
-        arg2 = '{} {} {}'.format(progress, iterate, len(list_file))
-        arg2 = ''
-        mod_tools.update_progress(progress, arg1, arg2)
-        iterate += 1
-        passn = int(ifile[-6:-3])
-        if passn % 2 == 0:
-            desc = True
+        jobs.append([ifile, p2, gpath])
+    ok = False
+    try:
+        ok = make_skim_l2c(p.proc_count, jobs, die_on_error, p.progress_bar)
+    except skimulator.mod_parallel.MultiprocessingError:
+        logger.error('An error occurred with the multiprocessing framework')
+        traceback.print_exception(*sys.exc_info())
+        sys.exit(1)
+    except skimulator.mod_parallel.DyingOnError:
+        logger.error('An error occurred and all errors are fatal')
+        sys.exit(1)
+
+    # - Write Selected parameters in a txt file
+    timestop = datetime.datetime.now()
+    timestop = timestop.strftime('%Y%m%dT%H%M%SZ')
+    timestart = timestart.strftime('%Y%m%dT%H%M%SZ')
+    rw.write_params(p, os.path.join(p.outdatadir,
+                                         'skim_l2c.output'))
+    if ok is True:
+        if p.progress_bar is True:
+            __ = mod_tools.update_progress(1, 'All passes have been processed',
+                                           '')
         else:
-            desc = False
-        cycle = int(ifile[-10:-8])
-        fileg = '{}_p{:03d}.nc'.format(gpath, passn)
-        data = rw.Sat_SKIM(ifile=ifile)
-        grid = rw.Sat_SKIM(ifile=fileg)
-        data.load_data(p, ur_true=[], ur_obs=[], ucur=[],
-                       vcur=[], time=[], lon_nadir=[], lat_nadir=[],
-                       lon=[], lat=[], time_nadir=[], vindice=[])
-        grid.load_swath(p, radial_angle=[], angle=[], x_al=[], x_al_nadir=[],
-                        x_ac=[])
+            __ = logger.info('All passes have been processed')
+        logger.info("\n Simulated skim files have been written in "
+                    "{}".format(p.outdatadir))
+        logger.info(''.join(['-'] * 61))
+        sys.exit(0)
+    logger.error('\nERROR: At least one of the outputs was not saved.')
+    sys.exit(1)
 
-        obs = {}
-        test = numpy.array(data.ucur)
-        nil, nbeams=numpy.shape(test)
-        sbeam_incid=numpy.zeros((nil, nbeams))
-        ### TODO Change this
-        obs['vobsr'] = numpy.array(data.ur_obs)
-        obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
-        obs['vobsr'] = obs['vobsr'].flatten()
-        ind = numpy.where((obs['vobsr'] > -1000))[0]
-        obs['vobsr'] = obs['vobsr'][ind]
-        if len(ind) > 2 and len(data.lon_nadir) >2:
-            try:
-                obs = make_obs(data, grid, obs, ind)
-                grd = make_grid(grid, obs, p.posting, desc=desc)
-                if grd is None:
-                    continue
 
-                # OI
-                grd = perform_oi_1(grd, obs, p.resol, desc=desc)
-            except:
-                print(passn)
-                continue
-            vindice = obs['vindice']
-            diff_indice = vindice[1:] - vindice[:-1]
-            ind = numpy.where(diff_indice != 0)[0]
-            first_lat = numpy.min(grd['lat'])
-            sign_uv = 1
-            if desc is True:
-                first_lat = numpy.max(grd['lat'])
-                sign_uv = -1
+def make_skim_l2c(_proc_count, jobs, die_on_error, progress_bar):
+    """ Compute SWOT-like data for all grids and all cycle, """
+    # - Set up parallelisation parameters
+    proc_count = min(len(jobs), _proc_count)
 
-            if ind.any():
-                vindice = [obs['vindice'][0], obs['vindice'][ind[0] + 1]]
-                ind_lat = [first_lat, obs['lat'][ind[0] + 1]]
-            else:
-                vindice = [obs['vindice'][0],]
-                ind_lat = [first_lat,]
-            #vindice = [obs['vindice'][0],]
-            #ind_lat = [first_lat,]
-            model_data, model_step, list_file2 = read_model(p, vindice)
-            grd = interpolate_model(p, model_data, model_step, grd, ind_lat,
-                                    desc=desc)
-            ac_thresh = p.ac_threshold
-            grd['vobsac'][numpy.abs(grd['ac2']) < ac_thresh] = numpy.nan
-            grd['vobsx'] = sign_uv * (grd['vobsac'] * numpy.cos(grd['angle'])
-                         + grd['vobsal'] * numpy.cos(grd['angle'] + numpy.pi/2))
-            grd['vobsy'] = sign_uv * (grd['vobsac'] * numpy.sin(grd['angle'])
-                         + grd['vobsal'] * numpy.sin(grd['angle'] + numpy.pi/2))
-            grd['vmodac'][numpy.abs(grd['ac2']) < ac_thresh] = numpy.nan
-            grd['vmodx'] = sign_uv * (grd['vmodac'] * numpy.cos(grd['angle'])
-                         + grd['vmodal'] * numpy.cos(grd['angle'] + numpy.pi/2))
-            grd['vmody'] = sign_uv * (grd['vmodac'] * numpy.sin(grd['angle'])
-                         + grd['vmodal'] * numpy.sin(grd['angle'] + numpy.pi/2))
-            grd['vtrueac'] = sign_uv *(grd['u_model']*numpy.cos(grd['angle'])
-                              + grd['v_model'] * numpy.sin(grd['angle']))
-            grd['vtrueal'] = sign_uv * (-grd['u_model']*numpy.sin(grd['angle'])
-                              + grd['v_model']*numpy.cos(grd['angle']))
-            pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
-            outfile = os.path.join(p.outdatadir, pattern_out)
-            write_l2(outfile, grd, obs, cycle, passn, p.first_time)
-    __ = mod_tools.update_progress(1, 'All passes have been processed', '')
-    logger.info("\n Simulated skim files have been written in "
-                "{}".format(p.outdatadir))
+    status_updater = mod_tools.update_progress_multiproc
+    jobs_manager = skimulator.mod_parallel.JobsManager(proc_count,
+                                                       status_updater,
+                                                       exc_formatter,
+                                                       err_formatter)
+    ok = jobs_manager.submit_jobs(worker_method_l2c, jobs, die_on_error,
+                                  progress_bar)
+
+    if not ok:
+        # Display errors once the processing is done
+        jobs_manager.show_errors()
+
+    return ok
+
+
+def exc_formatter(exc):
+    """Format exception returned by sys.exc_info() as a string so that it can
+    be serialized by pickle and stored in the JobsManager."""
+    error_msg = traceback.format_exception(exc[0], exc[1], exc[2])
+    return error_msg
+
+
+def err_formatter(pid, grid, cycle, exc):
+    """Transform errors stored by the JobsManager into readable messages."""
+    msg = None
+    if cycle < 0:
+        msg = '/!\ Error occurred while processing grid {}'.format(grid)
+    else:
+        _msg = '/!\ Error occurred while processing cycle {} on grid {}'
+        msg = _msg.format(cycle, grid)
+    return msg
+
+
+def worker_method_l2c(*args, **kwargs):
+    msg_queue, ifile, p2, gpath = args[:]
+    p = mod_tools.fromdict(p2)
+
+    passn = int(ifile[-6:-3])
+    if passn % 2 == 0:
+        desc = True
+    else:
+        desc = False
+    cycle = int(ifile[-10:-8])
+    fileg = '{}_p{:03d}.nc'.format(gpath, passn)
+    data = rw.Sat_SKIM(ifile=ifile)
+    grid = rw.Sat_SKIM(ifile=fileg)
+    data.load_data(p, ur_true=[], ur_obs=[], ucur=[],
+                   vcur=[], time=[], lon_nadir=[], lat_nadir=[],
+                   lon=[], lat=[], time_nadir=[], vindice=[])
+    grid.load_swath(p, radial_angle=[], angle=[], x_al=[], x_al_nadir=[],
+                    x_ac=[])
+
+    obs = {}
+    test = numpy.array(data.ucur)
+    nil, nbeams = numpy.shape(test)
+    sbeam_incid = numpy.zeros((nil, nbeams))
+    ### TODO Change this
+    obs['vobsr'] = numpy.array(data.ur_obs)
+    obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
+    obs['vobsr'] = obs['vobsr'].flatten()
+    ind = numpy.where((obs['vobsr'] > -1000))[0]
+    obs['vobsr'] = obs['vobsr'][ind]
+    if len(ind) > 2 and len(data.lon_nadir) >2:
+        try:
+            obs = make_obs(data, grid, obs, ind)
+            grd = make_grid(grid, obs, p.posting, desc=desc)
+            ## TODO proof error
+            if grd is None:
+                return
+
+            # OI
+            grd = perform_oi_1(grd, obs, p.resol, desc=desc)
+        except:
+            print(passn)
+            return
+        vindice = obs['vindice']
+        diff_indice = vindice[1:] - vindice[:-1]
+        ind = numpy.where(diff_indice != 0)[0]
+        first_lat = numpy.min(grd['lat'])
+        sign_uv = 1
+        if desc is True:
+            first_lat = numpy.max(grd['lat'])
+            sign_uv = -1
+
+        if ind.any():
+            vindice = [obs['vindice'][0], obs['vindice'][ind[0] + 1]]
+            ind_lat = [first_lat, obs['lat'][ind[0] + 1]]
+        else:
+            vindice = [obs['vindice'][0],]
+            ind_lat = [first_lat,]
+        #vindice = [obs['vindice'][0],]
+        #ind_lat = [first_lat,]
+        model_data, model_step, list_file2 = read_model(p, vindice)
+        grd = interpolate_model(p, model_data, model_step, grd, ind_lat,
+                                desc=desc)
+        ac_thresh = p.ac_threshold
+        grd['vobsac'][numpy.abs(grd['ac2']) < ac_thresh] = numpy.nan
+        grd['vobsx'] = sign_uv * (grd['vobsac'] * numpy.cos(grd['angle'])
+                        + grd['vobsal'] * numpy.cos(grd['angle'] + numpy.pi/2))
+        grd['vobsy'] = sign_uv * (grd['vobsac'] * numpy.sin(grd['angle'])
+                        + grd['vobsal'] * numpy.sin(grd['angle'] + numpy.pi/2))
+        grd['vmodac'][numpy.abs(grd['ac2']) < ac_thresh] = numpy.nan
+        grd['vmodx'] = sign_uv * (grd['vmodac'] * numpy.cos(grd['angle'])
+                        + grd['vmodal'] * numpy.cos(grd['angle'] + numpy.pi/2))
+        grd['vmody'] = sign_uv * (grd['vmodac'] * numpy.sin(grd['angle'])
+                        + grd['vmodal'] * numpy.sin(grd['angle'] + numpy.pi/2))
+        grd['vtrueac'] = sign_uv *(grd['u_model']*numpy.cos(grd['angle'])
+                                   + grd['v_model'] * numpy.sin(grd['angle']))
+        grd['vtrueal'] = sign_uv * (-grd['u_model']*numpy.sin(grd['angle'])
+                                    + grd['v_model']*numpy.cos(grd['angle']))
+        pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
+        outfile = os.path.join(p.outdatadir, pattern_out)
+        write_l2(outfile, grd, obs, cycle, passn, p.first_time)
+    msg_queue.put((os.getpid(), ifile, None, None))

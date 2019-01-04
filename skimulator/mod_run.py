@@ -463,7 +463,7 @@ def compute_sigma_water(input_var, beam_angle, radial_angle):
         mssx = mssxs + mssxl
         mssy = mssys + mssyl
         mssxy = mssxys + mssxyl
-        mask = (mssx == 0 | mssy == 0)
+        mask = ((mssx == 0) | (mssy == 0))
         mssx[mask] = numpy.nan
         mssy[mask] = numpy.nan
         expo = (-0.5 * numpy.tan(rbeam_angle)**2 * (numpy.cos(radial_angle)**2

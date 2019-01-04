@@ -78,6 +78,8 @@ def run_l2c():
     parser = argparse.ArgumentParser()
     parser.add_argument('params_file', nargs='?', type=str, default=None,
                         help='Path of the parameters file')
+    parser.add_argument('--die-on-error', action='store_true', default=False,
+                        help='Force simulation to quit on first error')
     parser.add_argument('--debug', action='store_true', default=False,
                         help='Display debug log messages')
 
@@ -93,4 +95,9 @@ def run_l2c():
     file_param = args.params_file
 
     p = mod_tools.load_python_file(file_param)
-    regridding.run_l2c(p)
+    try:
+        regridding.run_l2c(p, args.die_on_error)
+    except KeyboardInterrupt:
+        logger.error('\nInterrupted by user (Ctrl+C)')
+        sys.exit(1)
+    sys.exit(0)
