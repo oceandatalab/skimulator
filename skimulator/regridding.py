@@ -213,16 +213,11 @@ def read_model(p, indice):
     for ifile in indice:
         nfile = int(ifile /p.dim_time)
         filetime = ifile - nfile * p.dim_time
-        _tmpfilename = list_file[nfile].split(',')
-        if len(_tmpfilename) > 1:
-            filename_u = os.path.join(p.indatadir, _tmpfilename[0])
-            filename_v = os.path.join(p.indatadir, _tmpfilename[1])
-        else:
-            filename_u = os.path.join(p.indatadir, _tmpfilename[0])
-            filename_v = os.path.join(p.indatadir, _tmpfilename[0])
-
+        _tmpfilename = list_file[nfile]
+        filename = os.path.join(p.indatadir, _tmpfilename)
         model_step_ctor = getattr(rw, p.model)
-        model_step = model_step_ctor(p, ifile=(filename_u, filename_v),
+        model_step = model_step_ctor(p, ifile=(filename, ),
+                                     list_input_var=p.list_input_var,
                                      time=filetime)
         model_step.read_var(p)
         list_model_step.append(model_step)
@@ -240,7 +235,10 @@ def interpolate_model(p, model_data, list_model_step, grd, list_obs,
 
     for ikey, okey in list_key.items():
         grd[okey] = numpy.full(numpy.shape(grd['lat']), numpy.nan)
-        grid_number = p.list_input_var[ikey][2]
+        if len(p.list_input_var[ikey]) > 2:
+            grid_number = p.list_input_var[ikey][2]
+        else:
+            grid_number = 0
         _lon = wrap_lon(model_data.vlon[grid_number])
         _lat = model_data.vlat[grid_number]
         if len(numpy.shape(_lon)) <= 1:
