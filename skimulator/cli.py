@@ -101,3 +101,43 @@ def run_l2c():
         logger.error('\nInterrupted by user (Ctrl+C)')
         sys.exit(1)
     sys.exit(0)
+
+
+def run_l2d():
+    """Run L2D reconstruction"""
+    import skimulator.regridding_l2d as regridding
+
+    # Setup logging
+    main_logger = logging.getLogger()
+    main_logger.handlers = []
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.DEBUG)
+    main_logger.addHandler(handler)
+    main_logger.setLevel(logging.INFO)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('params_file', nargs='?', type=str, default=None,
+                        help='Path of the parameters file')
+    parser.add_argument('--die-on-error', action='store_true', default=False,
+                        help='Force simulation to quit on first error')
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help='Display debug log messages')
+
+    args = parser.parse_args()
+
+    if args.params_file is None:
+        logger.error('Please specify a parameter file')
+        sys.exit(1)
+
+    if args.debug is True:
+        main_logger.setLevel(logging.DEBUG)
+
+    file_param = args.params_file
+
+    p = mod_tools.load_python_file(file_param)
+    try:
+        regridding.run_l2d(p, args.die_on_error)
+    except KeyboardInterrupt:
+        logger.error('\nInterrupted by user (Ctrl+C)')
+        sys.exit(1)
+    sys.exit(0)

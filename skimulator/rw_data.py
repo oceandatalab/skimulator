@@ -192,6 +192,27 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
     return T #numpy.ma.MaskedArray(T, mask=mask)
 
 
+def global_attributes(fid, level):
+    fid.title = 'SKIM {} simulated by SKIM simulator'.format(level)
+    fid.keywords = 'SKIM, Doppler'  # Check keywords
+    fid.Conventions = "CF-1.6"
+    fid.summary = 'SKIM data produced'
+    fid.description = "SKIM fixed swath"
+    fid.Metadata_Conventions = "Unidata Dataset Discovery v1.0"
+    fid.history = '{} File created by skimulator version {}'.format(level,
+                                                                    version)
+    fid.processing_level = level
+    fid.standard_name_vocabulary = "CF-1.6"
+    fid.creator_name = "Lucile Gaultier"
+    fid.creator_email = "lucile.gaultier@gmail.com"
+    fid.publisher_url = ""
+    fid.project = "SKIM"
+    fid.date_created = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
+    fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
+    fid.keywords_vocabulary = ""
+    fid.references = ""
+
+
 def write_l2c(metadata, geolocation, **kwargs):
     ti = datetime.datetime.now()
     lat = geolocation['lat']
@@ -200,18 +221,8 @@ def write_l2c(metadata, geolocation, **kwargs):
     # - Open Netcdf file in write mode
     fid = Dataset(metadata['file'], 'w', format='NETCDF4_CLASSIC')
     # - Create Global attribute
-    fid.title = 'SKIM L2C simulated by SKIM simulator'
-    fid.keywords = 'SKIM, Doppler'  # Check keywords
-    fid.Conventions = "CF-1.6"
-    fid.summary = 'SKIM data produced'
+    global_attributes(fid, 'L2C')
     fid.description = "SKIM fixed swath"
-    fid.Metadata_Conventions = "Unidata Dataset Discovery v1.0"
-    fid.history = 'L2C File created by skimulator version ' + version
-    fid.processing_level = 'L2C'
-    fid.standard_name_vocabulary = "CF-1.6"
-    fid.creator_name = "Lucile Gaultier"
-    fid.creator_email = "lucile.gaultier@gmail.com"
-    fid.publisher_url = ""
     fid.time_coverage_start = metadata['time_coverage_start']
     # p.date0+"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
     fid.time_coverage_end = metadata['time_coverage_end']
@@ -225,8 +236,6 @@ def write_l2c(metadata, geolocation, **kwargs):
     fid.project = "SKIM"
     fid.date_created = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
     fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
-    fid.keywords_vocabulary = ""
-    fid.references = ""
     fid.cycle = "{0:d}".format(int(metadata['cycle']))
     fid.track = "{} th pass".format(metadata['pass'])
     # - Create dimensions
@@ -319,6 +328,97 @@ def write_l2c(metadata, geolocation, **kwargs):
     fid.close()
 
 
+def write_l2d(metadata, geolocation, **kwargs):
+    ti = datetime.datetime.now()
+    lat = geolocation['lat']
+    lon = geolocation['lon']
+    tim = geolocation['time']
+    # - Open Netcdf file in write mode
+    fid = Dataset(metadata['file'], 'w', format='NETCDF4_CLASSIC')
+    # - Create Global attribute
+    global_attributes(fid, 'L2D')
+    fid.description = "SKIM fixed grid"
+    fid.time_coverage_start = metadata['time_coverage_start']
+    # p.date0+"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
+    fid.time_coverage_end = metadata['time_coverage_end']
+    # p.date0 +"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
+    fid.geospatial_lat_min = "{:.2f}".format(numpy.min(lat))
+    fid.geospatial_lat_max = "{:.2f}".format(numpy.max(lat))
+    fid.geospatial_lat_units = "degrees_north"
+    _lon_max = numpy.mod(lon + 360, 360)
+    fid.geospatial_lon_max = "{:.2f}".format(numpy.max(_lon_max))
+    fid.geospatial_lon_min = "{:.2f}".format(numpy.min(_lon_max))
+    fid.geospatial_lon_units = "degrees_east"
+    # - Create dimensions
+    # if (not os.path.isfile(self.file)):
+    dimlon = 'lon'
+    dimlat = 'lat'
+    dimtime = 'time'
+    nlon = numpy.shape(lon)[0]
+    nlat = numpy.shape(lat)[0]
+    ntime = None
+    fid.createDimension(dimlat, nlat)
+    fid.createDimension(dimlon, nlon)
+    fid.createDimension(dimtime, ntime)
+    # - Create and write Variables
+    vtime = fid.createVariable('time', 'f8', (dimtime))
+    vtime.axis = "T"
+    vtime.units = metadata['first_time']
+    vtime.long_name = "Time"
+    vtime.standard_name = "time"
+    vtime.calendar = "gregorian"
+    vtime[:] = tim
+    vlon = fid.createVariable('lon', 'f4', (dimlon, ))
+    vlon.axis = "X"
+    vlon.long_name = "Longitude"
+    vlon.standard_name = "longitude"
+    vlon.units = "degrees_east"
+    vlon[:] = lon
+    vlat = fid.createVariable('lat', 'f4', (dimlat, ))
+    vlat.axis = "Y"
+    vlat.long_name = "Latitude"
+    vlat.standard_name = "latitude"
+    vlat.units = "degrees_north"
+    vlat[:] = lat
+    longname = { "ux_noerr": "Error-free zonal velocity",
+                 "uy_noerr": "Error-free meridional velocity",
+                "ux_obs": "Observed zonal velocity",
+                "uy_obs": "Observed meridional velocity",
+                "ux_model": "Error-free zonal velocity",
+                "uy_model": "Error-free meridional velocity",
+                "ux_true": "True zonal velocity",
+                "uy_true": "True meridional velocity",
+                }
+    unit = {"ux_noerr": "m/s", "ux_obs": "m/s",
+            "uy_noerr": "m/s", "uy_obs": "m/s",
+            "ux_true": "m/s", "uy_true": "m/s"
+            }
+    for key, value in kwargs.items():
+        if value is not None:
+            nvar = '{}'.format(key)
+            var = fid.createVariable(nvar, 'f4', (dimtime, dimlat, dimlon),
+                                     fill_value=-1.36e9)
+            try:
+                var.units = unit[str(key)]
+            except:
+                var.units = ''
+            try:
+                var.long_name = longname[str(key)]
+            except:
+                var.long_name = str(key)
+            if value.any():
+                mask = numpy.isnan(value)
+                value[numpy.where(mask)] = -1.36e9
+                mask_ind = numpy.where(value < -1e7)
+                value[mask_ind] = -1.36e9
+                mask_ind = numpy.where(value > 1e7)
+                value[mask_ind] = -1.36e9
+                mask_ind = numpy.where(value == numpy.PINF)
+                value[mask_ind] = -1.36e9
+                var[0, :, :] = value
+    fid.close()
+
+
 class Sat_SKIM():
     ''' Sat_SKIM class: to read and write data that has been
     created by SKIM simulator '''
@@ -347,18 +447,8 @@ class Sat_SKIM():
         # - Open Netcdf file in write mode
         fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
         # - Create Global attribute
-        fid.title = 'SKIM swath simulated by SKIM simulator'
-        fid.keywords = 'check keywords'  # Check keywords
-        fid.Conventions = "CF-1.6"
-        fid.summary = 'SKIM data produced'
-        fid.description = "SKIM fixed swath"
-        fid.Metadata_Conventions = "Unidata Dataset Discovery v1.0"
-        fid.history = 'Grid File created by skimulator version ' + version
-        fid.processing_level = 'L2'
-        fid.standard_name_vocabulary = "CF-1.6"
-        fid.creator_name = "Lucile Gaultier"
-        fid.creator_email = "lucile.gaultier@gmail.com"
-        fid.publisher_url = ""
+        global_attributes(fid, 'swath')
+        fid.description = "SKIM swath"
         fid.time_coverage_start = self.time[0][0]
         # p.date0+"YYYY-MM-DDThh:mmZ"  #tim0 converted to format
         fid.time_coverage_end = self.time[-1][-1]
@@ -369,11 +459,6 @@ class Sat_SKIM():
         fid.geospatial_lon_max = "{:.2f}".format(numpy.max(self.lon[0]))
         fid.geospatial_lon_min = "{:.2f}".format(numpy.min(self.lon[0]))
         fid.geospatial_lon_units = "degrees_east"
-        fid.project = "SKIM"
-        fid.date_created = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
-        fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
-        fid.keywords_vocabulary = ""
-        fid.references = ""
         fid.cycle = "{0:d}".format(int(self.al_cycle))
         fid.track = "{} th pass".format(self.ipass)
         fid.grid_params_hash = grid_params_hash
@@ -500,23 +585,12 @@ class Sat_SKIM():
         '''
         # - Open netcdf file in write mode
         fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
-        fid.description = "Ouptut from SKIM simulator"
+        global_attributes(fid, 'L2B')
+        fid.description = "SKIM L2B from SKIMulator"
         try:
             fid.corresponding_grid = self.gridfile
         except:
             pass
-        fid.title = 'SKIM-like data simulated by SKIM simulator'
-        fid.keywords = 'SKIM, altimetry, satellite, remote sensing'
-        fid.Conventions = "CF-1.6"
-        fid.summary = 'SKIM grid data produced'
-        fid.description = "SKIM fixed grid"
-        fid.Metadata_Conventions = "Unidata Dataset Discovery v1.0"
-        fid.history = 'Grid File created by skimulator version ' + version
-        fid.processing_level = 'L2'
-        fid.standard_name_vocabulary = "CF-1.6"
-        fid.creator_name = "Lucile Gaultier"
-        fid.creator_email = "lucile.gaultier@gmail.com"
-        fid.publisher_url = ""
         dateformat = '%Y-%m-%dT%H:%M:%SZ'
         time_model = datetime.datetime.strptime(p.first_time, '%Y-%m-%dT%H:%M:%SZ')
         mintime = numpy.nanmin(self.time)
@@ -537,11 +611,6 @@ class Sat_SKIM():
         fid.geospatial_lon_max = "{:.2f}".format(numpy.max(self.lon))
         fid.geospatial_lon_min = "{:.2f}".format(numpy.min(self.lon))
         fid.geospatial_lon_units = "degrees_east"
-        fid.project = "SKIM"
-        fid.date_created = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
-        fid.date_modified = ti.strftime("%Y-%m-%dT%H:%M:%SZ")
-        fid.keywords_vocabulary = ""
-        fid.references = ""
         fid.cycle = "{} th cycle".format(self.ncycle)
         fid.track = "{} th pass".format(self.ipass)
         dimsample = 'sample'

@@ -69,30 +69,32 @@ def initialize_parameters(p):
     p.vel_factor = getattr(p, 'vel_factor', 1.)
     p.first_time = getattr(p, 'first_time', '2018-01-01T00:00:00Z')
     p.list_input_var = getattr(p, 'list_input_var', None)
-    p.nadir = getattr(p, 'nadir', True)
     p.grid = getattr(p, 'grid', 'regular')
-    # TODO remove rms_instr_factor
-    p.rms_instr_factor = getattr(p, 'rms_instr_factor', 1)
     p.cycle = getattr(p, 'cycle', 0.0368)
     p.order_orbit_col = getattr(p, 'order_orbit_col', None)
     p.satcycle = getattr(p, 'satcycle', None)
     p.sat_elev = getattr(p, 'sat_elev', None)
     p.ice_mask = getattr(p, 'ice_mask', True)
-    p.proc_count = getattr(p, 'proc_number', 1)
-    p.resol = getattr(p, 'resol', 40)
-    p.posting = getattr(p, 'posting', 5)
     listo = ['wlv', 'ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss',
              'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
              'vindice', 'ur_obs', 'mask', 'uwnd', 'sigma0', 'ice']
     p.list_output = getattr(p, 'list_output', listo)
-    # listerr = ['err_instr', 'err_uwb']
-    # p.list_err =  getattr(p, 'list_err', listerr)
     p.uwb =  getattr(p, 'uwb', True)  #TODO: remove this
     p.snr_coeff = getattr(p, 'snr_coeff', 3e-3)
-    p.ac_threshold = getattr(p, 'ac_threshold', 20)  # in km
-    p.progress_bar = getattr(p, 'progress_bar', True)
     p.nadir = getattr(p, 'nadir', False)
     p.ice = getattr(p, 'ice', False)
+    p.proc_count = getattr(p, 'proc_number', 1)
+    p.progress_bar = getattr(p, 'progress_bar', True)
+    p.ac_threshold = getattr(p, 'ac_threshold', 20)  # in km
+    p.resol = getattr(p, 'resol_spatial_l2c', 40) # in km
+    p.posting = getattr(p, 'posting_l2c', 5) # in km
+    p.resol_spatial_l2d = getattr(p, 'resol_spatial_l2d', 50) # in km
+    p.resol_temporal_l2d = getattr(p, 'resol_temporal_l2d', 8) # in days
+    p.posting_l2d = getattr(p, 'posting_l2d', (0.1, 0.1)) # in degrees
+    # Time domain: (start_time, end_time, dtime) in days
+    p.time_domain = getattr(p, 'time_domain', (5, 25, 1)) # in days
+    p.list_input_var_l2c = getattr(p, 'list_input_var_l2c', p.list_input_var)
+    p.list_input_var_l2d = getattr(p, 'list_input_var_l2d', p.list_input_var)
     return None
 
 
