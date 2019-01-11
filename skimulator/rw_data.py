@@ -188,7 +188,10 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
     #    else:
     #        mask = (T == numpy.nan)
     if model_nan is not None:
-        T[numpy.where(T == model_nan)] = numpy.nan
+        _mask = numpy.ma.getmaskarray(T)
+        _mask = (_mask | (T == model_nan))
+        T = numpy.ma.array(T, mask=_mask)
+        #T[numpy.where(T == model_nan)] = numpy.nan
     return T #numpy.ma.MaskedArray(T, mask=mask)
 
 
