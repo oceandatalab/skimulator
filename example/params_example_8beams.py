@@ -24,10 +24,8 @@ outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 filesat = os.path.join(dir_setup,'orbmetop.txt')
 # ------ Number of days in orbit (optional if specified in orbit file)
 satcycle = 29
-#satcycle = 12
 # ------ Satellite elevation (optional if specified in orbit file)
 sat_elev = 817 * 10**3
-#sat_elev = 699 * 10**3
 # ------ Order of columns (lon, lat, time) in orbit file
 # (default is (0, 1, 2) with order_orbit_col = None)
 order_orbit_col = None
@@ -37,9 +35,9 @@ proc_number = 1
 # ------ Deactivate printing of progress bar to avoid huge log
 progress_bar = True
 
-# -----------------------# 
-# SKIM swath parameters 
-# -----------------------# 
+# -----------------------#
+# SKIM swath parameters
+# -----------------------#
 # ------ Satellite grid file root name:
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
@@ -100,18 +98,16 @@ ice_mask = False
 #        are extracted from model       
 grid = 'regular'
 # ------ Specify list of variable:
-list_input_var = {'ucur': ['ucur', 'cur'], 'vcur': ['vcur', 'cur'],
-                  'uuss': ['uuss', 'uss'], 'vuss': ['vuss', 'uss'],
-                  'ice': ['ice', 'ice'], 'mssd': ['mssd', 'msd'],
-                  'mssx': ['mssx', 'mss'], 'mssy':['mssy', 'mss'],
-                  'ssh': ['wlv', 'wlv'],
-                  'uwnd': ['uwnd', 'wnd'], 'vwnd': ['vwnd', 'wnd']}
+list_input_var = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 0],
+                  'uuss': ['uuss', 'uss', 0], 'vuss': ['vuss', 'uss', 0],
+                  'ice': ['ice', 'ice', 0], 'mssd': ['mssd', 'msd', 0],
+                  'mssx': ['mssx', 'mss', 0], 'mssy':['mssy', 'mss', 0],
+                  'ssh': ['wlv', 'wlv', 0],
+                  'uwnd': ['uwnd', 'wnd', 0], 'vwnd': ['vwnd', 'wnd', 0]}
 # ------ Specify longitude variable:
-lonu = 'longitude'
-lonv = 'longitude'
+lon = ('longitude',)
 # ------ Specify latitude variable:
-latu = 'latitude'
-latv = 'latitude'
+lat = ('latitude',)
 # ------ Specify number of time in file:
 dim_time = 24
 # ------ Time step between two model outputs (in days):
@@ -136,8 +132,9 @@ interpolation = 'linear'
 # ------ List of output variables:
 list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
                'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
-               'ssh_true', 'ssh', 'ice',
+               'ssh_true', 'ssh', 'ice', 'mssd',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
+
 # -----------------------# 
 # SKIM error parameters 
 # -----------------------# 
@@ -173,11 +170,31 @@ ice = True
 # ------ Rain error (True to compute it):
 wet_tropo = False
 
-## -- L2C computation
-## ----------------------
-# Length resolution to select neighbors (in km)
+# -----------------------#
+# L2C computation
+# -----------------------#
+# Length resolution to select neighbors (in km):
 resol = 40
-# Grid resolution for L2C (in km)
+# Grid resolution for l2c (alongtrack, acrosstrack) grid (in km):
 posting = 5
-# Remove noisy data around nadir (in km)
+# Remove noisy data around nadir (in km):
 ac_threshold = 20
+# List of variables to be interpolated on the swath:
+list_input_var_l2c = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 0]}
+
+# -----------------------#
+# L2D computation
+# -----------------------#
+# Length resolution to select neighbors (in km):
+resol_spatial_l2d = 50
+# Temporal resolution to select neighbors (in days):
+resol_temporal_l2d = 8
+# Grid resolution for l2d (lat, lon) grid (in degrees):
+posting_l2d = (0.1, 0.1)
+# Time domain: (start_time, end_time, dtime) in days:
+time_domain = (5, 25, 1)
+# Spatial domain (lon_min, lon_max, lat_min, lat_max):
+spatial_domain = [0, 360, -90, 90]
+# List of variables to be interpolated on the grid:
+list_input_var_l2d = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 0]}
+
