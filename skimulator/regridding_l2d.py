@@ -20,13 +20,12 @@ def run_l2d(p, die_on_error=False):
     config = p.config
     mod_tools.initialize_parameters(p)
 
-    L2Berror = False
     resols = p.resol_spatial_l2d # km
     resolt = p.resol_temporal_l2d  # days
 
     # Domain (spatial grid)
-    if p.modelbox_l2d is not None:
-        modelbox = numpy.array(p.modelbox_l2d, dtype='float')
+    if p.spatial_domain is not None:
+        modelbox = numpy.array(p.spatial_domain, dtype='float')
         # Use convert to 360 data
         modelbox[0] = (modelbox[0] + 360) % 360
         if modelbox[1] != 360:
@@ -42,22 +41,16 @@ def run_l2d(p, die_on_error=False):
     # #####################################
     # READ L2B OBS
     # #####################################
-    tcycle=29.
-    norb=412
+    tcycle = p.satcycle
     c0 = int((max(time0 - resolt, 0)) / tcycle) + 1
-    p0 = int(numpy.mod((max(time0 - resolt,0)), tcycle) * 2*norb/tcycle) + 1
     c1 = int((time1+resolt)/tcycle) + 1
-    p1 = int(numpy.mod((time1+resolt),tcycle) * 2*norb/tcycle) + 1
     obs = {}
+    c0 = 0 ; c1 =  1
     for cycle in range(c0, c1 + 1, 1):
-        p0a = 1
-        p1a = 2*norb
-        if cycle == c0:
-            p0a=p0
-        if cycle == c1:
-            p1a=p1
-        for pa in range(p0a, p1a + 1, 1):
-            pattern = '{}_c{:02d}_p{:03d}.nc'.format(p.config, cycle, pa)
+        _pat = '{}_c{:02d}_p*'.format(p.config, cycle)
+        pat = os.path.join(p.outdatadir, _pat)
+        listfile = glob.glob(pat)
+        for pattern in listfile:
             filev = os.path.join(p.outdatadir, pattern)
             if os.path.isfile(filev):
                 obs_i, mask_data, time_unit = read_l2b(filev)
@@ -89,15 +82,22 @@ def run_l2d(p, die_on_error=False):
     # Center at noon
     window = dt / 2.
     enstime = enstime + window
+    indice_mask = make_mask(p, 'ucur', grd)
 
     for it, timeref in enumerate(enstime):
+        print(it, timeref)
         iobs = numpy.where((obs['time'] > timeref - resolt)
-                         & (obs['time'] < timeref + resolt))[0]
-        make_oi(grd, obs, iobs, resols, timeref, resolt)
+                           & (obs['time'] < timeref + resolt))[0]
+        print(numpy.shape(iobs))
+        make_oi(grd, obs, iobs, resols, timeref, resolt, indice_mask)
         # Interpolate model data to have a true reference
         indice_model = it
-        model_data, out_var, list_file = read_model(p, it)
-        interpolate_model(p, model_data, out_var, grd)
+        print('read model')
+        model_data, out_var, list_file = read_model(p, it, p.dim_time,
+                                                    list_input)
+        print('interpolate model')
+        list_key = {'ucur':'ux_true', 'vcur':'uy_true'}
+        interpolate_model(p, model_data, out_var, grd, list_key)
 
         pattern = os.path.join(p.outdatadir, '{}_l2d_'.format(config))
         save_l2d(pattern, timeref, window, time_unit, grd)
@@ -105,12 +105,13 @@ def run_l2d(p, die_on_error=False):
 
 def save_l2d(filenc, timeref, window, time_unit, grd):
     dateformat = '%Y-%m-%dT%H:%M:%SZ'
+    datewformat = '%Y%m%dT%H%M%S'
     time_std = netCDF4.num2date(timeref - window, time_unit)
     time_start = time_std.strftime(format=dateformat)
     time_std = netCDF4.num2date(timeref + window, time_unit)
     time_end = time_std.strftime(format=dateformat)
     time_std = netCDF4.num2date(timeref, time_unit)
-    time_middle = time_std.strftime(format=dateformat)
+    time_middle = time_std.strftime(format=datewformat)
     pattern = '{}{}.nc'.format(filenc, time_middle)
     grd['time'] = timeref
     metadata = {}
@@ -164,10 +165,11 @@ def make_grid(lon0, lon1, dlon, lat0, lat1, dlat):
     return grd
 
 
-def make_oi(grd, obs, iobs, resols, timeref, resolt):
+def make_oi(grd, obs, iobs, resols, timeref, resolt, index):
     # print(grd['nx'], grd['ny'], numpy.shape(grd['ux_noerr']))
-    for j in range(grd['ny']):
-        for i in range(grd['nx']):
+    #for j in range(grd['ny']):
+    #    for i in range(grd['nx']):
+    for j, i in zip(index[0], index[1]):
           # TODO: to be optimized, especially for global, ...
           dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
                          * (obs['lon'][iobs] - grd['lon2'][j, i])**2
@@ -195,34 +197,45 @@ def make_oi(grd, obs, iobs, resols, timeref, resolt):
                   grd['ux_obs'][j, i] = eta_obs[0]
 
 
-def read_model(p, ifile):
+def read_model(p, ifile, dim_time, list_input):
     model_data, list_file = mod.load_coordinate_model(p)
     model_data.read_coordinates(p)
     nfile = int(ifile)
     filename = os.path.join(p.indatadir, list_file[nfile])
     model_step_ctor = getattr(rw, p.model)
     out_var = {}
-    for i in range(p.dim_time):
+    for i in range(dim_time):
         model_step = model_step_ctor(p, ifile=(filename, ),
-                                     list_input_var=p.list_input_var_l2d,
+                                     list_input_var=list_input,
                                      time=i)
         model_step.read_var(p)
-        for key in p.list_input_var_l2d.keys():
+        for key in list_input.keys():
             if not key in out_var.keys():
-                out_var[key] = model_step.input_var[key]/p.dim_time
+                out_var[key] = model_step.input_var[key] / dim_time
             else:
                 out_var[key] = (out_var[key]
-                                + model_step.input_var[key] / p.dim_time)
+                                + model_step.input_var[key] / dim_time)
     return model_data, out_var, list_file
 
 
-def interpolate_model(p, model_data, model_var, grd):
+def make_mask(p, key, grid):
+    list_input = {key: p.list_input_var_l2d[key]}
+    model_data, out_var, list_file = read_model(p, 0, 1, list_input)
+    list_key = {'ucur':'mask'}
+    interpolate_model(p, model_data, out_var, grid, list_key)
+    mask_index = numpy.where(~numpy.ma.getmaskarray(grid['mask'])
+                             & (grid['mask'] != 0))
+    # TODO TO proof if mask_index is empty
+    print(mask_index)
+    return mask_index
+
+
+def interpolate_model(p, model_data, model_var, grd, list_key):
     import pyresample as pr
     wrap_lon = pr.utils.wrap_longitudes
     geom = pr.geometry.SwathDefinition
     interp = mod.interpolate_irregular_pyresample
     lon = wrap_lon(grd['lon2'])
-    list_key = {'ucur':'ux_true', 'vcur':'uy_true'}
 
     for ikey, okey in list_key.items():
         if len(p.list_input_var[ikey]) > 2:
@@ -240,3 +253,22 @@ def interpolate_model(p, model_data, model_var, grd):
         grd[okey] = interp(swath_def, var, grid_def, p.resol,
                            interp_type=p.interpolation)
     return grd
+
+
+def exc_formatter(exc):
+    """Format exception returned by sys.exc_info() as a string
+so that it can
+    be serialized by pickle and stored in the JobsManager."""
+    error_msg = traceback.format_exception(exc[0], exc[1], exc[2])
+    return error_msg
+
+
+def err_formatter(pid, grid, cycle, exc):
+    """Transform errors stored by the JobsManager into readable messages."""
+    msg = None
+    if cycle < 0:
+        msg = '/!\ Error occurred while processing grid {}'.format(grid)
+    else:
+        _msg = '/!\ Error occurred while processing cycle {} on grid {}'
+        msg = _msg.format(cycle, grid)
+    return msg

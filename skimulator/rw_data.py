@@ -121,58 +121,58 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
     # - Read variable
     if index is None:
         if len(vartmp.shape) == 1:
-            T = numpy.array(fid.variables[var][:]).squeeze()
+            T = numpy.ma.array(fid.variables[var][:]).squeeze()
         elif len(vartmp.shape) == 2:
-            T = numpy.array(fid.variables[var][:, :]).squeeze()
+            T = numpy.ma.array(fid.variables[var][:, :]).squeeze()
         elif len(vartmp.shape) == 3:
             if time is None:
-                T = numpy.array(fid.variables[var][:, :, :]).squeeze()
+                T = numpy.ma.array(fid.variables[var][:, :, :]).squeeze()
             else:
-                T = numpy.array(fid.variables[var][time, :, :]).squeeze()
+                T = numpy.ma.array(fid.variables[var][time, :, :]).squeeze()
         elif len(vartmp.shape) == 4:
             if time is None:
                 if depth is None:
-                    T = numpy.array(fid.variables[var][:, :, :, :]).squeeze()
+                    T = numpy.ma.array(fid.variables[var][:, :, :, :]).squeeze()
                 else:
-                    T = numpy.array(fid.variables[var][:, depth,
+                    T = numpy.ma.array(fid.variables[var][:, depth,
                                     :, :]).squeeze()
             elif depth is None:
-                T = numpy.array(fid.variables[var][time, :, :, :]).squeeze()
+                T = numpy.ma.array(fid.variables[var][time, :, :, :]).squeeze()
             else:
-                T = numpy.array(fid.variables[var][time,depth, :, :]).squeeze()
+                T = numpy.ma.array(fid.variables[var][time,depth, :, :]).squeeze()
         else:
             logger.error('wrong dimension in variables {}'.format(var))
             sys.exit(1)
     else:
             if len(vartmp.shape) == 1:
-                Ttmp = numpy.array(fid.variables[var][:]).squeeze()
+                Ttmp = numpy.ma.array(fid.variables[var][:]).squeeze()
                 T = Ttmp[index]
             elif len(vartmp.shape) == 2:
-                Ttmp = numpy.array(fid.variables[var][:, :]).squeeze()
+                Ttmp = numpy.ma.array(fid.variables[var][:, :]).squeeze()
                 T = Ttmp[index]
             elif len(vartmp.shape) == 3:
                 if time is None:
-                    U = numpy.array(fid.variables[var][:, :, :]).squeeze()
+                    U = numpy.ma.array(fid.variables[var][:, :, :]).squeeze()
                     T = U[:, index]
                 else:
-                    U = numpy.array(fid.variables[var][time, :, :]).squeeze()
+                    U = numpy.ma.array(fid.variables[var][time, :, :]).squeeze()
                     T = U[index]
             elif len(vartmp.shape) == 4:
                 if time is None:
                     if depth is None:
-                        U = numpy.array(fid.variables[var][:, :, :,
+                        U = numpy.ma.array(fid.variables[var][:, :, :,
                                                            :]).squeeze()
                         T = U[:, :, index]
                     else:
-                        U = numpy.array(fid.variables[var][:, depth, :,
+                        U = numpy.ma.array(fid.variables[var][:, depth, :,
                                                            :]).squeeze()
                         T = U[:, index]
                 elif depth is None:
-                    U = numpy.array(fid.variables[var][time, :, :,
+                    U = numpy.ma.array(fid.variables[var][time, :, :,
                                                        :]).squeeze()
                     T = U[:, index]
                 else:
-                    U = numpy.array(fid.variables[var][time, depth, :,
+                    U = numpy.ma.array(fid.variables[var][time, depth, :,
                                                        :]).squeeze()
                     T = U[index]
             else:
