@@ -307,7 +307,9 @@ The software is divided in 6 modules:
 
 * :mod:`mod_tools.py` contains miscellaneous functions (algebraic functions and generation of random coefficients).
 
-* :mod:`regridding.py` contains reconstruction for L2c products functions
+* :mod:`regridding.py` contains reconstruction algorithms for L2c products.
+
+* :mod:`regriddingi_l2d.py` contains reconstruction algorithms for L2d products.
 
 * :mod:`mod_uwb_corr.py` contains function to correct the wave bias using neighbors
 
@@ -594,18 +596,50 @@ the L2b current production. It uses the L2b produced previously as an input.
 The along track and across track grid resolution is specified in
 :ref:`posting <params-l2c>`. By default, the spatial resolution of the grid is
 5 km.
-The L2c reconstrunction uses neighbors to project and interpolate the current. 
+The L2c reconstruction uses neighbors to project and interpolate the current.
 The length resolution to select neighbors can be set in
 :ref:`resol <params-l2c>`. Coefficient for the OI are deacreasing exponentially
 with the distance to the pixel.
 As data around nadir are particularly noisy (all radial velocity are
 parrallels), one can mask them by specifiying the distance in km from nadir
 where data are to be masked :ref:`ac_threshold <params-l2c>`.
+The list of variables to be interpolated on the l2d grid is set in
+:ref:`list_input_var_l2c <params-l2c>`.
 
 The L2c outputs contains along track, across track, meridional and zonal
 current reconstructed from the error-free and radial velocity with errors.
 True along track, across track meridional and zonal velocity interpolated
 from the model inputs are also stored for diagnosis purposes.
+
+
+L2D 2d currents
+---------------
+L2b radial current can be projected on a longitudinal and latitudinal grid
+using the skimul2c command with the same parameter file as the one used for
+the L2b current production. It uses the L2b produced with skimul2b as an input.
+The along track and across track grid resolution is specified in
+:ref:`posting_l2d <params-l2d>`. By default, the spatial resolution of the grid
+is 0.1º x 0.1º.
+The L2d reconstruction uses spatio-temporal neighbors to project and
+interpolate the current.
+The length resolution to select neighbors can be set in
+:ref:`resol_spatial_l2d <params-l2d>` in space and
+:ref:`resol_temporal_l2d <params-l2d>` in time.
+Coefficient for the OI are deacreasing exponentially
+with the distance and time to the pixel.
+The time domain to compute L2d can be set in
+:ref:`time_domain <params-l2d>` and the spatial domain in
+:ref:`spatial_domain <params-l2d>`.
+The list of variables to be interpolated on the l2d grid is set in
+:ref:`list_input_var_l2d <params-l2d>`.
+
+The L2d outputs contains meridional and zonal
+current reconstructed from the error-free and radial velocity with errors.
+True meridional and zonal velocity interpolated
+from the model inputs are also stored for diagnosis purposes.
+The truth is averaged over the dtime specified in
+`resol_temporal_l2d = (start_time, end_time, dtime)`
+
 
 
 Getting started 
@@ -681,4 +715,5 @@ References:
 .. _SKIM_proposal_2017:
 The SKIM team Sea surface KInematics Multiscale monitoring, full proposal for
 ESA EE9, 2017, The SKIM team
+
 
