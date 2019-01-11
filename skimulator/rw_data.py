@@ -731,6 +731,8 @@ class Sat_SKIM():
                         value_tmp[mask_ind] = -1.36e9
                         mask_ind = numpy.where(value_tmp == numpy.PINF)
                         value_tmp[mask_ind] = -1.36e9
+                        mask_ind = numpy.where(value_tmp == p.model_nan)
+                        value_tmp[mask_ind] = -1.36e9
                         if i == 0:
                             if key in list_nadir or key == "vindex" or key == 'instr':
                                 var_nadir[:] = value_tmp
