@@ -83,6 +83,10 @@ def run_l2d(p, die_on_error=False):
     window = dt / 2.
     enstime = enstime + window
     indice_mask = make_mask(p, 'ucur', grd)
+    list_key = {'ucur':'ux_true', 'vcur':'uy_true'}
+    list_input = {}
+    for key in list_key:
+        list_input[key] = p.list_input_var_l2d[key]
 
     for it, timeref in enumerate(enstime):
         print(it, timeref)
@@ -96,7 +100,6 @@ def run_l2d(p, die_on_error=False):
         model_data, out_var, list_file = read_model(p, it, p.dim_time,
                                                     list_input)
         print('interpolate model')
-        list_key = {'ucur':'ux_true', 'vcur':'uy_true'}
         interpolate_model(p, model_data, out_var, grd, list_key)
 
         pattern = os.path.join(p.outdatadir, '{}_l2d_'.format(config))
@@ -129,24 +132,31 @@ def save_l2d(filenc, timeref, window, time_unit, grd):
 
 
 
-def read_l2b(nfile):
+def read_l2b(nfile, model_nan=0):
     fid = netCDF4.Dataset(nfile)
     obs_i = {}
-    obs_i['ux'] = numpy.array(fid.variables['ucur'][:]).flatten()
-    obs_i['uy'] = numpy.array(fid.variables['vcur'][:]).flatten()
+    obs_i['ux'] = numpy.ma.array(fid.variables['ucur'][:]).flatten()
+    obs_i['uy'] = numpy.ma.array(fid.variables['vcur'][:]).flatten()
     if 'ur_true' in fid.variables.keys():
-        obs_i['ur_true'] = numpy.array(fid.variables['ur_true'][:]).flatten()
+        obs_i['ur_true'] = numpy.ma.array(fid.variables['ur_true'][:]).flatten()
     if 'ur_obs' in fid.variables.keys():
-        obs_i['ur_obs'] = numpy.array(fid.variables['ur_obs'][:]).flatten()
-    obs_i['lon'] = numpy.array(fid.variables['lon'][:]).flatten()
+        obs_i['ur_obs'] = numpy.ma.array(fid.variables['ur_obs'][:]).flatten()
+    obs_i['lon'] = numpy.ma.array(fid.variables['lon'][:]).flatten()
     #obs_i['lon'] = numpy.mod(obs_i['lon'] -180, 360) + 180
     obs_i['lon'] = numpy.mod(obs_i['lon'] + 360, 360)
-    obs_i['lat'] = numpy.array(fid.variables['lat'][:]).flatten()
-    obs_i['time'] = numpy.array(fid.variables['time'][:]).flatten()
-    angle = numpy.array(fid.variables['radial_angle'][:]).flatten()
+    obs_i['lat'] = numpy.ma.array(fid.variables['lat'][:]).flatten()
+    obs_i['time'] = numpy.ma.array(fid.variables['time'][:]).flatten()
+    angle = numpy.ma.array(fid.variables['radial_angle'][:]).flatten()
     obs_i['angle'] = numpy.mod(angle, 2 * numpy.pi)
-    mask_data = ((obs_i['ux'] > -1000) & (obs_i['uy'] > -1000)
-                 & (obs_i['ur_true'] > -1000) & (obs_i['ur_obs'] > -1000))
+    mask_invalid = (numpy.ma.getmaskarray(obs_i['ux'])
+                    | numpy.ma.getmaskarray(obs_i['uy'])
+                    | numpy.ma.getmaskarray(obs_i['ur_true'])
+                    | numpy.ma.getmaskarray(obs_i['ur_obs']))
+    mask_invalid = (mask_invalid | (obs_i['ux']==model_nan)
+                    | (obs_i['uy']==model_nan)
+                    | (obs_i['ur_true']==model_nan)
+                    | (obs_i['ur_obs']==model_nan))
+    mask_data = ~(mask_invalid)
     time_unit = fid.variables['time'].units
     return obs_i, mask_data, time_unit
 
@@ -221,6 +231,9 @@ def read_model(p, ifile, dim_time, list_input):
 def make_mask(p, key, grid):
     list_input = {key: p.list_input_var_l2d[key]}
     model_data, out_var, list_file = read_model(p, 0, 1, list_input)
+    mask_ucur = numpy.ma.getmaskarray(out_var['ucur'])
+    mask_ucur = (mask_ucur | numpy.isnan(out_var['ucur']))
+    out_var['ucur'] = numpy.ma.array(out_var['ucur'], mask=mask_ucur)
     list_key = {'ucur':'mask'}
     interpolate_model(p, model_data, out_var, grid, list_key)
     mask_index = numpy.where(~numpy.ma.getmaskarray(grid['mask'])
