@@ -73,18 +73,19 @@ def run_l2d(p, die_on_error=False):
                     if key not in obs.keys():
                         obs[key] = {}
                     for i, j in zip(unique_i, unique_j):
-                        mask = ((ind_i==i) & (ind_j == j))
-                        if mask is False:
-                            continue
-                        ind_key = '{}_{}'.format(int(i), int(j))
-                        if ind_key not in obs[key].keys():
-                            obs[key][ind_key] = {}
-                        obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
-                                                   obs_i[key][mask]]))
+                        mask = numpy.where((ind_i==i) & (ind_j == j))
+                        print(mask[0])
+                        if mask[0].any():
+                            ind_key = '{}_{}'.format(int(i), int(j))
+                            if ind_key not in obs[key].keys():
+                                obs[key][ind_key] = {}
+                            obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
+                                                       obs_i[key][mask]]))
 
     # #####################################
     # Spatial grid construction
     # #####################################
+    print(obs['ur_obs'])
     grd = make_grid(lon0, lon1, dlon, lat0, lat1, dlat)
 
     # #####################################
@@ -189,26 +190,27 @@ def make_grid(lon0, lon1, dlon, lat0, lat1, dlat):
     return grd
 
 
-def make_oi(grd, obs, iobs, resols, timeref, resolt, index):
+def make_oi(grd, lobs, iobs, resols, timeref, resolt, index):
     # print(grd['nx'], grd['ny'], numpy.shape(grd['ux_noerr']))
     #for j in range(grd['ny']):
     #    for i in range(grd['nx']):
     for j, i in zip(index[0], index[1]):
-          listkey = []
           for jx in range(j-2, j+2):
               for ix in range(i-2, i+2):
-                  listkey.append('{}_{}'.format(jx, jy))
+                  ind_key = '{}_{}'.format(jx, jy)
+                  for key in lobs.keys():
+                      obs[key] = numpy.concatenate(sobs[key], lobs[key][ind_key][iobs[ind_key]])
           # TODO: to be optimized, especially for global, ...
           dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
-                         * (obs['lon'][iobs] - grd['lon2'][j, i])**2
-                         + (obs['lat'][iobs] - grd['lat2'][j, i])**2)**0.5
+                         * (obs['lon'] - grd['lon2'][j, i])**2
+                         + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
           iiobs=numpy.where((dist < resols))[0]
           if len(iiobs)>=2:
               H = numpy.zeros((len(iiobs), 2))
-              H[:, 0] = numpy.cos(obs['angle'][iobs][iiobs])
-              H[:, 1] = numpy.sin(obs['angle'][iobs][iiobs])
+              H[:, 0] = numpy.cos(obs['angle'][iiobs])
+              H[:, 1] = numpy.sin(obs['angle'][iiobs])
               win_s = numpy.exp(-dist[iiobs]**2/(0.5*resols)**2)
-              time_cen = obs['time'][iobs][iiobs] - timeref
+              time_cen = obs['time'][iiobs] - timeref
               win_t = numpy.exp(-time_cen**2/(0.5 * resolt)**2) # exp window
               Ri = win_s * win_t
               RiH = numpy.tile(Ri, (2, 1)).T*H
@@ -216,9 +218,9 @@ def make_oi(grd, obs, iobs, resols, timeref, resolt, index):
               if numpy.linalg.cond(M) < 1e3:
                   Mi = numpy.linalg.inv(M)
                   eta_true = numpy.dot(numpy.dot(Mi, RiH.T),
-                                       obs['ur_true'][iobs][iiobs])
+                                       obs['ur_true'][iiobs])
                   eta_obs = numpy.dot(numpy.dot(Mi, RiH.T),
-                                      obs['ur_obs'][iobs][iiobs])
+                                      obs['ur_obs'][iiobs])
                   grd['uy_noerr'][j, i] = eta_true[1]
                   grd['ux_noerr'][j, i] = eta_true[0]
                   grd['uy_obs'][j, i] = eta_obs[1]
