@@ -62,11 +62,24 @@ def run_l2d(p, die_on_error=False):
                 mask_time = ((obs_i['time'] > time0 - resolt)
                              & (obs_i['time'] < time1 + resolt))
                 mask = (mask_time & mask_lat & mask_lon & mask_data)
+                for key in obs_i.keys():
+                    obs_i[key] = obs_i[key][mask]
+                ind_i = numpy.floor((obs_i['lat'] - lat0) / dlat)
+                ind_j = numpy.floor(numpy.mod(obs_i['lon'] - lon0, 360) / dlon)
+                unique_i = list(set(ind_i))
+                unique_j = list(set(ind_j))
                # print(obs_i['time'], time0, time1)
                 for key in obs_i.keys():
                     if key not in obs.keys():
-                        obs[key] = []
-                    obs[key] = numpy.concatenate(([obs[key],
+                        obs[key] = {}
+                    for i, j in zip(unique_i, unique_j):
+                        mask = ((ind_i==i) & (ind_j == j))
+                        if mask is False:
+                            continue
+                        ind_key = '{}_{}'.format(int(i), int(j))
+                        if ind_key not in obs[key].keys():
+                            obs[key][ind_key] = {}
+                        obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
                                                    obs_i[key][mask]]))
 
     # #####################################
@@ -90,9 +103,10 @@ def run_l2d(p, die_on_error=False):
 
     for it, timeref in enumerate(enstime):
         print(it, timeref)
-        iobs = numpy.where((obs['time'] > timeref - resolt)
-                           & (obs['time'] < timeref + resolt))[0]
-        print(numpy.shape(iobs))
+        iobs = {}
+        for ind_key in obs['time'].keys():
+            iobs[ind_key] = numpy.where((obs['time'][ind_key] > timeref - resolt)
+                                      & (obs['time'][ind_key] < timeref + resolt))[0]
         make_oi(grd, obs, iobs, resols, timeref, resolt, indice_mask)
         # Interpolate model data to have a true reference
         indice_model = it
@@ -180,6 +194,10 @@ def make_oi(grd, obs, iobs, resols, timeref, resolt, index):
     #for j in range(grd['ny']):
     #    for i in range(grd['nx']):
     for j, i in zip(index[0], index[1]):
+          listkey = []
+          for jx in range(j-2, j+2):
+              for ix in range(i-2, i+2):
+                  listkey.append('{}_{}'.format(jx, jy))
           # TODO: to be optimized, especially for global, ...
           dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
                          * (obs['lon'][iobs] - grd['lon2'][j, i])**2
@@ -237,9 +255,10 @@ def make_mask(p, key, grid):
     list_key = {'ucur':'mask'}
     interpolate_model(p, model_data, out_var, grid, list_key)
     mask_index = numpy.where(~numpy.ma.getmaskarray(grid['mask'])
-                             & (grid['mask'] != 0))
+                             & (grid['mask'] != 0)
+                             & (~numpy.isnan(grid['mask'])))
     # TODO TO proof if mask_index is empty
-    print(mask_index)
+    print(numpy.shape(mask_index))
     return mask_index
 
 
@@ -265,6 +284,7 @@ def interpolate_model(p, model_data, model_var, grd, list_key):
         var = model_var[ikey]
         grd[okey] = interp(swath_def, var, grid_def, p.resol,
                            interp_type=p.interpolation)
+        grd[okey][grd[okey] == p.model_nan] = numpy.nan
     return grd
 
 
