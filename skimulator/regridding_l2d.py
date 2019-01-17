@@ -65,27 +65,29 @@ def run_l2d(p, die_on_error=False):
                 for key in obs_i.keys():
                     obs_i[key] = obs_i[key][mask]
                 ind_i = numpy.floor((obs_i['lat'] - lat0) / dlat)
-                ind_j = numpy.floor(numpy.mod(obs_i['lon'] - lon0, 360) / dlon)
+                _lon = numpy.mod(obs_i['lon'] + 180, 360) - 180
+                ind_j = numpy.floor(numpy.mod(_lon - lon0, 360) / dlon)
                 unique_i = list(set(ind_i))
                 unique_j = list(set(ind_j))
-               # print(obs_i['time'], time0, time1)
+                #import pdb ; pdb.set_trace()
                 for key in obs_i.keys():
                     if key not in obs.keys():
                         obs[key] = {}
-                    for i, j in zip(unique_i, unique_j):
-                        mask = numpy.where((ind_i==i) & (ind_j == j))
-                        print(mask[0])
-                        if mask[0].any():
-                            ind_key = '{}_{}'.format(int(i), int(j))
-                            if ind_key not in obs[key].keys():
-                                obs[key][ind_key] = {}
-                            obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
+                    for i in unique_i:
+                        for j in unique_j:
+                            mask = numpy.where((ind_i==i) & (ind_j == j))
+                            if mask[0].any():
+                                ind_key = '{}_{}'.format(int(i), int(j))
+                                if ind_key not in obs[key].keys():
+                                    obs[key][ind_key] = []
+                                obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
                                                        obs_i[key][mask]]))
+                            #else:
+                            #    print(i, j)
 
     # #####################################
     # Spatial grid construction
     # #####################################
-    print(obs['ur_obs'])
     grd = make_grid(lon0, lon1, dlon, lat0, lat1, dlat)
 
     # #####################################
@@ -191,16 +193,28 @@ def make_grid(lon0, lon1, dlon, lat0, lat1, dlat):
 
 
 def make_oi(grd, lobs, iobs, resols, timeref, resolt, index):
-    # print(grd['nx'], grd['ny'], numpy.shape(grd['ux_noerr']))
     #for j in range(grd['ny']):
     #    for i in range(grd['nx']):
     for j, i in zip(index[0], index[1]):
-          for jx in range(j-2, j+2):
-              for ix in range(i-2, i+2):
+          obs = {}
+          ni = 10
+          nj = 10
+          for jx in range(max(0, j-nj), min(j+nj, grd['ny'])):
+              for jy in range(max(0, i-ni), min(i+ni, grd['nx'])):
                   ind_key = '{}_{}'.format(jx, jy)
+                  if ind_key not in iobs.keys():
+                      continue
+                  if ~iobs[ind_key].any():
+                      continue
                   for key in lobs.keys():
-                      obs[key] = numpy.concatenate(sobs[key], lobs[key][ind_key][iobs[ind_key]])
+                      if key not in obs.keys():
+                          obs[key] = []
+                      _obs = lobs[key][ind_key][numpy.array(iobs[ind_key], dtype='int')]
+                      obs[key] = numpy.concatenate(([obs[key], _obs]))
           # TODO: to be optimized, especially for global, ...
+          if 'lon' not in obs.keys():
+              continue
+
           dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
                          * (obs['lon'] - grd['lon2'][j, i])**2
                          + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
@@ -260,7 +274,6 @@ def make_mask(p, key, grid):
                              & (grid['mask'] != 0)
                              & (~numpy.isnan(grid['mask'])))
     # TODO TO proof if mask_index is empty
-    print(numpy.shape(mask_index))
     return mask_index
 
 
