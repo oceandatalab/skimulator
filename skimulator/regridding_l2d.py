@@ -64,32 +64,38 @@ def run_l2d(p, die_on_error=False):
                 mask = (mask_time & mask_lat & mask_lon & mask_data)
                 for key in obs_i.keys():
                     obs_i[key] = obs_i[key][mask]
-                ind_i = numpy.floor((obs_i['lat'] - lat0) / dlat)
+                dlatlr = 1 # dlat
+                dlonlr = 1 # dlon
+                ind_i = numpy.floor((obs_i['lat'] - lat0) / dlatlr)
                 _lon = numpy.mod(obs_i['lon'] + 180, 360) - 180
-                ind_j = numpy.floor(numpy.mod(_lon - lon0, 360) / dlon)
+                ind_j = numpy.floor(numpy.mod(_lon - lon0, 360) / dlonlr)
                 unique_i = list(set(ind_i))
                 unique_j = list(set(ind_j))
                 #import pdb ; pdb.set_trace()
                 for key in obs_i.keys():
                     if key not in obs.keys():
                         obs[key] = {}
-                    for i in unique_i:
-                        for j in unique_j:
-                            mask = numpy.where((ind_i==i) & (ind_j == j))
-                            if mask[0].any():
-                                ind_key = '{}_{}'.format(int(i), int(j))
+                for i in unique_i:
+                    for j in unique_j:
+                        mask = numpy.where((ind_i==i) & (ind_j == j))
+                        if mask[0].any():
+                            ind_key = 10000 * int(i) + int(j)  # '{}_{}'.format(int(i), int(j))
+                            for key in obs_i.keys():
                                 if ind_key not in obs[key].keys():
                                     obs[key][ind_key] = []
                                 obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
-                                                       obs_i[key][mask]]))
-                            #else:
-                            #    print(i, j)
+                                                   obs_i[key][mask]]))
 
     # #####################################
     # Spatial grid construction
     # #####################################
     grd = make_grid(lon0, lon1, dlon, lat0, lat1, dlat)
-
+    grd['dlon'] = dlon
+    grd['dlonlr'] = dlonlr
+    grd['dlat'] = dlat
+    grd['dlatlr'] = dlatlr
+    grd['nxlr'] = int((lon1-lon0)/dlonlr)
+    grd['nylr'] = int((lat1-lat0)/dlatlr)
     # #####################################
     # Independant time loop for each analysis
     # #####################################
@@ -117,10 +123,11 @@ def run_l2d(p, die_on_error=False):
         model_data, out_var, list_file = read_model(p, it, p.dim_time,
                                                     list_input)
         print('interpolate model')
-        interpolate_model(p, model_data, out_var, grd, list_key)
+        # interpolate_model(p, model_data, out_var, grd, list_key)
 
         pattern = os.path.join(p.outdatadir, '{}_l2d_'.format(config))
         save_l2d(pattern, timeref, window, time_unit, grd)
+        print(datetime.datetime.now())
 
 
 def save_l2d(filenc, timeref, window, time_unit, grd):
@@ -144,8 +151,8 @@ def save_l2d(filenc, timeref, window, time_unit, grd):
         os.remove(pattern)
     rw.write_l2d(metadata, grd, ux_noerr=grd['ux_noerr'],
                  uy_noerr=grd['uy_noerr'], ux_obs=grd['ux_obs'],
-                 uy_obs=grd['uy_obs'], ux_true=grd['ux_true'],
-                 uy_true=grd['uy_true'])
+                 uy_obs=grd['uy_obs']) #, ux_true=grd['ux_true'],
+                 #uy_true=grd['uy_true'])
 
 
 
@@ -197,11 +204,18 @@ def make_oi(grd, lobs, iobs, resols, timeref, resolt, index):
     #    for i in range(grd['nx']):
     for j, i in zip(index[0], index[1]):
           obs = {}
-          ni = 10
-          nj = 10
-          for jx in range(max(0, j-nj), min(j+nj, grd['ny'])):
-              for jy in range(max(0, i-ni), min(i+ni, grd['nx'])):
-                  ind_key = '{}_{}'.format(jx, jy)
+          ni = 1
+          nj = 1
+          dlat = grd['dlat']
+          dlatlr = grd['dlatlr']
+          dlon = grd['dlon']
+          dlonlr = grd['dlonlr']
+          jlr = int(numpy.floor(j*dlat/dlatlr))
+          ilr = int(numpy.floor(i*dlon/dlonlr))
+          for jx in range(max(0, jlr-nj), min(jlr+nj, grd['nylr'])):
+              for jy in range(max(0, ilr-ni), min(ilr+ni, grd['nxlr'])):
+                  # ind_key = '{}_{}'.format(jx, jy)
+                  ind_key = 10000 * int(jx) + int(jy)  # '{}_{}'.format(int(i), int(j))
                   if ind_key not in iobs.keys():
                       continue
                   if ~iobs[ind_key].any():
