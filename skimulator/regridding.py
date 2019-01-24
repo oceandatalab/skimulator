@@ -457,6 +457,19 @@ def worker_method_l2c(*args, **kwargs):
                                    + grd['v_model'] * numpy.sin(grd['angle']))
         grd['vtrueal'] = sign_uv * (-grd['u_model']*numpy.sin(grd['angle'])
                                     + grd['v_model']*numpy.cos(grd['angle']))
+        mask = ((grd['u_model'] == 0) | (grd['v_model'] == 0))
+        grd['u_model'][mask] = numpy.nan
+        grd['v_model'][mask] = numpy.nan
+        grd['vtrueac'][mask] = numpy.nan
+        grd['vtrueal'][mask] = numpy.nan
+        grd['vobsac'][mask] = numpy.nan
+        grd['vobsal'][mask] = numpy.nan
+        grd['vobsx'][mask] = numpy.nan
+        grd['vobsy'][mask] = numpy.nan
+        grd['vmodac'][mask] = numpy.nan
+        grd['vmodal'][mask] = numpy.nan
+        grd['vmodx'][mask] = numpy.nan
+        grd['vmody'][mask] = numpy.nan
         pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
         outfile = os.path.join(p.outdatadir, pattern_out)
         write_l2(outfile, grd, obs, cycle, passn, p.first_time)
