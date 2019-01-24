@@ -27,13 +27,21 @@ def run_l2d(p, die_on_error=False):
     if p.spatial_domain is not None:
         modelbox = numpy.array(p.spatial_domain, dtype='float')
         # Use convert to 360 data
-        modelbox[0] = (modelbox[0] + 360) % 360
-        if modelbox[1] != 360:
-            modelbox[1] = (modelbox[1] + 360) % 360
+        #modelbox[0] = (modelbox[0] + 360) % 360
+        #if modelbox[1] != 360:
+        #    modelbox[1] = (modelbox[1] + 360) % 360
     else:
         logger.error('Please provide modelbox_l2d for L2d reconstruction')
         sys.exit(1)
     lon0, lon1, lat0, lat1 = modelbox
+    # Use convert to 360 data
+    lon0o = (lon0 + 360) % 360
+    if lon1 != 360:
+        lon1o = (lon1 + 360) % 360
+            #modelbox[0] = (modelbox[0] + 360) % 360
+                    #if modelbox[1] != 360:
+                            #    modelbox[1] = (modelbox[1] + 360) % 360
+
     dlon, dlat = p.posting_l2d
     # Time domain
     time0, time1, dt = p.time_domain
@@ -54,24 +62,28 @@ def run_l2d(p, die_on_error=False):
             filev = os.path.join(p.outdatadir, pattern)
             if os.path.isfile(filev):
                 obs_i, mask_data, time_unit = read_l2b(filev)
+                _lon = numpy.mod(obs_i['lon'] + 180, 360) - 180
+#                if lon1o < lon0o:
+#                    mask_lon = ((obs_i['lon'] < lon0o) & (obs_i['lon'] > lon1o))
+#                else:
+#                    mask_lon = ((obs_i['lon'] > lon0o) & (obs_i['lon'] < lon1o))
                 if lon1 < lon0:
-                    mask_lon = ((obs_i['lon'] < lon0) & (obs_i['lon'] > lon1))
+                    mask_lon = ((_lon < lon0) & (_lon > lon1))
                 else:
-                    mask_lon = ((obs_i['lon'] > lon0) & (obs_i['lon'] < lon1))
+                    mask_lon = ((_lon > lon0) & (_lon < lon1))
                 mask_lat = ((obs_i['lat'] > lat0) & (obs_i['lat'] < lat1))
                 mask_time = ((obs_i['time'] > time0 - resolt)
                              & (obs_i['time'] < time1 + resolt))
                 mask = (mask_time & mask_lat & mask_lon & mask_data)
                 for key in obs_i.keys():
                     obs_i[key] = obs_i[key][mask]
+                _lon = _lon[mask]
                 dlatlr = 1 # dlat
                 dlonlr = 1 # dlon
                 ind_i = numpy.floor((obs_i['lat'] - lat0) / dlatlr)
-                _lon = numpy.mod(obs_i['lon'] + 180, 360) - 180
                 ind_j = numpy.floor(numpy.mod(_lon - lon0, 360) / dlonlr)
                 unique_i = list(set(ind_i))
                 unique_j = list(set(ind_j))
-                #import pdb ; pdb.set_trace()
                 for key in obs_i.keys():
                     if key not in obs.keys():
                         obs[key] = {}
@@ -86,6 +98,7 @@ def run_l2d(p, die_on_error=False):
                                 obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
                                                    obs_i[key][mask]]))
 
+    #import pdb ; pdb.set_trace()
     # #####################################
     # Spatial grid construction
     # #####################################
@@ -96,6 +109,7 @@ def run_l2d(p, die_on_error=False):
     grd['dlatlr'] = dlatlr
     grd['nxlr'] = int((lon1-lon0)/dlonlr)
     grd['nylr'] = int((lat1-lat0)/dlatlr)
+    print(grd['lon'], grd['lat'])
     # #####################################
     # Independant time loop for each analysis
     # #####################################
@@ -188,7 +202,9 @@ def read_l2b(nfile, model_nan=0):
 def make_grid(lon0, lon1, dlon, lat0, lat1, dlat):
     grd = {}
     grd['lon'] = numpy.arange(lon0, lon1 + dlon, dlon)
+    grd['lon'] = numpy.mod(grd['lon'] + 360, 360) - 360
     grd['lat'] = numpy.arange(lat0, lat1 + dlat, dlat)
+    grd['lon'] = numpy.mod(grd['lon'] +360, 360)
     grd['lon2'], grd['lat2'] = numpy.meshgrid(grd['lon'], grd['lat'])
     grd['nx'] = len(grd['lon'])
     grd['ny'] = len(grd['lat'])
