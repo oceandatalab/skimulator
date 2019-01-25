@@ -461,7 +461,9 @@ def worker_method_l2c(*args, **kwargs):
                                    + grd['v_model'] * numpy.sin(grd['angle']))
         grd['vtrueal'] = sign_uv * (-grd['u_model']*numpy.sin(grd['angle'])
                                     + grd['v_model']*numpy.cos(grd['angle']))
-        mask = ((grd['u_model'] == 0) | (grd['v_model'] == 0)
+        _masku = numpy.ma.getmaskarray(grd['u_model'])
+        _maskv = numpy.ma.getmaskarray(grd['v_model'])
+        mask = ((grd['u_model'] == 0) | (grd['v_model'] == 0) | masku | _maskv
                 | (abs(grd['u_model']) > 10) | (abs(grd['v_model']) > 10))
         grd['u_model'][mask] = numpy.nan
         grd['v_model'][mask] = numpy.nan
