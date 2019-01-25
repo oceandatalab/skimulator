@@ -439,7 +439,7 @@ def worker_method_l2c(*args, **kwargs):
             ind_lat = [first_lat,]
         #vindice = [obs['vindice'][0],]
         #ind_lat = [first_lat,]
-        vindice[vindice<0] = 0
+        vindice[numpy.where(numpy.array(vindice)<0)] = 0
         model_data, model_step, list_file2 = read_model(p, vindice)
         grd = interpolate_model(p, model_data, model_step, grd, ind_lat,
                                 desc=desc)
