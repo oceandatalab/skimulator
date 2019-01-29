@@ -662,7 +662,7 @@ To compute L2b products:
 
 .. code-block:: python
 
-   >>>skimulator [your_parameter_file]
+   >>>skimul2b [your_parameter_file]
 
 
 You can compute L2c products after L2b files have been produced, keep the same
@@ -670,9 +670,14 @@ parameter file and run:
 
 .. code-block:: python
 
-   >>>skiml2c [your_parameter_file]
+   >>>skimul2c [your_parameter_file]
 
+You can compute L2d products after L2b files have been produced, keep the same
+parameter file and run:
 
+.. code-block:: python
+
+   >>>skimul2d [your_parameter_file]
 
 .. _params:
 
@@ -702,13 +707,17 @@ Example of Params.txt for SKIM-like data
 .. _params-error:
 
 .. literalinclude:: params.py
-   :lines: 125-160
+   :lines: 125-158
 
 .. _params-l2c:
 
 .. literalinclude:: params.py
-   :lines: 159-
+   :lines: 159-170
 
+.. _params-l2d:
+
+.. literalinclude:: params.py
+   :lines: 171-
 
 References:
 ===========

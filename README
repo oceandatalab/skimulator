@@ -71,11 +71,24 @@ Running
 --------
 Run the SKIM simulator:
 
+For l2b products:
+
 .. code-block:: python
 
-   > skimulator [your params file]
+   > skimul2b [your params file]
 
 
+For l2c products:
+
+.. code-block:: python
+
+   > skimul2c [your params file]
+
+For l2d products:
+
+.. code-block:: python
+
+   > skimul2d [your params file]
 
 Documentation
 -------------

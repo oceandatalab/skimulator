@@ -34,6 +34,9 @@ def run_l2d(p, die_on_error=False):
         logger.error('Please provide modelbox_l2d for L2d reconstruction')
         sys.exit(1)
     lon0, lon1, lat0, lat1 = modelbox
+    global_domain = False
+    if (lon1 - lon0) > 200:
+        global_domain = True
     # Use convert to 360 data
     lon0o = (lon0 + 360) % 360
     if lon1 != 360:
@@ -137,7 +140,8 @@ def run_l2d(p, die_on_error=False):
         model_data, out_var, list_file = read_model(p, it, p.dim_time,
                                                     list_input)
         print('interpolate model')
-        # interpolate_model(p, model_data, out_var, grd, list_key)
+        if global_domain == False:
+            interpolate_model(p, model_data, out_var, grd, list_key)
 
         pattern = os.path.join(p.outdatadir, '{}_l2d_'.format(config))
         save_l2d(pattern, timeref, window, time_unit, grd)
@@ -163,11 +167,16 @@ def save_l2d(filenc, timeref, window, time_unit, grd):
     metadata['file'] = pattern
     if os.path.exists(pattern):
         os.remove(pattern)
-    rw.write_l2d(metadata, grd, ux_noerr=grd['ux_noerr'],
-                 uy_noerr=grd['uy_noerr'], ux_obs=grd['ux_obs'],
-                 uy_obs=grd['uy_obs']) #, ux_true=grd['ux_true'],
-                 #uy_true=grd['uy_true'])
-
+    if 'uy_true' in grd.keys():
+        rw.write_l2d(metadata, grd, ux_noerr=grd['ux_noerr'],
+                     uy_noerr=grd['uy_noerr'], ux_obs=grd['ux_obs'],
+                     uy_obs=grd['uy_obs']), ux_true=grd['ux_true'],
+                     uy_true=grd['uy_true'])
+    else:
+        rw.write_l2d(metadata, grd, ux_noerr=grd['ux_noerr'],
+                     uy_noerr=grd['uy_noerr'], ux_obs=grd['ux_obs'],
+                     uy_obs=grd['uy_obs']) #, ux_true=grd['ux_true'],
+                     #uy_true=grd['uy_true'])
 
 
 def read_l2b(nfile, model_nan=0):
