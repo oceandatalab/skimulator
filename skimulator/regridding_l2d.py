@@ -170,7 +170,7 @@ def save_l2d(filenc, timeref, window, time_unit, grd):
     if 'uy_true' in grd.keys():
         rw.write_l2d(metadata, grd, ux_noerr=grd['ux_noerr'],
                      uy_noerr=grd['uy_noerr'], ux_obs=grd['ux_obs'],
-                     uy_obs=grd['uy_obs']), ux_true=grd['ux_true'],
+                     uy_obs=grd['uy_obs'], ux_true=grd['ux_true'],
                      uy_true=grd['uy_true'])
     else:
         rw.write_l2d(metadata, grd, ux_noerr=grd['ux_noerr'],
