@@ -86,7 +86,7 @@ class JobsManager():
 
 
     def submit_jobs(self, operation, jobs, die_on_error, progress_bar,
-                    delay=0.5):
+                    delay=0.5, results=False):
         """"""
         for j in jobs:
             j.append(self.errors_queue)
@@ -108,10 +108,18 @@ class JobsManager():
             sys.stdout.write('\n' * self._pool_size)
             sys.stdout.flush()
 
-        # Start jobs processing 
-        tasks = self.pool.map_async(_operation_wrapper, jobs,
-                                    chunksize=chunk_size,
-                                    error_callback=self._error_callback)
+        # Start jobs processing
+        if results is True:
+            res = []
+            tasks = self.pool.map_async(_operation_wrapper, jobs,
+                                         chunksize=chunk_size,
+                                         error_callback=self._error_callback,
+                                         callback=res.append)
+
+        else:
+            tasks = self.pool.map_async(_operation_wrapper, jobs,
+                                        chunksize=chunk_size,
+                                        error_callback=self._error_callback)
 
         # Wait until all jobs have been executed
         ok = True
@@ -137,7 +145,10 @@ class JobsManager():
         self.pool.close()
         self.pool.join()
         #"""
-        return ok
+        if results is True:
+            return ok, task, res
+        else:
+            return ok
 
 
 def _operation_wrapper(*args, **kwargs):

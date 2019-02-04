@@ -57,49 +57,40 @@ def run_l2d(p, die_on_error=False):
     c1 = int((time1+resolt)/tcycle) + 1
     obs = {}
     c0 = 0 ; c1 =  1
+    p2 = mod_tools.todict(p)
+    jobs = []
     for cycle in range(c0, c1 + 1, 1):
         _pat = '{}_c{:02d}_p*'.format(p.config, cycle)
         pat = os.path.join(p.outdatadir, _pat)
         listfile = glob.glob(pat)
         for pattern in listfile:
-            filev = os.path.join(p.outdatadir, pattern)
-            if os.path.isfile(filev):
-                obs_i, mask_data, time_unit = read_l2b(filev)
-                _lon = numpy.mod(obs_i['lon'] + 180, 360) - 180
-#                if lon1o < lon0o:
-#                    mask_lon = ((obs_i['lon'] < lon0o) & (obs_i['lon'] > lon1o))
-#                else:
-#                    mask_lon = ((obs_i['lon'] > lon0o) & (obs_i['lon'] < lon1o))
-                if lon1 < lon0:
-                    mask_lon = ((_lon < lon0) & (_lon > lon1))
-                else:
-                    mask_lon = ((_lon > lon0) & (_lon < lon1))
-                mask_lat = ((obs_i['lat'] > lat0) & (obs_i['lat'] < lat1))
-                mask_time = ((obs_i['time'] > time0 - resolt)
-                             & (obs_i['time'] < time1 + resolt))
-                mask = (mask_time & mask_lat & mask_lon & mask_data)
-                for key in obs_i.keys():
-                    obs_i[key] = obs_i[key][mask]
-                _lon = _lon[mask]
-                dlatlr = 1 # dlat
-                dlonlr = 1 # dlon
-                ind_i = numpy.floor((obs_i['lat'] - lat0) / dlatlr)
-                ind_j = numpy.floor(numpy.mod(_lon - lon0, 360) / dlonlr)
-                unique_i = list(set(ind_i))
-                unique_j = list(set(ind_j))
-                for key in obs_i.keys():
-                    if key not in obs.keys():
-                        obs[key] = {}
-                for i in unique_i:
-                    for j in unique_j:
-                        mask = numpy.where((ind_i==i) & (ind_j == j))
-                        if mask[0].any():
-                            ind_key = 10000 * int(i) + int(j)  # '{}_{}'.format(int(i), int(j))
-                            for key in obs_i.keys():
-                                if ind_key not in obs[key].keys():
-                                    obs[key][ind_key] = []
-                                obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
-                                                   obs_i[key][mask]]))
+            jobs.append([p, filev, lon0, lon1, lat0, lat1, time0, time1,
+                         resolt])
+    ok = False
+    try:
+        ok, task, results = build_obs(p.proc_count, jobs, die_on_error,
+                                p.progress_bar)
+    except skimulator.mod_parallel.MultiprocessingError:
+        logger.error('An error occurred with the multiprocessing framework')
+        traceback.print_exception(*sys.exc_info())
+        sys.exit(1)
+    except skimulator.mod_parallel.DyingOnError:
+        logger.error('An error occurred and all errors are fatal')
+        sys.exit(1)
+    task.wait()
+    for i in len(results):
+        obs_r = results[i]
+        #key, ind_key, obs_r = results[i]
+        for key in obs_r.keys():
+            if key not in obs.keys():
+                obs[key] = {}
+            for ind_key in obs_r[key].keys():
+                if ind_key not in obs[key].keys():
+                    obs[key][ind_key] = []
+                obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
+                                                        obs_r[key][ind_key]]))
+    msg_queue.put((os.getpid(), ifile, None, None))
+
 
     #import pdb ; pdb.set_trace()
     # #####################################
@@ -146,6 +137,75 @@ def run_l2d(p, die_on_error=False):
         pattern = os.path.join(p.outdatadir, '{}_l2d_'.format(config))
         save_l2d(pattern, timeref, window, time_unit, grd)
         print(datetime.datetime.now())
+
+
+def worker_build_obs(*args, **kwargs):
+    msg_queue, p2 = args[:2]
+    p = mod_tools.fromdict(p2)
+    filev, lon0, lon1, lat0, lat1, time0, time1, resolt = args[2:]
+    filev = os.path.join(p.outdatadir, pattern)
+    if os.path.isfile(filev):
+        obs_i, mask_data, time_unit = read_l2b(filev)
+        _lon = numpy.mod(obs_i['lon'] + 180, 360) - 180
+#                if lon1o < lon0o:
+#                    mask_lon = ((obs_i['lon'] < lon0o) & (obs_i['lon'] > lon1o))
+#                else:
+#                    mask_lon = ((obs_i['lon'] > lon0o) & (obs_i['lon'] < lon1o))
+        if lon1 < lon0:
+            mask_lon = ((_lon < lon0) & (_lon > lon1))
+        else:
+            mask_lon = ((_lon > lon0) & (_lon < lon1))
+        mask_lat = ((obs_i['lat'] > lat0) & (obs_i['lat'] < lat1))
+        mask_time = ((obs_i['time'] > time0 - resolt)
+                     & (obs_i['time'] < time1 + resolt))
+        mask = (mask_time & mask_lat & mask_lon & mask_data)
+        for key in obs_i.keys():
+            obs_i[key] = obs_i[key][mask]
+        _lon = _lon[mask]
+        dlatlr = 1 # dlat
+        dlonlr = 1 # dlon
+        ind_i = numpy.floor((obs_i['lat'] - lat0) / dlatlr)
+        ind_j = numpy.floor(numpy.mod(_lon - lon0, 360) / dlonlr)
+        unique_i = list(set(ind_i))
+        unique_j = list(set(ind_j))
+        for key in obs_i.keys():
+             if key not in obs.keys():
+                obs[key] = {}
+        for i in unique_i:
+            for j in unique_j:
+                mask = numpy.where((ind_i==i) & (ind_j == j))
+                if mask[0].any():
+                    ind_key = 10000 * int(i) + int(j)  # '{}_{}'.format(int(i), int(j))
+                    for key in obs_i.keys():
+                        if ind_key not in obs[key].keys():
+                            obs[key][ind_key] = []
+                        obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
+                                           obs_i[key][mask]]))
+    msg_queue.put((os.getpid(), filev, None, None))
+
+    return obs
+
+
+def build_obs(_proc_count, jobs, die_on_error, progress_bar):
+    """ Compute SWOT-like data for all grids and all cycle, """
+    # - Set up parallelisation parameters
+    proc_count = min(len(jobs), _proc_count)
+
+    status_updater = mod_tools.update_progress_multiproc
+    jobs_manager = skimulator.mod_parallel.JobsManager(proc_count,
+                                                       status_updater,
+                                                       exc_formatter,
+                                                       err_formatter)
+    ok, results = jobs_manager.submit_jobs(worker_build_obs, jobs,
+                                           die_on_error,
+                                           progress_bar, results=True)
+
+    if not ok:
+        # Display errors once the processing is done
+        jobs_manager.show_errors()
+
+    return ok, results
+
 
 
 def save_l2d(filenc, timeref, window, time_unit, grd):
