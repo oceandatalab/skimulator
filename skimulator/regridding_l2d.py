@@ -59,14 +59,17 @@ def run_l2d(p, die_on_error=False):
     c0 = 0 ; c1 =  1
     p2 = mod_tools.todict(p)
     jobs = []
+    print(datetime.datetime.now())
     for cycle in range(c0, c1 + 1, 1):
         _pat = '{}_c{:02d}_p*'.format(p.config, cycle)
         pat = os.path.join(p.outdatadir, _pat)
         listfile = glob.glob(pat)
         for pattern in listfile:
-            jobs.append([p, filev, lon0, lon1, lat0, lat1, time0, time1,
+            jobs.append([p2, pattern, lon0, lon1, lat0, lat1, time0, time1,
                          resolt])
     ok = False
+    task = 0
+    results = []
     try:
         ok, task, results = build_obs(p.proc_count, jobs, die_on_error,
                                 p.progress_bar)
@@ -78,8 +81,9 @@ def run_l2d(p, die_on_error=False):
         logger.error('An error occurred and all errors are fatal')
         sys.exit(1)
     task.wait()
-    for i in len(results):
+    for i in range(len(results)):
         obs_r = results[i]
+        print(obs_r)
         #key, ind_key, obs_r = results[i]
         for key in obs_r.keys():
             if key not in obs.keys():
@@ -89,7 +93,7 @@ def run_l2d(p, die_on_error=False):
                     obs[key][ind_key] = []
                 obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
                                                         obs_r[key][ind_key]]))
-    msg_queue.put((os.getpid(), ifile, None, None))
+    print(datetime.datetime.now())
 
 
     #import pdb ; pdb.set_trace()
@@ -103,7 +107,6 @@ def run_l2d(p, die_on_error=False):
     grd['dlatlr'] = dlatlr
     grd['nxlr'] = int((lon1-lon0)/dlonlr)
     grd['nylr'] = int((lat1-lat0)/dlatlr)
-    print(grd['lon'], grd['lat'])
     # #####################################
     # Independant time loop for each analysis
     # #####################################
@@ -142,8 +145,10 @@ def run_l2d(p, die_on_error=False):
 def worker_build_obs(*args, **kwargs):
     msg_queue, p2 = args[:2]
     p = mod_tools.fromdict(p2)
-    filev, lon0, lon1, lat0, lat1, time0, time1, resolt = args[2:]
+    pattern, lon0, lon1, lat0, lat1, time0, time1, resolt = args[2:]
+
     filev = os.path.join(p.outdatadir, pattern)
+    obs = {}
     if os.path.isfile(filev):
         obs_i, mask_data, time_unit = read_l2b(filev)
         _lon = numpy.mod(obs_i['lon'] + 180, 360) - 180
@@ -182,7 +187,6 @@ def worker_build_obs(*args, **kwargs):
                         obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
                                            obs_i[key][mask]]))
     msg_queue.put((os.getpid(), filev, None, None))
-
     return obs
 
 
@@ -196,7 +200,7 @@ def build_obs(_proc_count, jobs, die_on_error, progress_bar):
                                                        status_updater,
                                                        exc_formatter,
                                                        err_formatter)
-    ok, results = jobs_manager.submit_jobs(worker_build_obs, jobs,
+    ok, tasks, res = jobs_manager.submit_jobs(worker_build_obs, jobs,
                                            die_on_error,
                                            progress_bar, results=True)
 
@@ -204,7 +208,7 @@ def build_obs(_proc_count, jobs, die_on_error, progress_bar):
         # Display errors once the processing is done
         jobs_manager.show_errors()
 
-    return ok, results
+    return ok, tasks, res
 
 
 

@@ -146,7 +146,7 @@ class JobsManager():
         self.pool.join()
         #"""
         if results is True:
-            return ok, task, res
+            return ok, tasks, res
         else:
             return ok
 
@@ -161,7 +161,7 @@ def _operation_wrapper(*args, **kwargs):
 
     try:
         job_id = _args[0]
-        operation(msg_queue, *_args, **kwargs)
+        res = operation(msg_queue, *_args, **kwargs)
     except:
         # Error sink
         exc = sys.exc_info()
@@ -175,5 +175,7 @@ def _operation_wrapper(*args, **kwargs):
         msg_queue.put((os.getpid(), job_id, -1, error_msg))
         errors_queue.put((os.getpid(), job_id, -1, error_msg))
         return False
-
-    return True
+    if res is None:
+        return True
+    else:
+        return res
