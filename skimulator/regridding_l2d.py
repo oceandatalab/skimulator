@@ -78,7 +78,7 @@ def run_l2d(p, die_on_error=False):
     task = 0
     results = []
     try:
-        ok, task, results = build_obs(p.proc_count, jobs, die_on_error,
+        ok, results = build_obs(p.proc_count, jobs, die_on_error,
                                 p.progress_bar)
     except skimulator.mod_parallel.MultiprocessingError:
         logger.error('An error occurred with the multiprocessing framework')
@@ -87,7 +87,7 @@ def run_l2d(p, die_on_error=False):
     except skimulator.mod_parallel.DyingOnError:
         logger.error('An error occurred and all errors are fatal')
         sys.exit(1)
-    task.wait()
+
     print(datetime.datetime.now())
     for i in range(len(results)):
         obs_rjobs = results[i]
@@ -155,7 +155,8 @@ def run_l2d(p, die_on_error=False):
 def worker_build_obs(*args, **kwargs):
     msg_queue, p2, pattern = args[:3]
     p = mod_tools.fromdict(p2)
-    lon0, lon1, lat0, lat1, time0, time1, resolt, dlonlr, dlatlr = args[3:]
+    lon0, lon1, lat0, lat1, time0, time1, resolt, dlonlr, dlatlr = args[3:12]
+    res_queue = args[-1]
 
     filev = os.path.join(p.outdatadir, pattern)
     obs = {}
@@ -194,9 +195,9 @@ def worker_build_obs(*args, **kwargs):
                             obs[key][ind_key] = []
                         obs[key][ind_key] = numpy.concatenate((obs[key][ind_key],
                                            obs_i[key][mask_ind]))
-    msg_queue.put((os.getpid(), filev, None, None))
-    return obs
 
+    res_queue.put(obs)  # Pass result to parent method
+    msg_queue.put((os.getpid(), filev, None, None))
 
 
 def build_obs(_proc_count, jobs, die_on_error, progress_bar):
@@ -209,15 +210,20 @@ def build_obs(_proc_count, jobs, die_on_error, progress_bar):
                                                        status_updater,
                                                        exc_formatter,
                                                        err_formatter)
-    ok, tasks, res = jobs_manager.submit_jobs(worker_build_obs, jobs,
-                                           die_on_error,
-                                           progress_bar, results=True)
+
+    # Include the results queue as last argument for each job
+    for j in jobs:
+        j.append(jobs_manager.res_queue)
+
+    res = []
+    ok = jobs_manager.submit_jobs(worker_build_obs, jobs, die_on_error,
+                                  progress_bar, results=res.append)
 
     if not ok:
         # Display errors once the processing is done
         jobs_manager.show_errors()
 
-    return ok, tasks, res
+    return ok, res
 
 
 
@@ -303,6 +309,7 @@ def make_oi(p, grd, lobs, iobs, resols, timeref, resolt, index,
     #    for i in range(grd['nx']):
     jobs = []
     shape_grd = numpy.shape(grd['uy_noerr'])
+    """
     arr_uy_noe = multiprocessing.Array('f', grd['uy_noerr'].flatten('C'))
     arr_ux_noe = multiprocessing.Array('f', grd['ux_noerr'].flatten('C'))
     arr_uy_obs = multiprocessing.Array('f', grd['uy_obs'].flatten('C'))
@@ -310,11 +317,14 @@ def make_oi(p, grd, lobs, iobs, resols, timeref, resolt, index,
     for j, i in zip(index[0], index[1]):
         jobs.append([arr_uy_noe, arr_ux_noe, arr_uy_obs, arr_ux_obs, grd,
                      lobs, iobs, resols, timeref, resolt, index, j, i])
+    """
+    for j, i in zip(index[0], index[1]):
+        jobs.append([grd, lobs, iobs, resols, timeref, resolt, index, j, i])
+
     ok = False
     task = 0
     try:
-        ok, task = par_make_oi(p.proc_count, jobs, die_on_error,
-                                p.progress_bar)
+        ok = par_make_oi(grd, p.proc_count, jobs, die_on_error, p.progress_bar)
     except skimulator.mod_parallel.MultiprocessingError:
         logger.error('An error occurred with the multiprocessing framework')
         traceback.print_exception(*sys.exc_info())
@@ -322,7 +332,8 @@ def make_oi(p, grd, lobs, iobs, resols, timeref, resolt, index,
     except skimulator.mod_parallel.DyingOnError:
         logger.error('An error occurred and all errors are fatal')
         sys.exit(1)
-    task.wait()
+
+    """
     arr_uy_noe = numpy.array(arr_uy_noe)
     arr_ux_noe = numpy.array(arr_ux_noe)
     arr_uy_obs = numpy.array(arr_uy_obs)
@@ -331,9 +342,19 @@ def make_oi(p, grd, lobs, iobs, resols, timeref, resolt, index,
     grd['ux_noerr'] = arr_ux_noe.reshape(shape_grd)
     grd['uy_obs'] = arr_uy_obs.reshape(shape_grd)
     grd['ux_obs'] = arr_ux_obs.reshape(shape_grd)
+    """
 
 
-def par_make_oi(_proc_count, jobs, die_on_error, progress_bar):
+def save_oi(result, grd):
+    """"""
+    j, i , values = result
+    grd['uy_noerr'][j][i] = values[0]
+    grd['ux_noerr'][j][i] = values[1]
+    grd['uy_obs'][j][i] = values[2]
+    grd['ux_obs'][j][i] = values[3]
+
+
+def par_make_oi(grd, _proc_count, jobs, die_on_error, progress_bar):
     """ Compute SWOT-like data for all grids and all cycle, """
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
@@ -343,18 +364,19 @@ def par_make_oi(_proc_count, jobs, die_on_error, progress_bar):
                                                        status_updater,
                                                        exc_formatter,
                                                        err_formatter)
-    ok, tasks = jobs_manager.submit_jobs(worker_make_oi, jobs,
-                                        die_on_error, progress_bar)
+    ok = jobs_manager.submit_jobs(worker_make_oi, jobs, die_on_error,
+                                  progress_bar, result=(save_oi, grd,))
 
     if not ok:
         # Display errors once the processing is done
         jobs_manager.show_errors()
-    return ok, tasks
+    return ok
 
 
 def worker_make_oi(*args, **kwargs):
-    msg_queue, arr_uy_noe, arr_ux_noe, arr_uy_obs, arr_ux_obs = args[:5]
-    grd, lobs, iobs, resols, timeref, resolt, index, j, i = args[5:]
+    msg_queue = args[0]
+    grd, lobs, iobs, resols, timeref, resolt, index, j, i = args[1:10]
+    res_queue = args[-1]
 
     obs = {}
     ni = 1
@@ -410,6 +432,7 @@ def worker_make_oi(*args, **kwargs):
             arr_ux_noe[flat_ind] = eta_true[0]
             arr_uy_obs[flat_ind] = eta_obs[1]
             arr_ux_obs[flat_ind] = eta_obs[0]
+    res_queue.put((j, i, [eta_true[1], eta_true[0], eta_obs[1], eta_obs[0]]))
     msg_queue.put((os.getpid(), j, i, None))
     return None
 
