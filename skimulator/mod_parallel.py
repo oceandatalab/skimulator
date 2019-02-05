@@ -175,10 +175,8 @@ class JobsManager():
         self.pool.close()
         self.pool.join()
         #"""
-        if results is True:
-            return ok, tasks, res
-        else:
-            return ok, tasks
+
+        return ok
 
 
 def _operation_wrapper(*args, **kwargs):
