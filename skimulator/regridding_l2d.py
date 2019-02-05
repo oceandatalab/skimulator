@@ -12,6 +12,7 @@ import skimulator.mod_run as mod
 import skimulator.mod_parallel
 import logging
 import traceback
+import multiprocessing
 logger = logging.getLogger(__name__)
 
 
@@ -135,14 +136,15 @@ def run_l2d(p, die_on_error=False):
         for ind_key in obs['time'].keys():
             iobs[ind_key] = numpy.where((obs['time'][ind_key] > timeref - resolt)
                                       & (obs['time'][ind_key] < timeref + resolt))[0]
-        make_oi(grd, obs, iobs, resols, timeref, resolt, indice_mask)
+        make_oi(p, grd, obs, iobs, resols, timeref, resolt, indice_mask,
+                die_on_error=die_on_error)
         # Interpolate model data to have a true reference
         indice_model = it
         print('read model')
         model_data, out_var, list_file = read_model(p, it, p.dim_time,
                                                     list_input)
         print('interpolate model')
-        if global_domain == False:
+        if global_domain is False:
             interpolate_model(p, model_data, out_var, grd, list_key)
 
         pattern = os.path.join(p.outdatadir, '{}_l2d_'.format(config))
@@ -295,60 +297,121 @@ def make_grid(lon0, lon1, dlon, lat0, lat1, dlat):
     return grd
 
 
-def make_oi(grd, lobs, iobs, resols, timeref, resolt, index):
+def make_oi(p, grd, lobs, iobs, resols, timeref, resolt, index,
+            die_on_error=False):
     #for j in range(grd['ny']):
     #    for i in range(grd['nx']):
+    jobs = []
+    shape_grd = numpy.shape(grd['uy_noerr'])
+    arr_uy_noe = multiprocessing.Array('f', grd['uy_noerr'].flatten('C'))
+    arr_ux_noe = multiprocessing.Array('f', grd['ux_noerr'].flatten('C'))
+    arr_uy_obs = multiprocessing.Array('f', grd['uy_obs'].flatten('C'))
+    arr_ux_obs = multiprocessing.Array('f', grd['ux_obs'].flatten('C'))
     for j, i in zip(index[0], index[1]):
-          obs = {}
-          ni = 1
-          nj = 1
-          dlat = grd['dlat']
-          dlatlr = grd['dlatlr']
-          dlon = grd['dlon']
-          dlonlr = grd['dlonlr']
-          jlr = int(numpy.floor(j*dlat/dlatlr))
-          ilr = int(numpy.floor(i*dlon/dlonlr))
-          for jx in range(max(0, jlr-nj), min(jlr+nj, grd['nylr'])):
-              for jy in range(max(0, ilr-ni), min(ilr+ni, grd['nxlr'])):
-                  # ind_key = '{}_{}'.format(jx, jy)
-                  ind_key = 10000 * int(jx) + int(jy)  # '{}_{}'.format(int(i), int(j))
-                  if ind_key not in iobs.keys():
-                      continue
-                  if ~iobs[ind_key].any():
-                      continue
-                  for key in lobs.keys():
-                      if key not in obs.keys():
-                          obs[key] = []
-                      _obs = lobs[key][ind_key][numpy.array(iobs[ind_key], dtype='int')]
-                      obs[key] = numpy.concatenate(([obs[key], _obs]))
-          # TODO: to be optimized, especially for global, ...
-          if 'lon' not in obs.keys():
-              continue
+        jobs.append([arr_uy_noe, arr_ux_noe, arr_uy_obs, arr_ux_obs, grd,
+                     lobs, iobs, resols, timeref, resolt, index, j, i])
+    ok = False
+    task = 0
+    try:
+        ok, task = par_make_oi(p.proc_count, jobs, die_on_error,
+                                p.progress_bar)
+    except skimulator.mod_parallel.MultiprocessingError:
+        logger.error('An error occurred with the multiprocessing framework')
+        traceback.print_exception(*sys.exc_info())
+        sys.exit(1)
+    except skimulator.mod_parallel.DyingOnError:
+        logger.error('An error occurred and all errors are fatal')
+        sys.exit(1)
+    task.wait()
+    arr_uy_noe = numpy.array(arr_uy_noe)
+    arr_ux_noe = numpy.array(arr_ux_noe)
+    arr_uy_obs = numpy.array(arr_uy_obs)
+    arr_ux_obs = numpy.array(arr_ux_obs)
+    grd['uy_noerr'] = arr_uy_noe.reshape(shape_grd)
+    grd['ux_noerr'] = arr_ux_noe.reshape(shape_grd)
+    grd['uy_obs'] = arr_uy_obs.reshape(shape_grd)
+    grd['ux_obs'] = arr_ux_obs.reshape(shape_grd)
 
-          dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
-                         * (obs['lon'] - grd['lon2'][j, i])**2
-                         + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
-          iiobs=numpy.where((dist < resols))[0]
-          if len(iiobs)>=2:
-              H = numpy.zeros((len(iiobs), 2))
-              H[:, 0] = numpy.cos(obs['angle'][iiobs])
-              H[:, 1] = numpy.sin(obs['angle'][iiobs])
-              win_s = numpy.exp(-dist[iiobs]**2/(0.5*resols)**2)
-              time_cen = obs['time'][iiobs] - timeref
-              win_t = numpy.exp(-time_cen**2/(0.5 * resolt)**2) # exp window
-              Ri = win_s * win_t
-              RiH = numpy.tile(Ri, (2, 1)).T*H
-              M = numpy.dot(H.T, RiH)
-              if numpy.linalg.cond(M) < 1e3:
-                  Mi = numpy.linalg.inv(M)
-                  eta_true = numpy.dot(numpy.dot(Mi, RiH.T),
-                                       obs['ur_true'][iiobs])
-                  eta_obs = numpy.dot(numpy.dot(Mi, RiH.T),
-                                      obs['ur_obs'][iiobs])
-                  grd['uy_noerr'][j, i] = eta_true[1]
-                  grd['ux_noerr'][j, i] = eta_true[0]
-                  grd['uy_obs'][j, i] = eta_obs[1]
-                  grd['ux_obs'][j, i] = eta_obs[0]
+
+def par_make_oi(_proc_count, jobs, die_on_error, progress_bar):
+    """ Compute SWOT-like data for all grids and all cycle, """
+    # - Set up parallelisation parameters
+    proc_count = min(len(jobs), _proc_count)
+
+    status_updater = mod_tools.update_progress_multiproc
+    jobs_manager = skimulator.mod_parallel.JobsManager(proc_count,
+                                                       status_updater,
+                                                       exc_formatter,
+                                                       err_formatter)
+    ok, tasks = jobs_manager.submit_jobs(worker_make_oi, jobs,
+                                        die_on_error, progress_bar)
+
+    if not ok:
+        # Display errors once the processing is done
+        jobs_manager.show_errors()
+    return ok, tasks
+
+
+def worker_make_oi(*args, **kwargs):
+    msg_queue, arr_uy_noe, arr_ux_noe, arr_uy_obs, arr_ux_obs = args[:5]
+    grd, lobs, iobs, resols, timeref, resolt, index, j, i = args[5:]
+
+    obs = {}
+    ni = 1
+    nj = 1
+    dlat = grd['dlat']
+    dlatlr = grd['dlatlr']
+    dlon = grd['dlon']
+    dlonlr = grd['dlonlr']
+    jlr = int(numpy.floor(j*dlat/dlatlr))
+    ilr = int(numpy.floor(i*dlon/dlonlr))
+    for jx in range(max(0, jlr-nj), min(jlr+nj, grd['nylr'])):
+        for jy in range(max(0, ilr-ni), min(ilr+ni, grd['nxlr'])):
+            # ind_key = '{}_{}'.format(jx, jy)
+            ind_key = 10000 * int(jx) + int(jy)  # '{}_{}'.format(int(i), int(j))
+            if ind_key not in iobs.keys():
+                continue
+            if ~iobs[ind_key].any():
+                continue
+            for key in lobs.keys():
+                if key not in obs.keys():
+                    obs[key] = []
+                _obs = lobs[key][ind_key][numpy.array(iobs[ind_key], dtype='int')]
+                obs[key] = numpy.concatenate(([obs[key], _obs]))
+    # TODO: to be optimized, especially for global, ...
+    flat_ind = j + i*grd['nylr']
+    if 'lon' not in obs.keys():
+        arr_uy_noe[flat_ind] = numpy.nan
+        arr_ux_noe[flat_ind] = numpy.nan
+        arr_uy_obs[flat_ind] = numpy.nan
+        arr_ux_obs[flat_ind] = numpy.nan
+        return None
+    dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
+                   * (obs['lon'] - grd['lon2'][j, i])**2
+                   + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
+    iiobs=numpy.where((dist < resols))[0]
+    if len(iiobs)>=2:
+        H = numpy.zeros((len(iiobs), 2))
+        H[:, 0] = numpy.cos(obs['angle'][iiobs])
+        H[:, 1] = numpy.sin(obs['angle'][iiobs])
+        win_s = numpy.exp(-dist[iiobs]**2/(0.5*resols)**2)
+        time_cen = obs['time'][iiobs] - timeref
+        win_t = numpy.exp(-time_cen**2/(0.5 * resolt)**2) # exp window
+        Ri = win_s * win_t
+        RiH = numpy.tile(Ri, (2, 1)).T*H
+        M = numpy.dot(H.T, RiH)
+        if numpy.linalg.cond(M) < 1e3:
+            Mi = numpy.linalg.inv(M)
+            eta_true = numpy.dot(numpy.dot(Mi, RiH.T),
+                                 obs['ur_true'][iiobs])
+            eta_obs = numpy.dot(numpy.dot(Mi, RiH.T),
+                                obs['ur_obs'][iiobs])
+            arr_uy_noe[flat_ind] = eta_true[1]
+            arr_ux_noe[flat_ind] = eta_true[0]
+            arr_uy_obs[flat_ind] = eta_obs[1]
+            arr_ux_obs[flat_ind] = eta_obs[0]
+    msg_queue.put((os.getpid(), j, i, None))
+    return None
 
 
 def read_model(p, ifile, dim_time, list_input):

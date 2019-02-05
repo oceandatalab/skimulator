@@ -148,7 +148,7 @@ class JobsManager():
         if results is True:
             return ok, tasks, res
         else:
-            return ok
+            return ok, tasks
 
 
 def _operation_wrapper(*args, **kwargs):

@@ -352,8 +352,8 @@ def make_skim_l2c(_proc_count, jobs, die_on_error, progress_bar):
                                                        status_updater,
                                                        exc_formatter,
                                                        err_formatter)
-    ok = jobs_manager.submit_jobs(worker_method_l2c, jobs, die_on_error,
-                                  progress_bar)
+    ok, task = jobs_manager.submit_jobs(worker_method_l2c, jobs, die_on_error,
+                                        progress_bar)
 
     if not ok:
         # Display errors once the processing is done
