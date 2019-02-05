@@ -56,17 +56,23 @@ def run_l2d(p, die_on_error=False):
     c0 = int((max(time0 - resolt, 0)) / tcycle) + 1
     c1 = int((time1+resolt)/tcycle) + 1
     obs = {}
-    c0 = 0 ; c1 =  1
+    c0 = 1 ; c1 =  2
     p2 = mod_tools.todict(p)
+    dlatlr = 1 # dlat
+    dlonlr = 1 # dlon
     jobs = []
     print(datetime.datetime.now())
     for cycle in range(c0, c1 + 1, 1):
         _pat = '{}_c{:02d}_p*'.format(p.config, cycle)
         pat = os.path.join(p.outdatadir, _pat)
         listfile = glob.glob(pat)
+        # Create specific funtion to retrieve time_unit
+        filev = os.path.join(p.outdatadir, listfile[0])
+        _, _, time_unit = read_l2b(filev)
+        print(time_unit)
         for pattern in listfile:
             jobs.append([p2, pattern, lon0, lon1, lat0, lat1, time0, time1,
-                         resolt])
+                         resolt, dlonlr, dlatlr])
     ok = False
     task = 0
     results = []
@@ -81,18 +87,20 @@ def run_l2d(p, die_on_error=False):
         logger.error('An error occurred and all errors are fatal')
         sys.exit(1)
     task.wait()
+    print(datetime.datetime.now())
     for i in range(len(results)):
-        obs_r = results[i]
-        print(obs_r)
+        obs_rjobs = results[i]
         #key, ind_key, obs_r = results[i]
-        for key in obs_r.keys():
-            if key not in obs.keys():
-                obs[key] = {}
-            for ind_key in obs_r[key].keys():
-                if ind_key not in obs[key].keys():
-                    obs[key][ind_key] = []
-                obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
-                                                        obs_r[key][ind_key]]))
+        for j in range(len(obs_rjobs)):
+            obs_r = obs_rjobs[j]
+            for key in obs_r.keys():
+                if key not in obs.keys():
+                    obs[key] = {}
+                for ind_key in obs_r[key].keys():
+                    if ind_key not in obs[key].keys():
+                        obs[key][ind_key] = []
+                    obs[key][ind_key] = numpy.concatenate((obs[key][ind_key],
+                                                          obs_r[key][ind_key]))
     print(datetime.datetime.now())
 
 
@@ -143,9 +151,9 @@ def run_l2d(p, die_on_error=False):
 
 
 def worker_build_obs(*args, **kwargs):
-    msg_queue, p2 = args[:2]
+    msg_queue, p2, pattern = args[:3]
     p = mod_tools.fromdict(p2)
-    pattern, lon0, lon1, lat0, lat1, time0, time1, resolt = args[2:]
+    lon0, lon1, lat0, lat1, time0, time1, resolt, dlonlr, dlatlr = args[3:]
 
     filev = os.path.join(p.outdatadir, pattern)
     obs = {}
@@ -167,8 +175,6 @@ def worker_build_obs(*args, **kwargs):
         for key in obs_i.keys():
             obs_i[key] = obs_i[key][mask]
         _lon = _lon[mask]
-        dlatlr = 1 # dlat
-        dlonlr = 1 # dlon
         ind_i = numpy.floor((obs_i['lat'] - lat0) / dlatlr)
         ind_j = numpy.floor(numpy.mod(_lon - lon0, 360) / dlonlr)
         unique_i = list(set(ind_i))
@@ -178,16 +184,17 @@ def worker_build_obs(*args, **kwargs):
                 obs[key] = {}
         for i in unique_i:
             for j in unique_j:
-                mask = numpy.where((ind_i==i) & (ind_j == j))
-                if mask[0].any():
+                mask_ind = numpy.where((ind_i==i) & (ind_j == j))
+                if mask_ind[0].any():
                     ind_key = 10000 * int(i) + int(j)  # '{}_{}'.format(int(i), int(j))
                     for key in obs_i.keys():
                         if ind_key not in obs[key].keys():
                             obs[key][ind_key] = []
-                        obs[key][ind_key] = numpy.concatenate(([obs[key][ind_key],
-                                           obs_i[key][mask]]))
+                        obs[key][ind_key] = numpy.concatenate((obs[key][ind_key],
+                                           obs_i[key][mask_ind]))
     msg_queue.put((os.getpid(), filev, None, None))
     return obs
+
 
 
 def build_obs(_proc_count, jobs, die_on_error, progress_bar):
