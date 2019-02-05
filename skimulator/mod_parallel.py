@@ -9,6 +9,7 @@ import math
 import time
 import logging
 import traceback
+import collections
 import multiprocessing
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class JobsManager():
         self._pool_size = pool_size
         self.manager = multiprocessing.Manager()
         self.msg_queue = self.manager.Queue()
+        self.res_queue = self.manager.Queue()
         self.errors_queue = self.manager.Queue()
         self.pool = multiprocessing.get_context('spawn').Pool(pool_size)
 
@@ -86,8 +88,16 @@ class JobsManager():
 
 
     def submit_jobs(self, operation, jobs, die_on_error, progress_bar,
-                    delay=0.5, results=False):
+                    delay=0.5, results=None):
         """"""
+        results_callback = None
+        results_args = None
+        if results is not None:
+            if isinstance(results, collections.Iterable):
+                results_callback, results_args = results[0], results[1:]
+            else:
+                results_callback = results
+
         for j in jobs:
             j.append(self.errors_queue)
             j.append(self.msg_queue)
@@ -124,11 +134,22 @@ class JobsManager():
         # Wait until all jobs have been executed
         ok = True
         while not tasks.ready():
+            # Handle progress and error messages
             if not self.msg_queue.empty():
                 msg = self.msg_queue.get()
                 _ok = self.handle_message(status, msg, die_on_error,
                                           progress_bar)
                 ok = ok and _ok
+
+            # Handle results from processed jobs on the fly
+            if (results_callback is not None) and (not self.res_queue.empty()):
+                job_res = self.res_queue.get()
+
+                if results_args is not None:
+                    results_callback(job_res, *results_args)
+                else:
+                    results_callback(job_res)
+
             time.sleep(delay)
 
         # Make sure all messages have been processed
@@ -139,6 +160,15 @@ class JobsManager():
 
         # Flush stdout buffer to avoid partial output issues 
         sys.stdout.flush()
+
+        # Make sure all results have been processed
+        while ((results is not None) and (not self.res_queue.empty())):
+            job_res = self.res_queue.get()
+
+            if results_args is not None:
+                results_callback(job_res, *results_args)
+            else:
+                results_callback(job_res)
 
         # Wait for workers to release resources and synchronize with the main
         # process
