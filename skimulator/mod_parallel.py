@@ -93,7 +93,7 @@ class JobsManager():
         results_callback = None
         results_args = None
         if results is not None:
-            if isinstance(results, collections.Iterable):
+            if isinstance(results, collections.Iterable) and 1 < len(results):
                 results_callback, results_args = results[0], results[1:]
             else:
                 results_callback = results
