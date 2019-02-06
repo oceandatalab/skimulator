@@ -5,6 +5,7 @@ import glob
 import datetime
 import time
 import netCDF4
+import pickle
 import skimulator.const as const
 import skimulator.rw_data as rw
 import skimulator.mod_tools as mod_tools
@@ -55,7 +56,7 @@ def run_l2d(p, die_on_error=False):
     # #####################################
     tcycle = p.satcycle
     c0 = int((max(time0 - resolt, 0)) / tcycle) + 1
-    c1 = int((time1+resolt)/tcycle) + 1
+    c1 = int((time1 + resolt) / tcycle) + 1
     obs = {}
     c0 = 1 ; c1 =  2
     p2 = mod_tools.todict(p)
@@ -104,6 +105,9 @@ def run_l2d(p, die_on_error=False):
                         obs[key][ind_key] = []
                     obs[key][ind_key] = numpy.concatenate((obs[key][ind_key],
                                                           obs_r[key][ind_key]))
+    pobs_file = os.path.join(p.outdatadir, 'obs_{}.pyo'.format(p.config_l2d))
+    with open(pobs_file, 'wb') as pickf:
+        pickle.dump(obs, pickf, protocol = pickle.HIGHEST_PROTOCOL)
     print(datetime.datetime.now())
 
 
@@ -138,21 +142,91 @@ def run_l2d(p, die_on_error=False):
         for ind_key in obs['time'].keys():
             iobs[ind_key] = numpy.where((obs['time'][ind_key] > timeref - resolt)
                                       & (obs['time'][ind_key] < timeref + resolt))[0]
-        make_oi(p, grd, obs, iobs, resols, timeref, resolt, indice_mask,
+        make_oi(p, p2, grd, iobs, resols, timeref, resolt, indice_mask,
                 die_on_error=die_on_error)
         # Interpolate model data to have a true reference
-        indice_model = it
-        print('read model')
-        model_data, out_var, list_file = read_model(p, it, p.dim_time,
-                                                    list_input)
-        print('interpolate model')
-        if global_domain is False:
-            interpolate_model(p, model_data, out_var, grd, list_key)
+        #indice_model = it
+        #print('read model')
+        #model_data, out_var, list_file = read_model(p, it, p.dim_time,
+        #                                            list_input)
+        #print('interpolate model')
+        #if global_domain is False:
+        #    interpolate_model(p, model_data, out_var, grd, list_key)
 
         pattern = os.path.join(p.outdatadir, '{}_{}_l2d_'.format(config,
                                                                  p.config_l2d))
         save_l2d(pattern, timeref, window, time_unit, grd)
         print(datetime.datetime.now())
+
+
+def offline_interpolation(p):
+    pattern = os.path.join(p.outdatadir, '{}_{}_l2d_'.format(p.config,
+                                                             p.config_l2d))
+    listfile = glob.glob(os.path.join(p.outdatadir, '{}*.nc'.format(pattern)))
+    str_format = '%Y-%m-%dT%H:%M:%SZ'
+    list_key = {'ucur':'ux_true', 'vcur':'uy_true'}
+    list_input = {}
+    dimtime = 'time'
+    dimlon = 'lon'
+    dimlat = 'lat'
+    longname = { "ux_noerr": "Error-free zonal velocity",
+                 "uy_noerr": "Error-free meridional velocity",
+                "ux_obs": "Observed zonal velocity",
+                "uy_obs": "Observed meridional velocity",
+                "ux_model": "Error-free zonal velocity",
+                "uy_model": "Error-free meridional velocity",
+                "ux_true": "True zonal velocity",
+                "uy_true": "True meridional velocity",
+                }
+    unit = {"ux_noerr": "m/s", "ux_obs": "m/s",
+            "uy_noerr": "m/s", "uy_obs": "m/s",
+            "ux_true": "m/s", "uy_true": "m/s"
+            }
+    for key in list_key:
+        list_input[key] = p.list_input_var_l2d[key]
+
+    for ifile in listfile:
+        fid = netCDF4.Dataset(ifile, 'a')
+        start_date = datetime.datetime.strptime(fid.time_coverage_start,
+                                                str_format)
+        end_date = datetime.datetime.strptime(fid.time_coverage_end,
+                                              str_format)
+        model_start =  datetime.datetime.strptime(p.first_time, str_format)
+        it = model_start - end_date
+        print('read l2d coordinates')
+        grd = {}
+        grd['lon'] = fid.variables['lon'][:]
+        grd['lat'] = fid.variables['lat'][:]
+        grd['lon2'], grd['lat2'] = numpy.meshgrid(grd['lon'], grd['lat'])
+        print('read model')
+        model_data, out_var, list_file = read_model(p, it, p.dim_time,
+                                                    list_input)
+        print('interpolate model')
+        interpolate_model(p, model_data, out_var, grd, list_key)
+        for key in grd.keys():
+            nvar = '{}'.format(key)
+            var = fid.createVariable(nvar, 'f4', (dimtime, dimlat, dimlon),
+                                     fill_value=-1.36e9)
+            value = grd[key]
+            try:
+                var.units = unit[str(key)]
+            except:
+                var.units = ''
+            try:
+                var.long_name = longname[str(key)]
+            except:
+                var.long_name = str(key)
+            if value.any():
+                mask = numpy.isnan(value)
+                value[numpy.where(mask)] = -1.36e9
+                mask_ind = numpy.where(value < -1e7)
+                value[mask_ind] = -1.36e9
+                mask_ind = numpy.where(value > 1e7)
+                value[mask_ind] = -1.36e9
+                mask_ind = numpy.where(value == numpy.PINF)
+                value[mask_ind] = -1.36e9
+                var[0, :, :] = value
+
 
 
 def worker_build_obs(*args, **kwargs):
@@ -178,6 +252,9 @@ def worker_build_obs(*args, **kwargs):
         mask_time = ((obs_i['time'] > time0 - resolt)
                      & (obs_i['time'] < time1 + resolt))
         mask = (mask_time & mask_lat & mask_lon & mask_data)
+        #if not numpy.any(mask):
+        #    msg_queue.put((os.getpid(), filev, None, None))
+        #    return None
         for key in obs_i.keys():
             obs_i[key] = obs_i[key][mask]
         _lon = _lon[mask]
@@ -262,7 +339,7 @@ def save_l2d(filenc, timeref, window, time_unit, grd):
 
 
 def read_l2b(nfile, model_nan=0):
-    fid = netCDF4.Dataset(nfile)
+    fid = netCDF4.Dataset(nfile, 'r')
     obs_i = {}
     obs_i['ux'] = numpy.ma.array(fid.variables['ucur'][:]).flatten()
     obs_i['uy'] = numpy.ma.array(fid.variables['vcur'][:]).flatten()
@@ -287,6 +364,7 @@ def read_l2b(nfile, model_nan=0):
                     | (obs_i['ur_obs']==model_nan))
     mask_data = ~(mask_invalid)
     time_unit = fid.variables['time'].units
+    fid.close()
     return obs_i, mask_data, time_unit
 
 
@@ -306,14 +384,14 @@ def make_grid(lon0, lon1, dlon, lat0, lat1, dlat):
     return grd
 
 
-def make_oi(p, grd, lobs, iobs, resols, timeref, resolt, index,
+def make_oi(p, p2, grd, iobs, resols, timeref, resolt, index,
             die_on_error=False):
     #for j in range(grd['ny']):
     #    for i in range(grd['nx']):
     jobs = []
     shape_grd = numpy.shape(grd['uy_noerr'])
     for j, i in zip(index[0], index[1]):
-        jobs.append([grd, lobs, iobs, resols, timeref, resolt, index, j, i])
+        jobs.append([p2, grd, iobs, resols, timeref, resolt, index, j, i])
 
     ok = False
     try:
@@ -340,6 +418,7 @@ def par_make_oi(grd, _proc_count, jobs, die_on_error, progress_bar):
     """ Compute SWOT-like data for all grids and all cycle, """
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
+    proc_count = 2
 
     status_updater = mod_tools.update_progress_multiproc
     jobs_manager = skimulator.mod_parallel.JobsManager(proc_count,
@@ -359,9 +438,15 @@ def par_make_oi(grd, _proc_count, jobs, die_on_error, progress_bar):
 
 def worker_make_oi(*args, **kwargs):
     msg_queue = args[0]
-    grd, lobs, iobs, resols, timeref, resolt, index, j, i = args[1:10]
+    p2, grd, iobs, resols, timeref, resolt, index, j, i = args[1:10]
     res_queue = args[-1]
+    p = mod_tools.fromdict(p2)
 
+    pobs_file = os.path.join(p.outdatadir, 'obs_{}.pyo'.format(p.config_l2d))
+    print(datetime.datetime.now())
+    with open(pobs_file, 'rb') as pickf:
+        lobs = pickle.load(pickf)
+    print(datetime.datetime.now())
     obs = {}
     ni = 1
     nj = 1
@@ -384,6 +469,7 @@ def worker_make_oi(*args, **kwargs):
                     obs[key] = []
                 _obs = lobs[key][ind_key][numpy.array(iobs[ind_key], dtype='int')]
                 obs[key] = numpy.concatenate(([obs[key], _obs]))
+    del(lobs)
     # TODO: to be optimized, especially for global, ...
     flat_ind = j + i*grd['nylr']
     if 'lon' not in obs.keys():
@@ -486,7 +572,7 @@ so that it can
 
 def err_formatter(pid, it, cycle, exc):
     """Transform errors stored by the JobsManager into readable messages."""
-    msg = None
+    msg = '/!\ Error occurred while processing it {}'.format(it)
     #if cycle < 0:
     #    msg = '/!\ Error occurred while processing grid'
     #else:
