@@ -149,7 +149,8 @@ def run_l2d(p, die_on_error=False):
         if global_domain is False:
             interpolate_model(p, model_data, out_var, grd, list_key)
 
-        pattern = os.path.join(p.outdatadir, '{}_l2d_'.format(config))
+        pattern = os.path.join(p.outdatadir, '{}_{}_l2d_'.format(config,
+                                                                 p.config_l2d))
         save_l2d(pattern, timeref, window, time_unit, grd)
         print(datetime.datetime.now())
 
