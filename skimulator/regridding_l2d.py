@@ -70,7 +70,6 @@ def run_l2d(p, die_on_error=False):
         # Create specific funtion to retrieve time_unit
         filev = os.path.join(p.outdatadir, listfile[0])
         _, _, time_unit = read_l2b(filev)
-        print(time_unit)
         for pattern in listfile:
             jobs.append([p2, pattern, lon0, lon1, lat0, lat1, time0, time1,
                          resolt, dlonlr, dlatlr])
@@ -93,7 +92,10 @@ def run_l2d(p, die_on_error=False):
         obs_rjobs = results[i]
         #key, ind_key, obs_r = results[i]
         for j in range(len(obs_rjobs)):
-            obs_r = obs_rjobs[j]
+            try:
+                obs_r = obs_rjobs[j]
+            except:
+                obs_r = obs_rjobs
             for key in obs_r.keys():
                 if key not in obs.keys():
                     obs[key] = {}
@@ -309,20 +311,10 @@ def make_oi(p, grd, lobs, iobs, resols, timeref, resolt, index,
     #    for i in range(grd['nx']):
     jobs = []
     shape_grd = numpy.shape(grd['uy_noerr'])
-    """
-    arr_uy_noe = multiprocessing.Array('f', grd['uy_noerr'].flatten('C'))
-    arr_ux_noe = multiprocessing.Array('f', grd['ux_noerr'].flatten('C'))
-    arr_uy_obs = multiprocessing.Array('f', grd['uy_obs'].flatten('C'))
-    arr_ux_obs = multiprocessing.Array('f', grd['ux_obs'].flatten('C'))
-    for j, i in zip(index[0], index[1]):
-        jobs.append([arr_uy_noe, arr_ux_noe, arr_uy_obs, arr_ux_obs, grd,
-                     lobs, iobs, resols, timeref, resolt, index, j, i])
-    """
     for j, i in zip(index[0], index[1]):
         jobs.append([grd, lobs, iobs, resols, timeref, resolt, index, j, i])
 
     ok = False
-    task = 0
     try:
         ok = par_make_oi(grd, p.proc_count, jobs, die_on_error, p.progress_bar)
     except skimulator.mod_parallel.MultiprocessingError:
@@ -333,25 +325,14 @@ def make_oi(p, grd, lobs, iobs, resols, timeref, resolt, index,
         logger.error('An error occurred and all errors are fatal')
         sys.exit(1)
 
-    """
-    arr_uy_noe = numpy.array(arr_uy_noe)
-    arr_ux_noe = numpy.array(arr_ux_noe)
-    arr_uy_obs = numpy.array(arr_uy_obs)
-    arr_ux_obs = numpy.array(arr_ux_obs)
-    grd['uy_noerr'] = arr_uy_noe.reshape(shape_grd)
-    grd['ux_noerr'] = arr_ux_noe.reshape(shape_grd)
-    grd['uy_obs'] = arr_uy_obs.reshape(shape_grd)
-    grd['ux_obs'] = arr_ux_obs.reshape(shape_grd)
-    """
-
 
 def save_oi(result, grd):
     """"""
     j, i , values = result
-    grd['uy_noerr'][j][i] = values[0]
-    grd['ux_noerr'][j][i] = values[1]
-    grd['uy_obs'][j][i] = values[2]
-    grd['ux_obs'][j][i] = values[3]
+    grd['uy_noerr'][j, i] = values[0]
+    grd['ux_noerr'][j, i] = values[1]
+    grd['uy_obs'][j, i] = values[2]
+    grd['ux_obs'][j, i] = values[3]
 
 
 def par_make_oi(grd, _proc_count, jobs, die_on_error, progress_bar):
@@ -364,8 +345,10 @@ def par_make_oi(grd, _proc_count, jobs, die_on_error, progress_bar):
                                                        status_updater,
                                                        exc_formatter,
                                                        err_formatter)
+    for j in jobs:
+        j.append(jobs_manager.res_queue)
     ok = jobs_manager.submit_jobs(worker_make_oi, jobs, die_on_error,
-                                  progress_bar, result=(save_oi, grd,))
+                                  progress_bar, results=(save_oi, grd,))
 
     if not ok:
         # Display errors once the processing is done
@@ -403,10 +386,6 @@ def worker_make_oi(*args, **kwargs):
     # TODO: to be optimized, especially for global, ...
     flat_ind = j + i*grd['nylr']
     if 'lon' not in obs.keys():
-        arr_uy_noe[flat_ind] = numpy.nan
-        arr_ux_noe[flat_ind] = numpy.nan
-        arr_uy_obs[flat_ind] = numpy.nan
-        arr_ux_obs[flat_ind] = numpy.nan
         return None
     dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
                    * (obs['lon'] - grd['lon2'][j, i])**2
@@ -428,12 +407,9 @@ def worker_make_oi(*args, **kwargs):
                                  obs['ur_true'][iiobs])
             eta_obs = numpy.dot(numpy.dot(Mi, RiH.T),
                                 obs['ur_obs'][iiobs])
-            arr_uy_noe[flat_ind] = eta_true[1]
-            arr_ux_noe[flat_ind] = eta_true[0]
-            arr_uy_obs[flat_ind] = eta_obs[1]
-            arr_ux_obs[flat_ind] = eta_obs[0]
-    res_queue.put((j, i, [eta_true[1], eta_true[0], eta_obs[1], eta_obs[0]]))
-    msg_queue.put((os.getpid(), j, i, None))
+            res_queue.put((j, i, [eta_true[1], eta_true[0], eta_obs[1],
+                           eta_obs[0]]))
+            msg_queue.put((os.getpid(), j, i, None))
     return None
 
 
@@ -507,12 +483,12 @@ so that it can
     return error_msg
 
 
-def err_formatter(pid, grid, cycle, exc):
+def err_formatter(pid, it, cycle, exc):
     """Transform errors stored by the JobsManager into readable messages."""
     msg = None
-    if cycle < 0:
-        msg = '/!\ Error occurred while processing grid {}'.format(grid)
-    else:
-        _msg = '/!\ Error occurred while processing cycle {} on grid {}'
-        msg = _msg.format(cycle, grid)
+    #if cycle < 0:
+    #    msg = '/!\ Error occurred while processing grid'
+    #else:
+    #    _msg = '/!\ Error occurred while processing cycle {}'
+    #    msg = _msg.format(cycle)
     return msg
