@@ -418,7 +418,7 @@ def par_make_oi(grd, _proc_count, jobs, die_on_error, progress_bar):
     """ Compute SWOT-like data for all grids and all cycle, """
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
-    proc_count = 2
+    proc_count = 1
 
     status_updater = mod_tools.update_progress_multiproc
     jobs_manager = skimulator.mod_parallel.JobsManager(proc_count,
