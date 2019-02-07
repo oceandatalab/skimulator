@@ -31,14 +31,21 @@ class MultiprocessingError(Exception):
 
 class JobsManager():
     """"""
-    def __init__(self, pool_size, status_updater, exc_fmt, err_fmt):
+    def __init__(self, pool_size, status_updater, exc_fmt, err_fmt,
+                 init_method=None, init_args=None):
         """"""
         self._pool_size = pool_size
         self.manager = multiprocessing.Manager()
         self.msg_queue = self.manager.Queue()
         self.res_queue = self.manager.Queue()
         self.errors_queue = self.manager.Queue()
-        self.pool = multiprocessing.get_context('spawn').Pool(pool_size)
+
+        ctx = multiprocessing.get_context('spawn')
+        if init_method is None:
+            self.pool = ctx.Pool(pool_size)
+        else:
+            self.pool = ctx.Pool(pool_size, initializer=init_method,
+                                 initargs=init_args)
 
         #self.format_exception = (exc_fmt,)
         self.format_exception = None
