@@ -2,8 +2,10 @@ import numpy
 import os
 import sys
 import glob
+import ctypes
 import datetime
 import time
+import math
 import netCDF4
 import pickle
 import skimulator.const as const
@@ -14,11 +16,16 @@ import skimulator.mod_parallel
 import logging
 import traceback
 import multiprocessing
+
 logger = logging.getLogger(__name__)
+
+# Using global variables is discouraged but this one will only be used as a
+# simple way to share the observations vector with worker processes (the main
+# process writes to this variable, the workers should only read from it)
+obs_vector = {}
 
 
 def run_l2d(p, die_on_error=False):
-
     config = p.config
     mod_tools.initialize_parameters(p)
 
@@ -88,7 +95,8 @@ def run_l2d(p, die_on_error=False):
         logger.error('An error occurred and all errors are fatal')
         sys.exit(1)
 
-    print(datetime.datetime.now())
+    print()
+    print('Aggregating results...', datetime.datetime.now())
     for i in range(len(results)):
         obs_rjobs = results[i]
         #key, ind_key, obs_r = results[i]
@@ -97,7 +105,8 @@ def run_l2d(p, die_on_error=False):
                 obs_r = obs_rjobs[j]
             except:
                 obs_r = obs_rjobs
-            for key in obs_r.keys():
+            obs_r_keys = list(obs_r.keys())
+            for key in obs_r_keys:
                 if key not in obs.keys():
                     obs[key] = {}
                 for ind_key in obs_r[key].keys():
@@ -105,11 +114,36 @@ def run_l2d(p, die_on_error=False):
                         obs[key][ind_key] = []
                     obs[key][ind_key] = numpy.concatenate((obs[key][ind_key],
                                                           obs_r[key][ind_key]))
-    pobs_file = os.path.join(p.outdatadir, 'obs_{}.pyo'.format(p.config_l2d))
-    with open(pobs_file, 'wb') as pickf:
-        pickle.dump(obs, pickf, protocol = pickle.HIGHEST_PROTOCOL)
+                del(obs_r[key])
+    del(results)
+
+    print('Building shared obs vector...', datetime.datetime.now())
+    # Populate the shared observations vector
+    global obs_vector
+    obs_vector = {}
+    for key in obs:
+        obs_vector[key] = {}
+        obs_ind_keys = list(obs[key].keys())
+        for ind_key in obs_ind_keys:
+            _buffer = multiprocessing.RawArray(ctypes.c_float,
+                                               numpy.size(obs[key][ind_key]))
+            narray = numpy.frombuffer(_buffer, dtype='float32')
+            numpy.copyto(narray, obs[key][ind_key])
+            obs_vector[key][ind_key] = _buffer
+
+            # Release memory from original array to keep the total amount of
+            # RAM as low as possible
+            if 'time' != key:
+                del(obs[key][ind_key])  # release memory as soon as possible
+
     print(datetime.datetime.now())
 
+    print('Memory housekeeping...', datetime.datetime.now())
+    keys = list(obs.keys())
+    for key in keys:
+        if 'time' != key:
+            del(obs[key])
+    print(datetime.datetime.now())
 
     #import pdb ; pdb.set_trace()
     # #####################################
@@ -377,21 +411,23 @@ def make_grid(lon0, lon1, dlon, lat0, lat1, dlat):
     grd['lon2'], grd['lat2'] = numpy.meshgrid(grd['lon'], grd['lat'])
     grd['nx'] = len(grd['lon'])
     grd['ny'] = len(grd['lat'])
-    grd['ux_noerr'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
-    grd['uy_noerr'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
-    grd['ux_obs'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
-    grd['uy_obs'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
     return grd
 
 
 def make_oi(p, p2, grd, iobs, resols, timeref, resolt, index,
             die_on_error=False):
-    #for j in range(grd['ny']):
-    #    for i in range(grd['nx']):
+    indices = [(j, i) for j, i in zip(index[0], index[1])]
+
+    # Split the list of (j, i) couples into chunks that the workers will
+    # process in parallel. The method to decide how many chunks are required is
+    # purely empirical
+    chunk_size = int(len(indices) / (3 * p.proc_count))  # 3 is a magic number
+    chunk_size = max(chunk_size, 1)  # avoid chunk_size = 0 due to rounding
+    ind_count = math.ceil(len(indices) / chunk_size)
     jobs = []
-    shape_grd = numpy.shape(grd['uy_noerr'])
-    for j, i in zip(index[0], index[1]):
-        jobs.append([p2, grd, iobs, resols, timeref, resolt, index, j, i])
+    for k in range(0, ind_count):
+        jobs.append([p2, grd, iobs, resols, timeref, resolt, index,
+                     indices[k * chunk_size :(k + 1) * chunk_size]])
 
     ok = False
     try:
@@ -405,99 +441,134 @@ def make_oi(p, p2, grd, iobs, resols, timeref, resolt, index,
         sys.exit(1)
 
 
-def save_oi(result, grd):
-    """"""
-    j, i , values = result
-    grd['uy_noerr'][j, i] = values[0]
-    grd['ux_noerr'][j, i] = values[1]
-    grd['uy_obs'][j, i] = values[2]
-    grd['ux_obs'][j, i] = values[3]
+def init_oi_worker(obs_dict):
+    """Initialize the obs_vector global variable with the value passed by the
+    parent process.
+    obs_vector is not modified by the worker, so sharing this object between
+    the main process and the workers should not consume additional memory due
+    to Copy On Write fork/spawn behavior (at least on Linux)."""
+    global obs_vector
+    obs_vector = obs_dict
 
 
 def par_make_oi(grd, _proc_count, jobs, die_on_error, progress_bar):
     """ Compute SWOT-like data for all grids and all cycle, """
+    global obs_vector
+
     # - Set up parallelisation parameters
     proc_count = min(len(jobs), _proc_count)
-    proc_count = 1
 
     status_updater = mod_tools.update_progress_multiproc
     jobs_manager = skimulator.mod_parallel.JobsManager(proc_count,
                                                        status_updater,
                                                        exc_formatter,
-                                                       err_formatter)
+                                                       err_formatter,
+                                                       init_oi_worker,
+                                                       (obs_vector,))
+
     for j in jobs:
         j.append(jobs_manager.res_queue)
-    ok = jobs_manager.submit_jobs(worker_make_oi, jobs, die_on_error,
-                                  progress_bar, results=(save_oi, grd,))
 
+    jobs_res = []
+    ok = jobs_manager.submit_jobs(worker_make_oi, jobs, die_on_error,
+                                  progress_bar, results=jobs_res.append)
+
+    print()
+    print('par_make_oi complete', datetime.datetime.now())
     if not ok:
         # Display errors once the processing is done
         jobs_manager.show_errors()
+
+    # Reconstruct results grids
+    grd['ux_noerr'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
+    grd['uy_noerr'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
+    grd['ux_obs'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
+    grd['uy_obs'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
+    for k in range(0, len(jobs_res)):
+        for res in jobs_res[k]:
+            j, i, ux_noerr, uy_noerr, ux_obs, uy_obs = res
+            grd['ux_noerr'][j, i] = ux_noerr
+            grd['uy_noerr'][j, i] = uy_noerr
+            grd['ux_obs'][j, i] = ux_obs
+            grd['uy_obs'][j, i] = uy_obs
+
+    del(jobs_res)
+
     return ok
 
 
 def worker_make_oi(*args, **kwargs):
     msg_queue = args[0]
-    p2, grd, iobs, resols, timeref, resolt, index, j, i = args[1:10]
+    p2, grd, iobs, resols, timeref, resolt, index, indices = args[1:9]
     res_queue = args[-1]
     p = mod_tools.fromdict(p2)
 
-    pobs_file = os.path.join(p.outdatadir, 'obs_{}.pyo'.format(p.config_l2d))
-    print(datetime.datetime.now())
-    with open(pobs_file, 'rb') as pickf:
-        lobs = pickle.load(pickf)
-    print(datetime.datetime.now())
-    obs = {}
-    ni = 1
-    nj = 1
-    dlat = grd['dlat']
-    dlatlr = grd['dlatlr']
-    dlon = grd['dlon']
-    dlonlr = grd['dlonlr']
-    jlr = int(numpy.floor(j*dlat/dlatlr))
-    ilr = int(numpy.floor(i*dlon/dlonlr))
-    for jx in range(max(0, jlr-nj), min(jlr+nj, grd['nylr'])):
-        for jy in range(max(0, ilr-ni), min(ilr+ni, grd['nxlr'])):
-            # ind_key = '{}_{}'.format(jx, jy)
-            ind_key = 10000 * int(jx) + int(jy)  # '{}_{}'.format(int(i), int(j))
-            if ind_key not in iobs.keys():
-                continue
-            if ~iobs[ind_key].any():
-                continue
-            for key in lobs.keys():
-                if key not in obs.keys():
-                    obs[key] = []
-                _obs = lobs[key][ind_key][numpy.array(iobs[ind_key], dtype='int')]
-                obs[key] = numpy.concatenate(([obs[key], _obs]))
-    del(lobs)
-    # TODO: to be optimized, especially for global, ...
-    flat_ind = j + i*grd['nylr']
-    if 'lon' not in obs.keys():
-        return None
-    dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
-                   * (obs['lon'] - grd['lon2'][j, i])**2
-                   + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
-    iiobs=numpy.where((dist < resols))[0]
-    if len(iiobs)>=2:
-        H = numpy.zeros((len(iiobs), 2))
-        H[:, 0] = numpy.cos(obs['angle'][iiobs])
-        H[:, 1] = numpy.sin(obs['angle'][iiobs])
-        win_s = numpy.exp(-dist[iiobs]**2/(0.5*resols)**2)
-        time_cen = obs['time'][iiobs] - timeref
-        win_t = numpy.exp(-time_cen**2/(0.5 * resolt)**2) # exp window
-        Ri = win_s * win_t
-        RiH = numpy.tile(Ri, (2, 1)).T*H
-        M = numpy.dot(H.T, RiH)
-        if numpy.linalg.cond(M) < 1e3:
-            Mi = numpy.linalg.inv(M)
-            eta_true = numpy.dot(numpy.dot(Mi, RiH.T),
-                                 obs['ur_true'][iiobs])
-            eta_obs = numpy.dot(numpy.dot(Mi, RiH.T),
-                                obs['ur_obs'][iiobs])
-            res_queue.put((j, i, [eta_true[1], eta_true[0], eta_obs[1],
-                           eta_obs[0]]))
-            msg_queue.put((os.getpid(), j, i, None))
-    return None
+    global obs_vector
+
+    jobs_res = []
+
+    for j, i in indices:
+        obs = {}
+        ni = 1
+        nj = 1
+        dlat = grd['dlat']
+        dlatlr = grd['dlatlr']
+        dlon = grd['dlon']
+        dlonlr = grd['dlonlr']
+        jlr = int(numpy.floor(j*dlat/dlatlr))
+        ilr = int(numpy.floor(i*dlon/dlonlr))
+        for jx in range(max(0, jlr-nj), min(jlr+nj, grd['nylr'])):
+            for jy in range(max(0, ilr-ni), min(ilr+ni, grd['nxlr'])):
+                # ind_key = '{}_{}'.format(jx, jy)
+                ind_key = 10000 * int(jx) + int(jy)  # '{}_{}'.format(int(i), int(j))
+                if ind_key not in iobs.keys():
+                    continue
+                if ~iobs[ind_key].any():
+                    continue
+                for key in obs_vector.keys():
+                    if key not in obs.keys():
+                        obs[key] = []
+
+                    # Rebuild numpy array from shared memory (no copy)
+                    _buffer = obs_vector[key][ind_key]
+                    narray = numpy.frombuffer(_buffer, dtype='float32')
+
+                    _obs = narray[numpy.array(iobs[ind_key], dtype='int')]
+                    obs[key] = numpy.concatenate(([obs[key], _obs]))
+
+        # TODO: to be optimized, especially for global, ...
+        flat_ind = j + i*grd['nylr']
+        if 'lon' not in obs.keys():
+            continue
+        dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
+                       * (obs['lon'] - grd['lon2'][j, i])**2
+                       + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
+        iiobs=numpy.where((dist < resols))[0]
+        if len(iiobs)>=2:
+            H = numpy.zeros((len(iiobs), 2))
+            H[:, 0] = numpy.cos(obs['angle'][iiobs])
+            H[:, 1] = numpy.sin(obs['angle'][iiobs])
+            win_s = numpy.exp(-dist[iiobs]**2/(0.5*resols)**2)
+            time_cen = obs['time'][iiobs] - timeref
+            win_t = numpy.exp(-time_cen**2/(0.5 * resolt)**2) # exp window
+            Ri = win_s * win_t
+            RiH = numpy.tile(Ri, (2, 1)).T*H
+            M = numpy.dot(H.T, RiH)
+            if numpy.linalg.cond(M) < 1e3:
+                Mi = numpy.linalg.inv(M)
+                eta_true = numpy.dot(numpy.dot(Mi, RiH.T),
+                                     obs['ur_true'][iiobs])
+                eta_obs = numpy.dot(numpy.dot(Mi, RiH.T),
+                                    obs['ur_obs'][iiobs])
+
+                jobs_res.append((j, i, eta_true[0], eta_true[1], eta_obs[0],
+                                 eta_obs[1]))
+
+    # Pass results for all the processed (j, i) to the parent process
+    res_queue.put(jobs_res)
+
+    # Notify parent process about job completion
+    msg_queue.put((os.getpid(), j, i, None))
 
 
 def read_model(p, ifile, dim_time, list_input):
