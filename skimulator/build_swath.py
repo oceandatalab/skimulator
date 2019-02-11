@@ -106,11 +106,12 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
 
     # shift time if the user needs to shift the time of the orbit
     if p.shift_time is not None:
-        shift_index = numpy.where(votime >= p.shift_time)[0]
-        volon = numpy.hstack([volon[shift_index[0][0]:],
-                             volon[:shift_index[0][0]]])
-        volat = numpy.hstack([volat[shift_index[0][0]:],
-                             volat[:shift_index[0][0]]])
+        shift_time = p.shift_time * const.secinday
+        shift_index = numpy.where(votime >= shift_time)[0]
+        volon = numpy.hstack([volon[shift_index[0]:],
+                             volon[:shift_index[0]]])
+        volat = numpy.hstack([volat[shift_index[0]:],
+                             volat[:shift_index[0]]])
     # shift lon if the user needs to shift the localisation of the orbit
     if p.shift_lon is not None:
         volon = volon + p.shift_lon
