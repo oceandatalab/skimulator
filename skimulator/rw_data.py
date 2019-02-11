@@ -935,13 +935,13 @@ class NETCDF_MODEL():
         self.read_coordinates(p)
         if (numpy.min(self.vlon[0]) < 1.) and (numpy.max(self.vlon[0]) > 359.):
             _ind = numpy.where(self.vlon[0] > 180.)
-            self.vlonu[_ind] = self.vlonu[0][_ind] - 360
-            lon1 = (numpy.min(self.vlonu[0]) + 360) % 360
-            lon2 = (numpy.max(self.vlonu[0]) + 360) % 360
+            self.vlon[0][_ind] = self.vlon[0][_ind] - 360
+            lon1 = (numpy.min(self.vlon[0]) + 360) % 360
+            lon2 = (numpy.max(self.vlon[0]) + 360) % 360
         else:
-            lon1 = numpy.min(self.vlonu[0])
-            lon2 = numpy.max(self.vlonu[0])
-        return [lon1, lon2, numpy.min(self.vlatu[0]), numpy.max(self.vlatu[0])]
+            lon1 = numpy.min(self.vlon[0])
+            lon2 = numpy.max(self.vlon[0])
+        return [lon1, lon2, numpy.min(self.vlat[0]), numpy.max(self.vlat[0])]
 
 
 class WW3():
