@@ -9,6 +9,7 @@ import math
 import time
 import logging
 import traceback
+import collections
 import multiprocessing
 
 logger = logging.getLogger(__name__)
@@ -30,13 +31,21 @@ class MultiprocessingError(Exception):
 
 class JobsManager():
     """"""
-    def __init__(self, pool_size, status_updater, exc_fmt, err_fmt):
+    def __init__(self, pool_size, status_updater, exc_fmt, err_fmt,
+                 init_method=None, init_args=None):
         """"""
         self._pool_size = pool_size
         self.manager = multiprocessing.Manager()
         self.msg_queue = self.manager.Queue()
+        self.res_queue = self.manager.Queue()
         self.errors_queue = self.manager.Queue()
-        self.pool = multiprocessing.get_context('spawn').Pool(pool_size)
+
+        ctx = multiprocessing.get_context('spawn')
+        if init_method is None:
+            self.pool = ctx.Pool(pool_size)
+        else:
+            self.pool = ctx.Pool(pool_size, initializer=init_method,
+                                 initargs=init_args)
 
         #self.format_exception = (exc_fmt,)
         self.format_exception = None
@@ -86,8 +95,16 @@ class JobsManager():
 
 
     def submit_jobs(self, operation, jobs, die_on_error, progress_bar,
-                    delay=0.5):
+                    delay=0.5, results=None):
         """"""
+        results_callback = None
+        results_args = None
+        if results is not None:
+            if isinstance(results, collections.Iterable) and 1 < len(results):
+                results_callback, results_args = results[0], results[1:]
+            else:
+                results_callback = results
+
         for j in jobs:
             j.append(self.errors_queue)
             j.append(self.msg_queue)
@@ -108,19 +125,38 @@ class JobsManager():
             sys.stdout.write('\n' * self._pool_size)
             sys.stdout.flush()
 
-        # Start jobs processing 
-        tasks = self.pool.map_async(_operation_wrapper, jobs,
-                                    chunksize=chunk_size,
-                                    error_callback=self._error_callback)
+        # Start jobs processing
+        if results is True:
+            res = []
+            tasks = self.pool.map_async(_operation_wrapper, jobs,
+                                         chunksize=chunk_size,
+                                         error_callback=self._error_callback,
+                                         callback=res.append)
+
+        else:
+            tasks = self.pool.map_async(_operation_wrapper, jobs,
+                                        chunksize=chunk_size,
+                                        error_callback=self._error_callback)
 
         # Wait until all jobs have been executed
         ok = True
         while not tasks.ready():
+            # Handle progress and error messages
             if not self.msg_queue.empty():
                 msg = self.msg_queue.get()
                 _ok = self.handle_message(status, msg, die_on_error,
                                           progress_bar)
                 ok = ok and _ok
+
+            # Handle results from processed jobs on the fly
+            if (results_callback is not None) and (not self.res_queue.empty()):
+                job_res = self.res_queue.get()
+
+                if results_args is not None:
+                    results_callback(job_res, *results_args)
+                else:
+                    results_callback(job_res)
+
             time.sleep(delay)
 
         # Make sure all messages have been processed
@@ -132,11 +168,21 @@ class JobsManager():
         # Flush stdout buffer to avoid partial output issues 
         sys.stdout.flush()
 
+        # Make sure all results have been processed
+        while ((results is not None) and (not self.res_queue.empty())):
+            job_res = self.res_queue.get()
+
+            if results_args is not None:
+                results_callback(job_res, *results_args)
+            else:
+                results_callback(job_res)
+
         # Wait for workers to release resources and synchronize with the main
         # process
         self.pool.close()
         self.pool.join()
         #"""
+
         return ok
 
 
@@ -150,7 +196,7 @@ def _operation_wrapper(*args, **kwargs):
 
     try:
         job_id = _args[0]
-        operation(msg_queue, *_args, **kwargs)
+        res = operation(msg_queue, *_args, **kwargs)
     except:
         # Error sink
         exc = sys.exc_info()
@@ -164,5 +210,7 @@ def _operation_wrapper(*args, **kwargs):
         msg_queue.put((os.getpid(), job_id, -1, error_msg))
         errors_queue.put((os.getpid(), job_id, -1, error_msg))
         return False
-
-    return True
+    if res is None:
+        return True
+    else:
+        return res

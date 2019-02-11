@@ -95,6 +95,7 @@ def initialize_parameters(p):
     p.time_domain = getattr(p, 'time_domain', (5, 25, 1)) # in days
     p.list_input_var_l2c = getattr(p, 'list_input_var_l2c', p.list_input_var)
     p.list_input_var_l2d = getattr(p, 'list_input_var_l2d', p.list_input_var)
+    p.config_l2d = getattr(p, 'config_l2d', '')
     return None
 
 

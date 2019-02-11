@@ -95,6 +95,7 @@ optional_dependencies = {'plot': ['matplotlib', ], 'carto': ['matplotlib',
 cmds = ['skimul2b = {}.cli:run_script'.format(__package_name__),
         'skimul2c = {}.cli:run_l2c'.format(__package_name__),
         'skimul2d = {}.cli:run_l2d'.format(__package_name__),
+        'interpl2d = {}.cli:interpolate_l2d'.format(__package_name__),
         ]
 
 # VERSION.txt must be added to the package if the file has been generated
