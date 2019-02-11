@@ -226,18 +226,20 @@ def offline_interpolation(p):
         end_date = datetime.datetime.strptime(fid.time_coverage_end,
                                               str_format)
         model_start =  datetime.datetime.strptime(p.first_time, str_format)
-        it = model_start - end_date
+        it = -(model_start - start_date).days
         print('read l2d coordinates')
         grd = {}
         grd['lon'] = fid.variables['lon'][:]
         grd['lat'] = fid.variables['lat'][:]
         grd['lon2'], grd['lat2'] = numpy.meshgrid(grd['lon'], grd['lat'])
         print('read model')
+        print(start_date, model_start)
         model_data, out_var, list_file = read_model(p, it, p.dim_time,
                                                     list_input)
         print('interpolate model')
         interpolate_model(p, model_data, out_var, grd, list_key)
-        for key in grd.keys():
+        list_var = ('ux_true', 'uy_true')
+        for key in list_var:
             nvar = '{}'.format(key)
             var = fid.createVariable(nvar, 'f4', (dimtime, dimlat, dimlon),
                                      fill_value=-1.36e9)
@@ -575,7 +577,9 @@ def read_model(p, ifile, dim_time, list_input):
     model_data, list_file = mod.load_coordinate_model(p)
     model_data.read_coordinates(p)
     nfile = int(ifile)
+    print(nfile)
     filename = os.path.join(p.indatadir, list_file[nfile])
+    print(filename)
     model_step_ctor = getattr(rw, p.model)
     out_var = {}
     for i in range(dim_time):
