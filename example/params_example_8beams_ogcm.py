@@ -100,14 +100,13 @@ ice_mask = False
 #        are extracted from model       
 grid = 'regular'
 # ------ Specify list of variable:
-list_input_var = {'ucur': ['uo', ''], 'vcur': ['vo', ''], 'ssh': ['sla', '']
+list_input_var = {'ucur': ['uo', '', 0], 'vcur': ['vo', '', 0],
+                  'ssh': ['sla', '', 0]
                  }
 # ------ Specify longitude variable:
-lonu = 'longitude'
-lonv = 'longitude'
+lon = ('longitude', )
 # ------ Specify latitude variable:
-latu = 'latitude'
-latv = 'latitude'
+lat = ('latitude', )
 # ------ Specify number of time in file:
 dim_time = 1
 # ------ Time step between two model outputs (in days):
