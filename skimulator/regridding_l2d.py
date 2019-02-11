@@ -65,7 +65,7 @@ def run_l2d(p, die_on_error=False):
     c0 = int((max(time0 - resolt, 0)) / tcycle) + 1
     c1 = int((time1 + resolt) / tcycle) + 1
     obs = {}
-    c0 = 1 ; c1 =  2
+    # c0 = 1 ; c1 =  2
     p2 = mod_tools.todict(p)
     dlatlr = 1 # dlat
     dlonlr = 1 # dlon
@@ -517,8 +517,8 @@ def worker_make_oi(*args, **kwargs):
         dlonlr = grd['dlonlr']
         jlr = int(numpy.floor(j*dlat/dlatlr))
         ilr = int(numpy.floor(i*dlon/dlonlr))
-        for jx in range(max(0, jlr-nj), min(jlr+nj, grd['nylr'])):
-            for jy in range(max(0, ilr-ni), min(ilr+ni, grd['nxlr'])):
+        for jx in range(max(0, jlr-nj), min(jlr + nj + 1, grd['nylr'])):
+            for jy in range(max(0, ilr-ni), min(ilr + ni + 1, grd['nxlr'])):
                 # ind_key = '{}_{}'.format(jx, jy)
                 ind_key = 10000 * int(jx) + int(jy)  # '{}_{}'.format(int(i), int(j))
                 if ind_key not in iobs.keys():
@@ -593,6 +593,8 @@ def read_model(p, ifile, dim_time, list_input):
 
 
 def make_mask(p, key, grid):
+    """ Return indices of points on the ocean (non masked value in the model)
+    """
     list_input = {key: p.list_input_var_l2d[key]}
     model_data, out_var, list_file = read_model(p, 0, 1, list_input)
     mask_ucur = numpy.ma.getmaskarray(out_var['ucur'])
@@ -600,9 +602,9 @@ def make_mask(p, key, grid):
     out_var['ucur'] = numpy.ma.array(out_var['ucur'], mask=mask_ucur)
     list_key = {'ucur':'mask'}
     interpolate_model(p, model_data, out_var, grid, list_key)
-    mask_index = numpy.where(~numpy.ma.getmaskarray(grid['mask'])
-                             & (grid['mask'] != 0)
-                             & (~numpy.isnan(grid['mask'])))
+    mask_index = numpy.where(~numpy.ma.getmaskarray(grid['mask']))
+                            # & (grid['mask'] != 0)
+                            # & (~numpy.isnan(grid['mask'])))
     # TODO TO proof if mask_index is empty
     return mask_index
 
