@@ -59,16 +59,31 @@ def run_l2d(p, die_on_error=False):
     time0, time1, dt = p.time_domain
 
     # #####################################
+    # Spatial grid construction
+    # #####################################
+    grd = make_grid(lon0, lon1, dlon, lat0, lat1, dlat)
+    dlatlr = 1 # dlat
+    dlonlr = 1 # dlon
+    grd['dlon'] = dlon
+    grd['dlonlr'] = dlonlr
+    grd['dlat'] = dlat
+    grd['dlatlr'] = dlatlr
+    grd['nxlr'] = int((lon1-lon0)/dlonlr)
+    grd['nylr'] = int((lat1-lat0)/dlatlr)
+    # Filtering as a function of latitude (10d at Equator, 14 d at 60º)
+    resolt = (-4 * numpy.cos(numpy.deg2rad(grd['lat'])) + 9) * resolt
+
+    # #####################################
     # READ L2B OBS
     # #####################################
     tcycle = p.satcycle
-    c0 = int((max(time0 - resolt, 0)) / tcycle) + 1
-    c1 = int((time1 + resolt) / tcycle) + 1
+    # TODO change
+    resoltmax = numpy.max(resolt)
+    c0 = int((max(time0 - resoltmax, 0)) / tcycle) + 1
+    c1 = int((time1 + resoltmax) / tcycle) + 1
     obs = {}
     # c0 = 1 ; c1 =  2
     p2 = mod_tools.todict(p)
-    dlatlr = 1 # dlat
-    dlonlr = 1 # dlon
     jobs = []
     print(datetime.datetime.now())
     for cycle in range(c0, c1 + 1, 1):
@@ -80,7 +95,7 @@ def run_l2d(p, die_on_error=False):
         _, _, time_unit = read_l2b(filev)
         for pattern in listfile:
             jobs.append([p2, pattern, lon0, lon1, lat0, lat1, time0, time1,
-                         resolt, dlonlr, dlatlr])
+                         resoltmax, dlonlr, dlatlr])
     ok = False
     task = 0
     results = []
@@ -147,16 +162,6 @@ def run_l2d(p, die_on_error=False):
 
     #import pdb ; pdb.set_trace()
     # #####################################
-    # Spatial grid construction
-    # #####################################
-    grd = make_grid(lon0, lon1, dlon, lat0, lat1, dlat)
-    grd['dlon'] = dlon
-    grd['dlonlr'] = dlonlr
-    grd['dlat'] = dlat
-    grd['dlatlr'] = dlatlr
-    grd['nxlr'] = int((lon1-lon0)/dlonlr)
-    grd['nylr'] = int((lat1-lat0)/dlatlr)
-    # #####################################
     # Independant time loop for each analysis
     # #####################################
     enstime = numpy.arange(time0, time1 + dt, dt)
@@ -174,8 +179,10 @@ def run_l2d(p, die_on_error=False):
         print(it, timeref)
         iobs = {}
         for ind_key in obs['time'].keys():
-            iobs[ind_key] = numpy.where((obs['time'][ind_key] > timeref - resolt)
-                                      & (obs['time'][ind_key] < timeref + resolt))[0]
+            iobs[ind_key] = numpy.where((obs['time'][ind_key] > (timeref
+                                         - numpy.max(resoltmax)))
+                                         & (obs['time'][ind_key] < (timeref
+                                         + numpy.max(resoltmax))))[0]
         make_oi(p, p2, grd, iobs, resols, timeref, resolt, indice_mask,
                 die_on_error=die_on_error)
         # Interpolate model data to have a true reference
@@ -506,7 +513,6 @@ def worker_make_oi(*args, **kwargs):
     p = mod_tools.fromdict(p2)
 
     global obs_vector
-
     jobs_res = []
 
     for j, i in indices:
@@ -517,6 +523,9 @@ def worker_make_oi(*args, **kwargs):
         dlatlr = grd['dlatlr']
         dlon = grd['dlon']
         dlonlr = grd['dlonlr']
+        resoltij = resolt[j]
+        # Filtering as a function of latitude (90km at Eqautor, 40 km at 60º)
+        resolsij = (100 * numpy.cos(numpy.deg2rad(grd['lat'][j])) - 10) * resols
         jlr = int(numpy.floor(j*dlat/dlatlr))
         ilr = int(numpy.floor(i*dlon/dlonlr))
         for jx in range(max(0, jlr-nj), min(jlr + nj + 1, grd['nylr'])):
@@ -542,17 +551,21 @@ def worker_make_oi(*args, **kwargs):
         flat_ind = j + i*grd['nylr']
         if 'lon' not in obs.keys():
             continue
-        dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2
-                       * (obs['lon'] - grd['lon2'][j, i])**2
+
+        # Handle IDL and Greenwich line
+        _lonobs = numpy.mod(obs['lon'] + 360, 360)
+        _longrd = numpy.mod(grd['lon2'][j, i] + 360, 360)
+        dlon = 180 - abs(abs(_lonobs - _longrd) - 180)
+        dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2 * (dlon)**2
                        + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
-        iiobs=numpy.where((dist < resols))[0]
+        iiobs=numpy.where((dist < resolsij))[0]
         if len(iiobs)>=2:
             H = numpy.zeros((len(iiobs), 2))
             H[:, 0] = numpy.cos(obs['angle'][iiobs])
             H[:, 1] = numpy.sin(obs['angle'][iiobs])
-            win_s = numpy.exp(-dist[iiobs]**2/(0.5*resols)**2)
+            win_s = numpy.exp(-dist[iiobs]**2/(0.5*resolsij)**2)
             time_cen = obs['time'][iiobs] - timeref
-            win_t = numpy.exp(-time_cen**2/(0.5 * resolt)**2) # exp window
+            win_t = numpy.exp(-time_cen**2/(0.5 * resoltij)**2) # exp window
             Ri = win_s * win_t
             RiH = numpy.tile(Ri, (2, 1)).T*H
             M = numpy.dot(H.T, RiH)
