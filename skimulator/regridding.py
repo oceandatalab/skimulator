@@ -290,10 +290,10 @@ def write_l2(outfile, grd, obs, cycle, passn, firsttime):
     #geolocation = {}
     #geolocation['lon']
     rw.write_l2c(metadata, grd, u_ac_obs=grd['vobsac'], u_al_obs=grd['vobsal'],
-                 u_ac_model=grd['vmodac'], u_al_model=grd['vmodal'],
-                 angle=grd['angle'], u_obs=grd['vobsx'], v_obs=grd['vobsy'],
-                 u_model=grd['vmodx'], v_model=grd['vmody'],
-                 u_true=grd['u_model'], v_true=grd['v_model'],
+                 u_ac_noerr=grd['vmodac'], u_al_noerr=grd['vmodal'],
+                 angle=grd['angle'], ux_obs=grd['vobsx'], uy_obs=grd['vobsy'],
+                 ux_noerr=grd['vmodx'], uy_noerr=grd['vmody'],
+                 ux_true=grd['u_model'], uy_true=grd['v_model'],
                  u_ac_true=grd['vtrueac'], u_al_true=grd['vtrueal'],
                  )
 
@@ -477,7 +477,7 @@ def worker_method_l2c(*args, **kwargs):
         grd['vmodal'][mask] = numpy.nan
         grd['vmodx'][mask] = numpy.nan
         grd['vmody'][mask] = numpy.nan
-        pattern_out = '{}_L2C_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
+        pattern_out = '{}_l2c_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
         outfile = os.path.join(p.outdatadir, pattern_out)
         write_l2(outfile, grd, obs, cycle, passn, p.first_time)
     msg_queue.put((os.getpid(), ifile, None, None))

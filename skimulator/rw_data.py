@@ -287,22 +287,22 @@ def write_l2c(metadata, geolocation, **kwargs):
                  "uy_noerr": "Error-free meridional velocity",
                 "ux_obs": "Observed zonal velocity",
                 "uy_obs": "Observed meridional velocity",
-                "uac_obs": "Observed across track velocity",
-                "ual_obs": "Observed along track velocity",
+                "u_ac_obs": "Observed across track velocity",
+                "u_al_obs": "Observed along track velocity",
                 "ux_model": "Error-free zonal velocity",
                 "uy_model": "Error-free meridional velocity",
-                "uac_model": "Error-free across track velocity",
-                "ual_model": "Error-free along track velocity",
+                "u_ac_noerr": "Error-free across track velocity",
+                "u_al_noerr": "Error-free along track velocity",
                 "angle": "angle of xac with eastward vector",
                 "ux_true": "True zonal velocity",
                 "uy_true": "True meridional velocity",
                 "x_al": "Along track distance from beginning of cycle",
                 "x_ac": "Across track distance from nadir"
                 }
-    unit = {"ux_noerr": "m/s", "ux_obs": "m/s", "uac_obs": "m/s",
-            "uy_noerr": "m/s", "uy_obs": "m/s", "ual_obs": "m/s",
+    unit = {"ux_noerr": "m/s", "ux_obs": "m/s", "u_ac_obs": "m/s",
+            "uy_noerr": "m/s", "uy_obs": "m/s", "u_al_obs": "m/s",
             "angle": "rad", "ux_model": "m/s", "uy_model": "m/s",
-            "uac_model": "m/s", "ual_model": "m/s",
+            "u_ac_noerr": "m/s", "u_al_noerr": "m/s",
             "ux_true": "m/s", "uy_true": "m/s", "x_al": "km", "x_ac": "km"
             }
     for key, value in kwargs.items():
