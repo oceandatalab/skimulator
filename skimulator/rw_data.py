@@ -297,7 +297,7 @@ def write_l2c(metadata, geolocation, **kwargs):
                 "ux_true": "True zonal velocity",
                 "uy_true": "True meridional velocity",
                 "x_al": "Along track distance from beginning of cycle",
-                "x_ac": "Across track distance from nadir"
+                "x_ac": "Across track distance from nadir",
                 "u_ac_true": "True across track velocity",
                 "u_al_true": "True along track velocity",
                 }
