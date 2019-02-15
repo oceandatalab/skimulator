@@ -298,11 +298,14 @@ def write_l2c(metadata, geolocation, **kwargs):
                 "uy_true": "True meridional velocity",
                 "x_al": "Along track distance from beginning of cycle",
                 "x_ac": "Across track distance from nadir"
+                "u_ac_true": "True across track velocity",
+                "u_al_true": "True along track velocity",
                 }
     unit = {"ux_noerr": "m/s", "ux_obs": "m/s", "u_ac_obs": "m/s",
             "uy_noerr": "m/s", "uy_obs": "m/s", "u_al_obs": "m/s",
             "angle": "rad", "ux_model": "m/s", "uy_model": "m/s",
             "u_ac_noerr": "m/s", "u_al_noerr": "m/s",
+            "u_ac_true": "m/s", "u_al_true": "m/s",
             "ux_true": "m/s", "uy_true": "m/s", "x_al": "km", "x_ac": "km"
             }
     for key, value in kwargs.items():
