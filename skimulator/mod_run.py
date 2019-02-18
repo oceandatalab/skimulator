@@ -373,8 +373,11 @@ def compute_rain(p, sgrid, dic, size_dic):
     rr_ind = int(numpy.random.random_sample() * size_dic)
     xal = dic['xal'][rr_ind]
     var = dic['rr'][rr_ind]
-    xac = dic['xac'][rr_ind] * 1.3
-    xal_g = numpy.mod(sgrid.x_al - numpy.min(sgrid.x_al), numpy.max(xal))
+    xac = dic['xac'][rr_ind]
+    x_al_g_tot = + sgrid.x_al
+    for i in range(numpy.shape(sgrid.x_al)[1]):
+        x_al_g_tot[:, i] = sgrid.x_al[:, i] + sgrid.x_al_nadir
+    xal_g = numpy.mod(x_al_g_tot - numpy.min(x_al_g_tot), numpy.max(xal))
     interp = interpolate.RectBivariateSpline
     _Teval = interp(xal, xac, numpy.isnan(var), kx=1, ky=1, s=0)
     Teval = _Teval.ev(xal_g, sgrid.x_ac)
