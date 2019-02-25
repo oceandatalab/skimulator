@@ -91,7 +91,8 @@ def run_simulator(p, die_on_error=False):
     '''
 
     # - Read list of user model files """
-    model_data, list_file = mod.load_coordinate_model(p)
+    if p.file_input is not None:
+        model_data, list_file = mod.load_coordinate_model(p)
     # if no modelbox is specified (modelbox=None), the domain of the input
     # data is taken as a modelbox
     # coordinates from the region defined by modelbox are selected
@@ -108,6 +109,7 @@ def run_simulator(p, die_on_error=False):
             logger.error('modelbox should be provided if no model file is'
                          'provided')
             sys.exit(1)
+    print(modelbox)
     # - Extract data on modelbox
     # TODO: do only this step if modelbox is defined? Do it later?
     if p.file_input is not None:

@@ -264,7 +264,7 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
                                          time=filetime)
             input_var_i = {}
             if p.grid == 'regular':
-                model_step.read_var(p)
+                model_step.read_var(p, ind_lon=model_data.ind_lon)
                 for key in model_step.input_var.keys():
                     grid_key = model_step.numgrid[key]
                     _indlat = model_data.model_index_lat[grid_key]

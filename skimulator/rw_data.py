@@ -297,7 +297,7 @@ def write_l2c(metadata, geolocation, **kwargs):
                 "ux_true": "True zonal velocity",
                 "uy_true": "True meridional velocity",
                 "x_al": "Along track distance from beginning of cycle",
-                "x_ac": "Across track distance from nadir"
+                "x_ac": "Across track distance from nadir",
                 "u_ac_true": "True across track velocity",
                 "u_al_true": "True along track velocity",
                 }
@@ -895,16 +895,20 @@ class NETCDF_MODEL():
         p.model_nan = self.model_nan
         logger.debug('Nan Values {}, {}'.format(p.model_nan, self.model_nan))
 
-    def read_var(self, p, index=None):
+    def read_var(self, p, ind_lon=None, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
+        ind_lon = None
         for key, value in self.input_var_list.items():
             nfile0 = self.nfile[0]
             _nfile = '{}{}.nc'.format(nfile0, value[1])
             if os.path.exists(_nfile):
                 _tmp = read_var(_nfile, value[0], index=index, time=self.time,
                                 depth=self.depth, model_nan=self.model_nan)
+
                 self.input_var[key] = _tmp
+                if ind_lon is not None:
+                    self.input_var[key] = self.input_var[key][:, ind_lon]
                 if len(value) == 3:
                     self.numgrid[key] = value[2]
                 else:
@@ -915,32 +919,44 @@ class NETCDF_MODEL():
         # self.vvar[numpy.where(numpy.isnan(self.vvar))]=0
         return None
 
+
     def read_coordinates(self, p, index=None):
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
         self.vlon = {}
+        self.ind_lon = {}
         self.vlat = {}
         for ikey in range(len(list(self.nfile))):
             ifile = self.nfile[ikey]
             if p.grid == 'regular':
                 lon, lat = read_coordinates(ifile, self.nlon[ikey],
                                             self.nlat[ikey], twoD=False)
+                lon = numpy.mod(lon + 360, 360)
+                ind_lon = None # numpy.argsort(lon)
             else:
                 lon, lat = read_coordinates(ifile, self.nlon[ikey],
                                             self.nlat[ikey])
             self.vlat[ikey] = lat
-            self.vlon[ikey] = (lon + 360) % 360
+            if ind_lon is not None:
+                self.vlon[ikey] = lon[ind_lon] #numpy.mod(lon + 360, 360)
+                self.ind_lon[ikey] = ind_lon
+            else:
+                self.vlon[ikey] = lon
+                self.ind_lon[ikey] = None
+
         return None
+
 
     def calc_box(self, p):
         '''Calculate subdomain coordinates from netcdf file
         Return minimum, maximum longitude and minimum, maximum latitude'''
         self.read_coordinates(p)
+        print(self.vlon[0])
         if (numpy.min(self.vlon[0]) < 1.) and (numpy.max(self.vlon[0]) > 359.):
             _ind = numpy.where(self.vlon[0] > 180.)
             self.vlon[0][_ind] = self.vlon[0][_ind] - 360
-            lon1 = (numpy.min(self.vlon[0]) + 360) % 360
-            lon2 = (numpy.max(self.vlon[0]) + 360) % 360
+            lon1 = 0 #(numpy.min(self.vlon[0]) + 360) % 360
+            lon2 = 359.9 #(numpy.max(self.vlon[0]) + 360) % 360
         else:
             lon1 = numpy.min(self.vlon[0])
             lon2 = numpy.max(self.vlon[0])
@@ -982,7 +998,7 @@ class WW3():
         logger.debug('Nan Values {}, {}'.format(p.model_nan, self.model_nan))
 
 
-    def read_var(self, p, index=None):
+    def read_var(self, p, ind_lon=None, index=None):
         '''Read variables from netcdf file \n
         Argument is index=index to load part of the variable.'''
         for key, value in self.input_var_list.items():
@@ -1006,6 +1022,7 @@ class WW3():
         '''Read coordinates from netcdf file \n
         Argument is index=index to load part of the variable.'''
         self.vlon = {}
+        self.ind_lon = {}
         self.vlat = {}
         for ikey in range(len(list(self.nfile))):
             ifile = self.nfile[ikey]
@@ -1016,6 +1033,7 @@ class WW3():
                 lon, lat = read_coordinates(ifile, self.nlon[ikey],
                                             self.nlat[ikey])
             self.vlat[ikey] = lat
+            self.ind_lon[ikey] = None
             self.vlon[ikey] = (lon + 360) % 360
         return None
 

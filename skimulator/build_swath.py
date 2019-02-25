@@ -195,6 +195,7 @@ def makeorbit(modelbox, p, orbitfile='orbit_292.txt', filealtimeter=None):
     nindex = numpy.shape(index)[0]
     # Initialize along track distance, time and coordinates at cycle
     # resolution
+    print('bouh')
     if nindex > 1:
         dgap = numpy.zeros((nindex))
         for i in range(1, nindex):
@@ -325,6 +326,7 @@ def orbit2swath(modelbox, p, orb, die_on_error):
     # actually stored as ipass + 1 to have the first pass at 1 and ascending
     jobs = []
     p2 = mod_tools.todict(p)
+    print('bouh1')
     for ipass in range(ipass0, numpy.shape(passtime)[0]):
         jobs.append([ipass, p2, passtime, stime, x_al, tcycle, al_cycle, lon,
                      lat, orb.timeshift])
@@ -375,6 +377,7 @@ def err_formatter(pid, ipass, cycle, exc):
 
 
 def worker_method_grid(*args, **kwargs):
+    print('bouh3')
     msg_queue, ipass, p2 = args[:3]
     passtime, stime, x_al, tcycle, al_cycle, lon, lat, timeshift = args[3:]
 
@@ -393,6 +396,7 @@ def worker_method_grid(*args, **kwargs):
         ind = numpy.where((stime >= passtime[ipass])
                           & (stime < passtime[ipass+1]))[0]
     nind = numpy.shape(ind)[0]
+    print('bouh2')
     # Compute swath grid if pass is in the subdomain
     if nind > 5:
         # Initialize SKIM grid, grid variables

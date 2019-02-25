@@ -556,8 +556,14 @@ def worker_make_oi(*args, **kwargs):
         _lonobs = numpy.mod(obs['lon'] + 360, 360)
         _longrd = numpy.mod(grd['lon2'][j, i] + 360, 360)
         dlon = 180 - abs(abs(_lonobs - _longrd) - 180)
-        dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2 * (dlon)**2
-                       + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
+
+        # dist = 110. * (numpy.cos(numpy.deg2rad(grd['lat'][j]))**2 * (dlon)**2
+        #               + (obs['lat'] - grd['lat2'][j, i])**2)**0.5
+        fac = 1
+        if abs(grd['lat'][j]) < 10:
+             fac = fac + (10 - abs(grd['lat'][j])) / 8
+        dist = 110. * (1 / fac*numpy.cos(numpy.deg2rad(grd['lat'][j]))**2 * (dlon)**2
+                       + fac * (obs['lat'] - grd['lat2'][j, i])**2)**0.5
         iiobs=numpy.where((dist < resolsij))[0]
         if len(iiobs)>=2:
             H = numpy.zeros((len(iiobs), 2))
