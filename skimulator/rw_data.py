@@ -189,9 +189,11 @@ def read_var(nfile, var, index=None, time=0, depth=0, model_nan=None):
     #        mask = (T == numpy.nan)
     if model_nan is not None:
         _mask = numpy.ma.getmaskarray(T)
-        _mask = (_mask | (T == model_nan))
+        # TODO remove hard coded value?
+        _mask = (_mask | (T == model_nan) | (abs(T) > 1000))
         T = numpy.ma.array(T, mask=_mask)
         #T[numpy.where(T == model_nan)] = numpy.nan
+    T._shared_mask = False
     return T #numpy.ma.MaskedArray(T, mask=mask)
 
 
@@ -951,12 +953,11 @@ class NETCDF_MODEL():
         '''Calculate subdomain coordinates from netcdf file
         Return minimum, maximum longitude and minimum, maximum latitude'''
         self.read_coordinates(p)
-        print(self.vlon[0])
         if (numpy.min(self.vlon[0]) < 1.) and (numpy.max(self.vlon[0]) > 359.):
             _ind = numpy.where(self.vlon[0] > 180.)
             self.vlon[0][_ind] = self.vlon[0][_ind] - 360
-            lon1 = 0 #(numpy.min(self.vlon[0]) + 360) % 360
-            lon2 = 359.9 #(numpy.max(self.vlon[0]) + 360) % 360
+            lon1 = (numpy.min(self.vlon[0]) + 360) % 360
+            lon2 = (numpy.max(self.vlon[0]) + 360) % 360
         else:
             lon1 = numpy.min(self.vlon[0])
             lon2 = numpy.max(self.vlon[0])

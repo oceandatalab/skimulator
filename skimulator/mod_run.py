@@ -127,21 +127,22 @@ def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
         # lon_out[lon_out > 180] = lon_out[lon_out > 180] - 360
         # lon_out = numpy.rad2deg(numpy.unwrap(numpy.deg2rad(lon_out)))
         interp = interpolate.RectBivariateSpline
+        mask_teval = (numpy.isnan(var) | numpy.ma.getmaskarray(var))
         if Teval is None:
             Teval = numpy.zeros(numpy.shape(lon_out))
             if ind_out1[0].any():
                 _tmp = interp(lat_in, lon_in[ind_in1],
-                              numpy.isnan(var[:, ind_in1[0]]), kx=1, ky=1,
+                              mask_teval[:, ind_in1[0]], kx=1, ky=1,
                               s=0)
                 Teval[ind_out1] = _tmp.ev(lat_out[ind_out1], lon_out[ind_out1])
             if ind_out2[0].any():
                 _tmp = interp(lat_in, lon_in[ind_in2],
-                              numpy.isnan(var[:, ind_in2[0]]), kx=1, ky=1,
+                              mask_teval[:, ind_in2[0]], kx=1, ky=1,
                               s=0)
                 Teval[ind_out2] = _tmp.ev(lat_out[ind_out2], lon_out[ind_out2])
         # Trick to avoid nan in interpolation
         var_mask = + var
-        var_mask[numpy.isnan(var_mask)] = 0.
+        var_mask[numpy.isnan(var_mask) | numpy.ma.getmaskarray(var_mask)] = 0.
         # Interpolate variable
         var_out = numpy.full(numpy.shape(lon_out), numpy.nan)
         if ind_out1[0].any():
@@ -154,19 +155,22 @@ def interpolate_regular_1D(lon_in, lat_in, var, lon_out, lat_out, Teval=None):
             var_out[ind_out2] = _tmp.ev(lat_out[ind_out2], lon_out[ind_out2])
 
     else:
+        mask_teval = (numpy.isnan(var) | numpy.ma.getmaskarray(var))
         # Interpolate mask if it has not been done (Teval is None)
         interp = interpolate.RectBivariateSpline
         if Teval is None:
-            _Teval = interp(lat_in, lon_in, numpy.isnan(var), kx=1, ky=1, s=0)
+            _Teval = interp(lat_in, lon_in, mask_teval, kx=1, ky=1, s=0)
             Teval = _Teval.ev(lat_out, lon_out)
         # Trick to avoid nan in interpolation
         var_mask = + var
-        var_mask[numpy.isnan(var_mask)] = 0.
+        var_mask[numpy.isnan(var_mask) | numpy.ma.getmaskarray(var_mask)] = 0.
         # Interpolate variable
         _var_out = interp(lat_in, lon_in, var_mask, kx=1, ky=1, s=0)
         var_out = _var_out.ev(lat_out, lon_out)
     # Mask variable with Teval
     var_out[Teval > 0] = numpy.nan
+    #var_out[Teval > 0] = numpy.nan
+    #var_out[abs(var_out) > 1000] = numpy.nan
     return var_out, Teval
 
 
