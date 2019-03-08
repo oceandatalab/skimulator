@@ -369,11 +369,13 @@ def load_rain(rain_file):
     return dic, size_dic
 
 
-def compute_rain(p, sgrid, dic, size_dic):
+def compute_rain(p, time, sgrid, dic, size_dic):
+    hour = int((time - numpy.floor(time))*24)
+    size_dic = len(dic['xal'][hour])
     rr_ind = int(numpy.random.random_sample() * size_dic)
-    xal = dic['xal'][rr_ind]
-    var = dic['rr'][rr_ind]
-    xac = dic['xac'][rr_ind]
+    xal = dic['xal'][hour][rr_ind]
+    var = dic['rr'][hour][rr_ind]
+    xac = dic['xac'][hour][rr_ind]
     x_al_g_tot = + sgrid.x_al
     for i in range(numpy.shape(sgrid.x_al)[1]):
         x_al_g_tot[:, i] = sgrid.x_al[:, i] + sgrid.x_al_nadir

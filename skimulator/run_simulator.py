@@ -397,7 +397,8 @@ def worker_method_skim(*args, **kwargs):
                 output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]
                                                + output_var['uwb_corr'][i][:])
         if p.rain is True:
-            rain, rain_nad = mod.compute_rain(p, sgrid, rain_dic, rain_size)
+            mean_time = numpy.mean(time)
+            rain, rain_nad = mod.compute_rain(p, mean_time, sgrid, rain_dic, rain_size)
             for i in range(len(output_var['ur_obs'])):
                 if i == 0:
                     _rain = rain_nad[:]
