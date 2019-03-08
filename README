@@ -65,6 +65,17 @@ Reference orbits data are available online:
    $ wget "https://oceandatalab.com/files/skim/orbits.tar.xz"
    $ tar xJf orbits.tar.xz
 
+Rain data
+--------
+Rain statistical rain flags are available on the ftp for the Gulf Stream Region and the Equator:
+
+
+.. code-block:: console
+
+   $ cd [yourpath]/skimulator/data
+   $ wget "https://oceandatalab.com/files/skim/rain.tar.xz"
+   $ tar xJf rain.tar.xz
+
 
 Running
 --------

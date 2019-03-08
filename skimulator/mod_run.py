@@ -37,6 +37,7 @@ import math
 import glob
 import sys
 import time
+import pickle
 import datetime
 import logging
 import skimulator.build_swath as build_swath
@@ -71,9 +72,10 @@ def load_sgrid(sgridfile, p):
     sgrid = rw_data.Sat_SKIM(ifile=sgridfile)
     cycle = 0
     x_al = []
+    x_ac = []
     al_cycle = 0
     timeshift = 0
-    sgrid.load_swath(p, cycle=cycle, x_al=x_al, x_al_nadir=[],
+    sgrid.load_swath(p, cycle=cycle, x_al=x_al, x_al_nadir=[], x_ac=x_ac,
                      al_cycle=al_cycle, timeshift=timeshift)
     # sgrid.loncirc = []
     # for i in range(len(sgrid.lon)):
@@ -362,6 +364,41 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
         pass
     # TODO to proof: creation of empty mss if no mss and p.instr is True
     return output_var_i, time
+
+
+def load_rain(rain_file):
+    with open(rain_file, 'rb') as frain:
+        dic = pickle.load(frain)
+    size_dic = len(dic['xac'].keys())
+    return dic, size_dic
+
+
+def compute_rain(p, time, sgrid, dic, size_dic):
+    hour = int((time - numpy.floor(time))*24)
+    size_dic = len(dic['xal'][hour])
+    rr_ind = int(numpy.random.random_sample() * size_dic)
+    xal = dic['xal'][hour][rr_ind]
+    var = dic['rr'][hour][rr_ind]
+    xac = dic['xac'][hour][rr_ind]
+    x_al_g_tot = + sgrid.x_al
+    for i in range(numpy.shape(sgrid.x_al)[1]):
+        x_al_g_tot[:, i] = sgrid.x_al[:, i] + sgrid.x_al_nadir
+    xal_g = numpy.mod(x_al_g_tot - numpy.min(x_al_g_tot), numpy.max(xal))
+    interp = interpolate.RectBivariateSpline
+    _Teval = interp(xal, xac, numpy.isnan(var), kx=1, ky=1, s=0)
+    Teval = _Teval.ev(xal_g, sgrid.x_ac)
+        # Trick to avoid nan in interpolation
+    var_mask = + var
+    var_mask[numpy.isnan(var_mask)] = 0.
+    # Interpolate variable
+    _var_out = interp(xal, xac, var_mask, kx=1, ky=1, s=0)
+    var_out = _var_out.ev(xal_g, sgrid.x_ac)
+    # Mask variable with Teval
+    var_out[Teval > 0] = numpy.nan
+    xal_n = numpy.mod(sgrid.x_al_nadir - numpy.min(sgrid.x_al_nadir),
+                      numpy.max(xal))
+    var_nad = numpy.zeros(numpy.shape(xal_n))
+    return var_out, var_nad
 
 
 def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):

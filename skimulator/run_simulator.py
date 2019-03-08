@@ -302,6 +302,10 @@ def worker_method_skim(*args, **kwargs):
     # Compute number of cycles needed to cover all nstep model timesteps
     rcycle = (p.timestep * p.nstep)/float(sgrid.cycle)
     ncycle = int(rcycle)
+    if p.rain is True and p.rain_file is not None:
+        rain_dic, rain_size = mod.load_rain(p.rain_file)
+    else:
+        p.rain = False
 
 
     #  Loop on all cycles
@@ -328,6 +332,8 @@ def worker_method_skim(*args, **kwargs):
             output_var['instr'] = []
         if p.uwb is True:
             output_var['uwb'] = []
+        if p.rain is True:
+            output_var['rain'] = []
         #if 'radial_angle' in p.list_output:
         #    output_var['radial_angle'] = sgrid.radial_angle
         # Loop over the beams
@@ -392,6 +398,16 @@ def worker_method_skim(*args, **kwargs):
             for i in range(len(output_var['ur_obs'])):
                 output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]
                                                + output_var['uwb_corr'][i][:])
+        if p.rain is True:
+            mean_time = numpy.mean(time)
+            rain, rain_nad = mod.compute_rain(p, mean_time, sgrid, rain_dic, rain_size)
+            for i in range(len(output_var['ur_obs'])):
+                if i == 0:
+                    _rain = rain_nad[:]
+                else:
+                    _rain = rain[:, i - 1]
+                output_var['rain'].append(_rain)
+                output_var['ur_obs'][i][_rain > p.rain_threshold] = numpy.nan
 
         #   Compute errdcos if Formula is True
 
