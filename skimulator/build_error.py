@@ -18,9 +18,12 @@ along with skimulator.  If not, see <http://www.gnu.org/licenses/>.
 import sys
 import math
 import numpy
-from scipy.io import netcdf as nc
+from scipy import interpolate
+import netCDF4
+import pickle
 from scipy.ndimage.filters import gaussian_filter
 import skimulator.mod_tools as mod_tools
+import skimulator.mod_run as mod
 import logging
 logger = logging.getLogger(__name__)
 
@@ -196,7 +199,7 @@ class errornadir():
         the phase and the frequency of each random realisation.
         There are ncomp random realisations.'''
         try:
-            fid = nc.netcdf_file(p.file_coeff[:-3] + '_nadir.nc', 'r')
+            fid = netCDF4.Dataset(p.file_coeff[:-3] + '_nadir.nc', 'r')
         except (FileNotFoundError, IOError):
             logger.error('There was an error opening the file nadir'
                          '{}_nadir.nc'.format(p.file_coeff[:-3]))
@@ -308,7 +311,7 @@ class errornadir():
         and can be loaded using load_coeff.
         '''
         # - Open Netcdf file in write mode
-        fid = nc.netcdf_file(p.file_coeff[:-3] + '_nadir.nc', 'w')
+        fid = netCDF4.Dataset(p.file_coeff[:-3] + '_nadir.nc', 'w')
         fid.description = "Random coefficients from orbit simulator"
 
         # - Create dimensions
@@ -358,3 +361,94 @@ def make_vel_error(ur_true, p, instr=None, err_uss=None):
         if p.file_input is not None:
             ur_obs[numpy.where(ur_true == p.model_nan)] = p.model_nan
         return ur_obs
+
+
+def compute_rain(p, time, sgrid, dic, size_dic):
+    hour = int((time - numpy.floor(time))*24)
+    size_dic = len(dic['xal'][hour])
+    rr_ind = int(numpy.random.random_sample() * size_dic)
+    xal = dic['xal'][hour][rr_ind]
+    var = dic['rr'][hour][rr_ind]
+    xac = dic['xac'][hour][rr_ind]
+    x_al_g_tot = + sgrid.x_al
+    for i in range(numpy.shape(sgrid.x_al)[1]):
+        x_al_g_tot[:, i] = sgrid.x_al[:, i] + sgrid.x_al_nadir
+    xal_g = numpy.mod(x_al_g_tot - numpy.min(x_al_g_tot), numpy.max(xal))
+    interp = interpolate.RectBivariateSpline
+    _Teval = interp(xal, xac, numpy.isnan(var), kx=1, ky=1, s=0)
+    Teval = _Teval.ev(xal_g, sgrid.x_ac)
+        # Trick to avoid nan in interpolation
+    var_mask = + var
+    var_mask[numpy.isnan(var_mask)] = 0.
+    # Interpolate variable
+    _var_out = interp(xal, xac, var_mask, kx=1, ky=1, s=0)
+    var_out = _var_out.ev(xal_g, sgrid.x_ac)
+    # Mask variable with Teval
+    var_out[Teval > 0] = numpy.nan
+    xal_n = numpy.mod(sgrid.x_al_nadir - numpy.min(sgrid.x_al_nadir),
+                      numpy.max(xal))
+    var_nad = numpy.zeros(numpy.shape(xal_n))
+    return var_out, var_nad
+
+
+def load_rain(rain_file):
+    with open(rain_file, 'rb') as frain:
+        dic = pickle.load(frain)
+    size_dic = len(dic['xac'].keys())
+    return dic, size_dic
+
+
+def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
+    output_var_i['ur_true'] = mod_tools.proj_radial(output_var_i['ucur'],
+                                                    output_var_i['vcur'],
+                                                    radial_angle)
+    output_var_i['ur_obs'] = + output_var_i['ur_true']
+    output_var_i['radial_angle'] = radial_angle
+    if p.instr is True:
+        # Compute sigma0:
+        sigma0 = mod.compute_sigma(output_var_i, beam_angle, radial_angle, p)
+        output_var_i['sigma0'] = sigma0
+        coeff_random = p.snr_coeff * output_var_i['sigma0']
+        cshape = numpy.shape(coeff_random)
+        center = numpy.zeros(cshape)
+        output_var_i['instr'] = numpy.random.rand(cshape[0]) * coeff_random
+        output_var_i['ur_obs'] += output_var_i['instr']
+
+    # del output_var_i['mssx']
+    # del output_var_i['mssy']
+    # del output_var_i['mssxy']
+    # Radial projection
+    if p.uwb is True:
+        output_var_i['ur_uss'] = mod_tools.proj_radial(output_var_i['uuss'],
+                                                        output_var_i['vuss'],
+                                                        radial_angle)
+        nwr = numpy.sqrt((output_var_i['uwnd'] - output_var_i['ucur'])**2
+                         + (output_var_i['vwnd'] - output_var_i['vcur'])**2)
+        nwr[nwr==0] = numpy.nan
+        _angle = numpy.deg2rad((beam_angle - 25) / 10)
+        GR = 25 * (0.82 * numpy.log(0.2 + 7/nwr)) * (1 - numpy.tanh(_angle))
+        GP = 0
+        output_var_i['uwb'] = GR * output_var_i['ur_uss']
+        #output_var_i['ur_obs'] +=  output_var_i['uwb']
+    return None
+
+
+def load_yaw(yaw_file):
+    fid = netCDF4.Dataset(yaw_file, 'r')
+    time = fid.variables['time'][:]
+    time = time / 86400.
+    vac_yaw = fid.variables['vac_yaw'][:]
+    fid.close()
+    return time, vac_yaw
+
+
+def make_yaw(time_yaw, vac_yaw, time):
+    max_yaw = numpy.max(time_yaw)
+    # ind_time = numpy.where(time > max_yaw)
+    # time[ind_time] = time[ind_time] - max_yaw
+    time = numpy.mod(time, max_yaw)
+    f = interpolate.interp1d(time_yaw, vac_yaw)
+    err_yaw = f(time)
+    return err_yaw
+
+

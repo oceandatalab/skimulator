@@ -209,9 +209,14 @@ def run_simulator(p, die_on_error=False):
     # - Loop on SKIM grid files
     jobs = []
     p2 = mod_tools.todict(p)
+    time_yaw = None
+    vac_yaw = None
+    if p.attitude is True and os.path.isfile(p.yaw_file):
+        time_yaw, vac_yaw = build_error.load_yaw(p.yaw_file)
+        # time_yaw = time_yaw / 86400
     for sgridfile in listsgridfile:
         jobs.append([sgridfile, p2, listsgridfile, list_file,
-                     modelbox, model_data, modeltime])
+                     modelbox, model_data, modeltime, time_yaw, vac_yaw])
     ok = False
     try:
         ok = make_skim_data(p.proc_count, jobs, die_on_error, p.progress_bar)
@@ -282,8 +287,8 @@ def err_formatter(pid, grid, cycle, exc):
 
 
 def worker_method_skim(*args, **kwargs):
-    msg_queue, sgridfile, p2 = args[:3]
-    listsgridfile, list_file, modelbox, model_data, modeltime = args[3:]
+    msg_queue, sgridfile, p2, listsgridfile = args[:4]
+    list_file, modelbox, model_data, modeltime, time_yaw, vac_yaw = args[4:]
     p = mod_tools.fromdict(p2)
     #   Load SKIM grid files (Swath and nadir)
     sgrid = mod.load_sgrid(sgridfile, p)
@@ -303,7 +308,7 @@ def worker_method_skim(*args, **kwargs):
     rcycle = (p.timestep * p.nstep)/float(sgrid.cycle)
     ncycle = int(rcycle)
     if p.rain is True and p.rain_file is not None:
-        rain_dic, rain_size = mod.load_rain(p.rain_file)
+        rain_dic, rain_size = build_error.load_rain(p.rain_file)
     else:
         p.rain = False
 
@@ -334,6 +339,8 @@ def worker_method_skim(*args, **kwargs):
             output_var['uwb'] = []
         if p.rain is True:
             output_var['rain'] = []
+        if p.attitude is True:
+            output_var['yaw'] = []
         #if 'radial_angle' in p.list_output:
         #    output_var['radial_angle'] = sgrid.radial_angle
         # Loop over the beams
@@ -381,11 +388,15 @@ def worker_method_skim(*args, **kwargs):
                                                  model_data, modeltime, p,
                                                  )
                 output_var_i, time = create
-                mod.compute_beam_noise_skim(p, output_var_i, radial_angle,
+                build_error.compute_beam_noise_skim(p, output_var_i, radial_angle,
                                             beam_angle)
+            if p.attitude is True:
+                yaw = build_error.make_yaw(time_yaw, vac_yaw, time)
 
             # Append variables for each beam
             time_all.append(time)
+            if p.attitude is True:
+                output_var['yaw'].append(yaw)
             for key in p.list_output:
                 if key in output_var_i.keys():
                     output_var[key].append(output_var_i[key])
@@ -400,7 +411,8 @@ def worker_method_skim(*args, **kwargs):
                                                + output_var['uwb_corr'][i][:])
         if p.rain is True:
             mean_time = numpy.mean(time)
-            rain, rain_nad = mod.compute_rain(p, mean_time, sgrid, rain_dic, rain_size)
+            rain, rain_nad = build_error.compute_rain(p, mean_time, sgrid,
+                                                      rain_dic, rain_size)
             for i in range(len(output_var['ur_obs'])):
                 if i == 0:
                     _rain = rain_nad[:]

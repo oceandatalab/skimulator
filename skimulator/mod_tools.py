@@ -99,6 +99,8 @@ def initialize_parameters(p):
     p.rain = getattr(p, 'rain', False)
     p.rain_file = getattr(p, 'rain_file', None)
     p.rain_threshold = getattr(p, 'rain_threshold', 0.1)
+    p.attitude = getattr(p, 'attitude', False)
+    p.yaw_file = getattr(p, 'yaw_file', None)
     return None
 
 
