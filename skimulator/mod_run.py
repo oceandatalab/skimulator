@@ -431,7 +431,10 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
         _angle = numpy.deg2rad((beam_angle - 25) / 10)
         GR = 25 * (0.82 * numpy.log(0.2 + 7/nwr)) * (1 - numpy.tanh(_angle))
         GP = 0
-        output_var_i['uwb'] = GR * output_var_i['ur_uss']
+        output_var_i['uwb_noerr'] = GR * output_var_i['ur_uss']
+        cshape = numpy.shape(coeff_random)
+        noise = numpy.random.rand(cshape[0]) * output_var_i['uwb'] * 0.25
+        output_var_i['uwb'] = output_var_i['uwb_noerr'] + noise
         #output_var_i['ur_obs'] +=  output_var_i['uwb']
     return None
 
