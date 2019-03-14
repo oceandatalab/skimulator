@@ -398,7 +398,8 @@ def load_rain(rain_file):
     return dic, size_dic
 
 
-def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
+def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
+                            ac_angle):
     output_var_i['ur_true'] = mod_tools.proj_radial(output_var_i['ucur'],
                                                     output_var_i['vcur'],
                                                     radial_angle)
@@ -407,8 +408,21 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle):
     if p.instr is True:
         # Compute sigma0:
         sigma0 = mod.compute_sigma(output_var_i, beam_angle, radial_angle, p)
+        sigma0 = mod.compute_sigma(output_var_i, beam_angle, ac_angle, p)
         output_var_i['sigma0'] = sigma0
-        coeff_random = p.snr_coeff * output_var_i['sigma0']
+        if beam_angle == 12:
+            _co = (15.610, 0.955, -6.208, 3.257)
+            coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _c[2])**2 + _co[3]
+            sigma_ref = 7
+        elif beam_angle == 6:
+            _co = (26.489, 0.872, -3.356, -3.114)
+            coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _c[2]) + _co[3]
+            sigma_ref = 11
+        else:
+            logger.error('Unknown instrumental parametrisation for {}'
+                         ' angle'.format(beam_angle))
+        coeff_random = (coeff * output_var_i['sigma0']/sigma_ref
+                        * numpy.sin(numpy.deg2rad(beam_angle)))
         cshape = numpy.shape(coeff_random)
         center = numpy.zeros(cshape)
         output_var_i['instr'] = numpy.random.rand(cshape[0]) * coeff_random

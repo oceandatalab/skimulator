@@ -388,8 +388,9 @@ def worker_method_skim(*args, **kwargs):
                                                  model_data, modeltime, p,
                                                  )
                 output_var_i, time = create
-                build_error.compute_beam_noise_skim(p, output_var_i, radial_angle,
-                                            beam_angle)
+                build_error.compute_beam_noise_skim(p, output_var_i,
+                                                    radial_angle, beam_angle,
+                                                    ac_angle)
             if p.attitude is True:
                 yaw = build_error.make_yaw(time_yaw, vac_yaw, time)
 
