@@ -412,20 +412,20 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
         output_var_i['sigma0'] = sigma0
         if beam_angle == 12:
             _co = (15.610, 0.955, -6.208, 3.257)
-            coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _c[2])**2 + _co[3]
-            sigma_ref = 7
+            coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _co[2])**2 + _co[3]
+            sigma_ref = 1
         elif beam_angle == 6:
             _co = (26.489, 0.872, -3.356, -3.114)
-            coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _c[2]) + _co[3]
-            sigma_ref = 11
+            coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _co[2]) + _co[3]
+            sigma_ref = 1.5
         else:
             logger.error('Unknown instrumental parametrisation for {}'
                          ' angle'.format(beam_angle))
-        coeff_random = (coeff * output_var_i['sigma0']/sigma_ref
+        coeff_random = (coeff * 10**(-2) * output_var_i['sigma0']/sigma_ref
                         * numpy.sin(numpy.deg2rad(beam_angle)))
         cshape = numpy.shape(coeff_random)
         center = numpy.zeros(cshape)
-        output_var_i['instr'] = numpy.random.rand(cshape[0]) * coeff_random
+        output_var_i['instr'] = numpy.random.normal(0, abs(coeff_random), cshape[0])
         output_var_i['ur_obs'] += output_var_i['instr']
 
     # del output_var_i['mssx']
@@ -442,7 +442,10 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
         _angle = numpy.deg2rad((beam_angle - 25) / 10)
         GR = 25 * (0.82 * numpy.log(0.2 + 7/nwr)) * (1 - numpy.tanh(_angle))
         GP = 0
-        output_var_i['uwb'] = GR * output_var_i['ur_uss']
+        output_var_i['uwb_noerr'] = GR * output_var_i['ur_uss']
+        cshape = numpy.shape(output_var_i['uwb_noerr'])
+        noise = numpy.random.normal(0, abs(output_var_i['uwb_noerr']) * 0.25, cshape[0])
+        output_var_i['uwb'] = output_var_i['uwb_noerr'] + noise
         #output_var_i['ur_obs'] +=  output_var_i['uwb']
     return None
 

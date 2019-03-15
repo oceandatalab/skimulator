@@ -515,7 +515,7 @@ def compute_sigma_water(input_var, beam_angle, radial_angle):
                 - numpy.sin(2 * radial_angle) * mssxy) / (mssx * mssy))
         coeff = R2 / (2 * numpy.cos(rbeam_angle)**4 * numpy.sqrt(mssx * mssy))
         sigma_water = coeff * numpy.exp(expo)
-        del input_var['mssd']
+        #del input_var['mssd']
         return sigma_water
 
 
