@@ -47,7 +47,7 @@ def coherency_l2c(datadir_input, config, var, nal_min,
     pyplot.figure()
     for indir, iconfig, ivar in zip(datadir_input, config, var):
         print(indir, iconfig, ivar)
-        list_files = glob.glob(os.path.join(indir, '{}_L2C_c*p*.nc'.format(iconfig)))
+        list_files = glob.glob(os.path.join(indir, '{}_l2c_c*p*.nc'.format(iconfig)))
 
         fid = netCDF4.Dataset(list_files[0], 'r')
         _tmp = numpy.array(fid.variables['u_ac_true'][:])
@@ -127,7 +127,7 @@ def coherency_l2c(datadir_input, config, var, nal_min,
 
 def rms_l2c(datadir_input, config):
     datadir_output = './'
-    glob_files = os.path.join(datadir_input, '{}_L2C_c01*p*.nc'.format(config))
+    glob_files = os.path.join(datadir_input, '{}_l2c_c01*p*.nc'.format(config))
     list_files = glob.glob(glob_files)
     ref = {}
     skim = {}
@@ -160,9 +160,9 @@ def rms_l2c(datadir_input, config):
         ref['uac'][ref['uac'] < -10] = numpy.nan
         ref['ual'] = numpy.array(fid.variables['u_al_true'][:])
         ref['ual'][ref['ual'] < -10] = numpy.nan
-        skim['uacm'] = numpy.array(fid.variables['u_ac_model'][:])
+        skim['uacm'] = numpy.array(fid.variables['u_ac_noerr'][:])
         skim['uacm'][skim['uacm'] < -10] = numpy.nan
-        skim['ualm'] = numpy.array(fid.variables['u_al_model'][:])
+        skim['ualm'] = numpy.array(fid.variables['u_al_noerr'][:])
         skim['ualm'][skim['ualm'] < -10] = numpy.nan
         skim['uac'] = numpy.array(fid.variables['u_ac_obs'][:])
         skim['uac'][skim['uac'] < -10] = numpy.nan
@@ -228,19 +228,27 @@ if '__main__' == __name__:
                    'WW3_AT_metop_2018_8c', 'WW3_AT_metop_2018_6a')
     list_config = ('WW3_EQ_metop_2018_8a', 'WW3_EQ_metop_2018_8b',
                    'WW3_EQ_metop_2018_8c', 'WW3_EQ_metop_2018_6a')
-    #list_config = ('WW3_FR_metop_2018_8a', 'WW3_FR_metop_2018_8b',
-    #               'WW3_FR_metop_2018_8c', 'WW3_FR_metop_2018_6a')
+    list_config = ('WW3_EQ_metop_2018_8a', 'WW3_EQ_metop_2018_6a',
+                   'WW3_EQ_metop_2018_8c', 'WW3_EQ_metop_2018_6a')
+    list_config = ('WW3_EQ_metop_2018_8a', 'WW3_EQ_metop_2019_6a',
+                   'WW3_EQ_metop_2019_6a1', 'WW3_EQ_metop_2019_6a3')
     list_dir = []
     for iconfig in list_config:
         outdatadir = os.path.join('/tmp/key/data/skim_at_output', iconfig)
         outdatadir = os.path.join('/tmp/key/data/skim_eq_output', iconfig)
     #    outdatadir = os.path.join('/tmp/key/data/skim_fr_output', iconfig)
         list_dir.append(outdatadir)
+        print(outdatadir, iconfig)
         rms_l2c(outdatadir, iconfig)
         coherency_l2c((outdatadir, outdatadir), (iconfig, iconfig),
-                     ('obs','model'), length_al,
+                     ('obs','noerr'), length_al,
                      p.posting, outfile='{}_obs_model'.format(iconfig))
     list_var = ('obs', 'obs', 'obs', 'obs') #, 'obs')
+    nal_min = 200
+    print(list_dir, list_config)
+    coherency_l2c(list_dir, list_config, list_var, nal_min,
+                  p.posting, outfile=list_config[0][:-8])
+    list_var = ('noerr', 'noerr', 'noerr', 'noerr') #, 'obs')
     nal_min = 200
     print(list_dir, list_config)
     coherency_l2c(list_dir, list_config, list_var, nal_min,

@@ -53,7 +53,7 @@ def diag_rms(listfile, modelbox, output):
             uwbc = True
             varuwbc = data.variables['uwb_corr'][:]
 
-        mask = ((abs(vartrue)>10) | (abs(varobs)>10))
+        mask = ((abs(vartrue)>100) | (abs(varobs)>100))
         #vartrue[mask] = numpy.nan
         #varobs[mask] = numpy.nan
         beam_angle = p.list_angle #data['beam_angle'][:]
@@ -65,9 +65,12 @@ def diag_rms(listfile, modelbox, output):
                 continue
             if varuwbc[:, i].mask.all():
                 continue
-            _tmp = numpy.nanmean(((varobs[:, i] - vartrue[:,i])/vartrue[:,i])**2)
-            _tmp = numpy.nanmean(((varobs[:, i] - vartrue[:,i]))**2)
-            _tmp2 =  numpy.nanmean(abs(vartrue[:, i])**2)
+            try:
+                _tmp = numpy.nanmean(((varobs[:, i] - vartrue[:,i])/vartrue[:,i])**2)
+                _tmp = numpy.nanmean(((varobs[:, i] - vartrue[:,i]))**2)
+                _tmp2 =  numpy.nanmean(abs(vartrue[:, i])**2)
+            except:
+                continue
             if instr is True:
                 _tmpinstr = numpy.nanmean(abs(varinstr[:, i])**2)
             if uwb is True:
