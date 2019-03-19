@@ -23,7 +23,6 @@ import netCDF4
 import pickle
 from scipy.ndimage.filters import gaussian_filter
 import skimulator.mod_tools as mod_tools
-import skimulator.mod_run as mod
 import logging
 logger = logging.getLogger(__name__)
 
@@ -400,6 +399,7 @@ def load_rain(rain_file):
 
 def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
                             ac_angle):
+    import skimulator.mod_run as mod
     output_var_i['ur_true'] = mod_tools.proj_radial(output_var_i['ucur'],
                                                     output_var_i['vcur'],
                                                     radial_angle)
