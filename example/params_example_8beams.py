@@ -21,7 +21,7 @@ indatadir = os.path.join(home, 'skimulator', 'example', 'input_fields')
 outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 # ------ Orbit file:
 #filesat = os.path.join(dir_setup,'orbs1a.txt')
-filesat = os.path.join(dir_setup,'orbmetop.txt')
+filesat = os.path.join(dir_setup,'orbmetop_skim.txt')
 # ------ Number of days in orbit (optional if specified in orbit file)
 satcycle = 29
 # ------ Satellite elevation (optional if specified in orbit file)
@@ -101,7 +101,7 @@ grid = 'regular'
 list_input_var = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 0],
                   'uuss': ['uuss', 'uss', 0], 'vuss': ['vuss', 'uss', 0],
                   'ice': ['ice', 'ice', 0], 'mssd': ['mssd', 'msd', 0],
-                  'mssx': ['mssx', 'mss', 0], 'mssy':['mssy', 'mss', 0],
+                  'mssx': ['mssu', 'mss', 0], 'mssy':['mssc', 'mss', 0],
                   'ssh': ['wlv', 'wlv', 0],
                   'uwnd': ['uwnd', 'wnd', 0], 'vwnd': ['vwnd', 'wnd', 0]}
 # ------ Specify longitude variable:
@@ -166,13 +166,19 @@ uwb = True
 ## ----------------------
 # ------ Consider ice in sigma0 computation
 ice = True
-#### Not implemented yet
 # ------ Rain error (True to compute it):
+rain = True
+# ------ Rain file containing scenarii (python file):
+rain_file = os.path.join(dir_setup, 'rain_eq_atl.pyo')
+# ------ Threshold to flag data:
+rain_threshold = 0.15
 wet_tropo = False
 
 # -----------------------#
 # L2C computation
 # -----------------------#
+# config name for L2d:
+config_l2c = ''
 # Length resolution to select neighbors (in km):
 resol = 40
 # Grid resolution for l2c (alongtrack, acrosstrack) grid (in km):
@@ -185,14 +191,16 @@ list_input_var_l2c = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 0]}
 # -----------------------#
 # L2D computation
 # -----------------------#
-# Length resolution to select neighbors (in km):
-resol_spatial_l2d = 50
-# Temporal resolution to select neighbors (in days):
-resol_temporal_l2d = 8
+# config name for L2d:
+config_l2d = ''
+# Length resolution to select neighbors (multiplication factor):
+resol_spatial_l2d = 1
+# Temporal resolution to select neighbors (multiplication factor):
+resol_temporal_l2d = 1
 # Grid resolution for l2d (lat, lon) grid (in degrees):
 posting_l2d = (0.1, 0.1)
 # Time domain: (start_time, end_time, dtime) in days:
-time_domain = (5, 25, 1)
+time_domain = (7, 23, 1)
 # Spatial domain (lon_min, lon_max, lat_min, lat_max):
 spatial_domain = [0, 360, -90, 90]
 # List of variables to be interpolated on the grid:

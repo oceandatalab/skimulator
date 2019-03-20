@@ -7,8 +7,13 @@ import os
 import math
 home = expanduser("~")
 # ------ Name of the configuration (to build output files names) 
-config="WW3_AT_metop_2018_6a"
-# 6 beams, 60 azimuths, 1024 pulses and cycle length of 37 ms
+#config="WW3_EQ_metop_2018_6a"
+# 6 beams, 60 azimuths, 512 pulses and cycle length of 37/2 ms
+#config="WW3_EQ_metop_2019_6a"
+config="WW3_EQ_metop_2019_6b"
+config="WW3_EQ_metop_2019_6c"
+# 6 beams, ?? azimuths, 1024 pulses and cycle length of 37 ms
+#config = "WW3_EQ_metop_2019_6b"
 # ------ Directory that contains orbit file:
 dir_setup = os.path.join(home, 'skimulator', 'data')
 # ------ Directory that contains your own inputs:
@@ -17,7 +22,7 @@ indatadir = os.path.join(home, 'skimulator', 'example', 'input_fields')
 outdatadir = os.path.join(home, 'skimulator', 'example', 'skim_output')
 # ------ Orbit file:
 #filesat = os.path.join(dir_setup,'orbs1a.txt')
-filesat = os.path.join(dir_setup,'orbmetop.txt')
+filesat = os.path.join(dir_setup,'orbmetop_skim.txt')
 # ------ Number of days in orbit (optional if specified in orbit file)
 satcycle = 29
 # ------ Satellite elevation (optional if specified in orbit file)
@@ -31,9 +36,9 @@ proc_number = 1
 # ------ Deactivate printing of progress bar to avoid huge log
 progress_bar = True
 
-# -----------------------# 
-# SKIM swath parameters 
-# -----------------------# 
+# -----------------------#
+# SKIM swath parameters
+# -----------------------#
 # ------ Satellite grid file root name:
 # 	 (Final file name is root_name_[numberofpass].nc)
 filesgrid = os.path.join(outdatadir, '{}_grid'.format(config))
@@ -44,16 +49,41 @@ makesgrid = True
 # 	 (If modelbox is None, the whole domain of the model is considered)
 modelbox = None # [329.,347., -8.,8.]
 #------- Rotation speed of the antenna (in tr/min)
-rotation_speed = 9.26
+if '2019_6a' in config:
+    rotation_speed = 3.3
+    #rotation_speed = 6.3
+elif '2019_6b' in config:
+    rotation_speed = 6
+elif '2019_6c' in config:
+    rotation_speed = 6
+else:
+    rotation_speed = 9.26
 # ------ Cycle duration
-cycle = 0.0368 / 2
+cycle = 0.0368
 #------- List of position of beams:
-list_pos = (0, 120*math.pi/180., 240*math.pi/180.,
+if '2019_6a' in config:
+    list_pos = (0, 90 * math.pi/180., 180*math.pi/180, 270*math.pi/180, 0)
+elif '2019_6b' in config:
+    list_pos = (0, 120 * math.pi/180, 240 * math.pi/180, 0, 180 * math.pi / 180)
+elif '2019_6c' in config:
+    list_pos = (0, 120 * math.pi/180, 240 * math.pi/180, 0, 180 * math.pi / 180)
+else:
+    list_pos = (0, 120*math.pi/180., 240*math.pi/180.,
             0, math.pi)
 #------- List of angle of beams in degrees:
-list_angle = (12, 12, 12, 6, 6)
+if '2019_6a' in config:
+    list_angle = (12, 12, 12, 12, 6)
+else:
+    list_angle = (12, 12, 12, 6, 6)
 #------- List of timeshift as regard to nadir for 12 degree beams:
-list_shift = (5, 2, 3, 1, 4)
+if '2019_6a' in config:
+    list_shift = (1, 2, 5, 3, 4)
+elif '2019_6b' in config:
+    list_shift = (1, 5, 2, 4, 3)
+elif '2019_6c' in config:
+    list_shift = (1, 4, 2, 5, 3)
+else:
+    list_shift = (5, 2, 3, 1, 4)
 # ------ Shift longitude of the orbit file if no pass is in the domain 
 #        (in degree): Default value is None (no shift)
 shift_lon = 0
@@ -88,7 +118,7 @@ grid = 'regular'
 list_input_var = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 0],
                   'uuss': ['uuss', 'uss', 0], 'vuss': ['vuss', 'uss', 0],
                   'ice': ['ice', 'ice', 0], 'mssd': ['mssd', 'msd', 0],
-                  'mssx': ['mssx', 'mss', 0], 'mssy':['mssy', 'mss', 0],
+                  'mssx': ['mssu', 'mss', 0], 'mssy':['mssc', 'mss', 0],
                   'ssh': ['wlv', 'wlv', 0],
                   'uwnd': ['uwnd', 'wnd', 0], 'vwnd': ['vwnd', 'wnd', 0]}
 # ------ Specify longitude variable:
@@ -121,6 +151,7 @@ list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
                'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
                'ssh_true', 'ssh', 'ice', 'mssd',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
+
 # -----------------------# 
 # SKIM error parameters 
 # -----------------------# 
@@ -150,13 +181,19 @@ uwb = True
 ## ----------------------
 # ------ Consider ice in sigma0 computation
 ice = True
-#### Not implemented yet
 # ------ Rain error (True to compute it):
+rain = True
+# ------ Rain file containing scenarii (python file):
+rain_file = os.path.join(dir_setup, 'rain_eq_atl.pyo')
+# ------ Threshold to flag data:
+rain_threshold = 0.15
 wet_tropo = False
 
 # -----------------------#
 # L2C computation
 # -----------------------#
+# config name for L2d:
+config_l2c = ''
 # Length resolution to select neighbors (in km):
 resol = 40
 # Grid resolution for l2c (alongtrack, acrosstrack) grid (in km):
@@ -169,14 +206,16 @@ list_input_var_l2c = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 0]}
 # -----------------------#
 # L2D computation
 # -----------------------#
-# Length resolution to select neighbors (in km):
-resol_spatial_l2d = 50
-# Temporal resolution to select neighbors (in days):
-resol_temporal_l2d = 8
+# config name for L2d:
+config_l2d = ''
+# Length resolution to select neighbors (multiplication factor):
+resol_spatial_l2d = 1
+# Temporal resolution to select neighbors (multiplication factor):
+resol_temporal_l2d = 1
 # Grid resolution for l2d (lat, lon) grid (in degrees):
 posting_l2d = (0.1, 0.1)
 # Time domain: (start_time, end_time, dtime) in days:
-time_domain = (5, 25, 1)
+time_domain = (7, 23, 1)
 # Spatial domain (lon_min, lon_max, lat_min, lat_max):
 spatial_domain = [0, 360, -90, 90]
 # List of variables to be interpolated on the grid:
