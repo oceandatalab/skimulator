@@ -3,6 +3,8 @@ from matplotlib import pyplot
 import netCDF4
 import glob
 import os
+import sys
+import json
 import scipy.signal
 from scipy.fftpack import fft
 
@@ -50,10 +52,14 @@ def coherency_l2c(datadir_input, config, var, nal_min,
         list_files = glob.glob(os.path.join(indir, '{}_l2c_c*p*.nc'.format(iconfig)))
 
         fid = netCDF4.Dataset(list_files[0], 'r')
-        _tmp = numpy.array(fid.variables['u_ac_true'][:])
+        try:
+            _tmp = numpy.array(fid.variables['u_ac_true'][:])
+        except:
+            continue
         _tmp[_tmp < -10] = numpy.nan
         fid.close()
         nac = _tmp.shape[1]
+        nac_mid = int(nac/2)
         nal = nac
 
 
@@ -67,7 +73,11 @@ def coherency_l2c(datadir_input, config, var, nal_min,
             ref = {}
             skim = {}
             fid = netCDF4.Dataset(ifile, 'r')
-            ref['uac'] = numpy.array(fid.variables['u_ac_true'][:])
+            try:
+                ref['uac'] = numpy.array(fid.variables['u_ac_true'][:])
+            except:
+                print(ifile)
+                continue
             ref['uac'][ref['uac']<-10] = numpy.nan
             ref['uac'] = numpy.ma.masked_invalid(ref['uac'])
             ref['ual'] = numpy.array(fid.variables['u_al_true'][:])
@@ -83,7 +93,7 @@ def coherency_l2c(datadir_input, config, var, nal_min,
             if numpy.shape(skim['ual'])[1] < nac:
                 continue
 
-            for i in range(nac):
+            for i in range(3, nac-3):
                 checknanref = + ref['uac'][:, i]
                 checknanobs = + skim['uac'][:, i]
                 merged_mask = (checknanref.mask | checknanobs.mask)
@@ -123,17 +133,20 @@ def coherency_l2c(datadir_input, config, var, nal_min,
     pyplot.legend()
     pyplot.xlabel('/cy/km')
     pyplot.ylabel('coherency')
-    pyplot.savefig('coherency_{}.png'.format(outfile))
+    pyplot.savefig('{}.png'.format(outfile))
 
-def rms_l2c(datadir_input, config):
-    datadir_output = './'
+def rms_l2c(datadir_input, config, output, threshold=0.1):
+    datadir_output = output
     glob_files = os.path.join(datadir_input, '{}_l2c_c01*p*.nc'.format(config))
     list_files = glob.glob(glob_files)
     ref = {}
     skim = {}
 
     fid = netCDF4.Dataset(list_files[0], 'r')
-    _tmp = numpy.array(fid.variables['u_ac_true'][:])
+    try:
+        _tmp = numpy.array(fid.variables['u_ac_true'][:])
+    except:
+        print(list_files[0])
     #_tmp = numpy.array(fid.variables['u_ac_true'][:])
     _tmp[_tmp < -10] = numpy.nan
     fid.close()
@@ -156,7 +169,11 @@ def rms_l2c(datadir_input, config):
             continue
        # if ipath%2==0:
         #   continue
-        ref['uac'] = numpy.array(fid.variables['u_ac_true'][:])
+        try:
+            ref['uac'] = numpy.array(fid.variables['u_ac_true'][:])
+        except:
+            print(filev)
+            continue
         ref['uac'][ref['uac'] < -10] = numpy.nan
         ref['ual'] = numpy.array(fid.variables['u_al_true'][:])
         ref['ual'][ref['ual'] < -10] = numpy.nan
@@ -199,7 +216,8 @@ def rms_l2c(datadir_input, config):
     std_uacm = std_uacm/ntot_acm
     std_ualm = std_ualm/ntot_alm
     f, (ax1, ax2) = pyplot.subplots(1, 2, sharey= True, figsize=(12,5 ))
-    xac = numpy.arange(-(nac - 1) * p.posting/2, (nac + 1)* p.posting/2, p.posting)
+    xac = numpy.arange(-(nac - 1) * posting/2, (nac + 1)* posting/2, posting)
+    print(xac[numpy.where(std_uac > threshold)])
     _ind = numpy.where(numpy.abs(xac)>40)
     print(config, 'uac', numpy.nanmean(std_uac[_ind]))
     print(config, 'ual', numpy.nanmean(std_ual[_ind]))
@@ -207,6 +225,7 @@ def rms_l2c(datadir_input, config):
     print(config, 'ualm', numpy.nanmean(std_ualm[_ind]))
     ax1.plot(xac, std_uac, 'r', label='across track')
     ax1.plot(xac, std_ual, 'b', label='along track')
+    ax1.axhline(y=0.1, color="0.5")
     ax1.set_title('Observation {}'.format(config))
     ax1.set_ylim([0.00, 0.18])
     ax1.legend()
@@ -214,42 +233,42 @@ def rms_l2c(datadir_input, config):
     ax2.plot(xac, std_ualm, 'b', label='along track')
     ax2.set_title('Error-free {}'.format(config))
     ax2.legend()
-    pyplot.savefig('std_{}.png'.format(config))
+    pyplot.savefig('{}.png'.format(datadir_output))
 
 
 if '__main__' == __name__:
-    import params as p
+    if len(sys.argv) < 1:
+        print('Provide json file for diagnostics')
+        sys.exit(1)
+    file_param = sys.argv[1]
+    with open(file_param, 'r') as f:
+        params = json.load(f)
  #   rms_l2c(p.outdatadir, p.config)
-    length_al = 200
-    #coherency_l2c((p.outdatadir, p.outdatadir), (p.config, p.config),
-    #             ('obs','model'), length_al,
-    #             p.posting, outfile='{}_obs_model'.format(p.config))
-    list_config = ('WW3_AT_metop_2018_8a', 'WW3_AT_metop_2018_8b',
-                   'WW3_AT_metop_2018_8c', 'WW3_AT_metop_2018_6a')
-    list_config = ('WW3_EQ_metop_2018_8a', 'WW3_EQ_metop_2018_8b',
-                   'WW3_EQ_metop_2018_8c', 'WW3_EQ_metop_2018_6a')
-    list_config = ('WW3_EQ_metop_2018_8a', 'WW3_EQ_metop_2018_6a',
-                   'WW3_EQ_metop_2018_8c', 'WW3_EQ_metop_2018_6a')
-    list_config = ('WW3_EQ_metop_2018_8a', 'WW3_EQ_metop_2019_6a',
-                   'WW3_EQ_metop_2019_6a1', 'WW3_EQ_metop_2019_6a3')
-    list_dir = []
-    for iconfig in list_config:
-        outdatadir = os.path.join('/tmp/key/data/skim_at_output', iconfig)
-        outdatadir = os.path.join('/tmp/key/data/skim_eq_output', iconfig)
-    #    outdatadir = os.path.join('/tmp/key/data/skim_fr_output', iconfig)
-        list_dir.append(outdatadir)
+    pl2c = params['l2c']
+    length_al = pl2c['alongtrack_length']
+    list_config = pl2c['list_config']
+
+    list_dir = pl2c['indatadir']
+    posting = pl2c['posting']
+    outdatadir = pl2c['outdatadir']
+    for i, iconfig in enumerate(list_config):
+        outdatadir = list_dir[i]
         print(outdatadir, iconfig)
-        rms_l2c(outdatadir, iconfig)
+        outfile = os.path.join(outdatadir, 'std_{}'.format(iconfig))
+        rms_l2c(outdatadir, iconfig, outfile)
+        outfile = os.path.join(outdatadir, 'coherency_{}_obs_model'.format(iconfig))
         coherency_l2c((outdatadir, outdatadir), (iconfig, iconfig),
                      ('obs','noerr'), length_al,
-                     p.posting, outfile='{}_obs_model'.format(iconfig))
+                     posting, outfile=outfile)
+
     list_var = ('obs', 'obs', 'obs', 'obs') #, 'obs')
-    nal_min = 200
+    nal_min = length_al
     print(list_dir, list_config)
+    outfile = os.path.join(outdatadir, 'coherency_obs_{}'.format(list_config[0][:-8]))
     coherency_l2c(list_dir, list_config, list_var, nal_min,
-                  p.posting, outfile=list_config[0][:-8])
+                  posting, outfile=outfile)
     list_var = ('noerr', 'noerr', 'noerr', 'noerr') #, 'obs')
-    nal_min = 200
     print(list_dir, list_config)
+    outfile = os.path.join(outdatadir, 'coherency_noerr_{}'.format(list_config[0][:-8]))
     coherency_l2c(list_dir, list_config, list_var, nal_min,
-                  p.posting, outfile=list_config[0][:-8])
+                  posting, outfile=outfile)

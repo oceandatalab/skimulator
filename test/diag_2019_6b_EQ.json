@@ -1,0 +1,25 @@
+{
+"l2b":{
+    "modelbox": null,
+    "config": "WW3_EQ_metop_2019_6b",
+    "indatadir":  "/tmp/key/data/skim_eq_output/WW3_EQ_metop_2019_6b",
+    "outdatadir": "/mnt/data",
+    "list_angle": [12, 12, 12, 6 , 6]
+    },
+"l2c":{
+    "list_config": ["WW3_EQ_metop_2019_6b", "WW3_EQ_metop_2019_8a"],
+    "indatadir":  ["/tmp/key/data/skim_eq_output/WW3_EQ_metop_2019_6b",
+                   "/tmp/key/data/skim_eq_output/WW3_EQ_metop_2019_8a"],
+    "posting": 5,
+    "outdatadir": "/mnt/data",
+    "alongtrack_length": 200
+    },
+"l2d":{
+    "list_config": ["WW3_EQ_metop_2019_6b", "WW3_EQ_metop_2019_8a"],
+    "indatadir":  ["/tmp/key/data/skim_eq_output/WW3_EQ_metop_2019_6b",
+                   "/tmp/key/data/skim_eq_output/WW3_EQ_metop_2019_8a"],
+    "posting": 5,
+    "outdatadir": "/mnt/data",
+    "alongtrack_length": 200
+    }
+}
