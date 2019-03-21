@@ -96,6 +96,8 @@ def initialize_parameters(p):
     p.list_input_var_l2c = getattr(p, 'list_input_var_l2c', p.list_input_var)
     p.list_input_var_l2d = getattr(p, 'list_input_var_l2d', p.list_input_var)
     p.config_l2d = getattr(p, 'config_l2d', '')
+    p.config_l2c = getattr(p, 'config_l2c', '')
+    p.config = getattr(p, 'config', 'SKIM')
     p.rain = getattr(p, 'rain', False)
     p.rain_file = getattr(p, 'rain_file', None)
     p.rain_threshold = getattr(p, 'rain_threshold', 0.1)

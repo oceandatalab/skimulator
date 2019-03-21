@@ -477,7 +477,9 @@ def worker_method_l2c(*args, **kwargs):
         grd['vmodal'][mask] = numpy.nan
         grd['vmodx'][mask] = numpy.nan
         grd['vmody'][mask] = numpy.nan
-        pattern_out = '{}_l2c_c{:02d}_p{:03d}.nc'.format(p.config, cycle, passn)
+        pattern_out = '{}{}_l2c_c{:02d}_p{:03d}.nc'.format(p.config,
+                                                           p.config_l2c, cycle,
+                                                           passn)
         outfile = os.path.join(p.outdatadir, pattern_out)
         write_l2(outfile, grd, obs, cycle, passn, p.first_time)
     msg_queue.put((os.getpid(), ifile, None, None))
