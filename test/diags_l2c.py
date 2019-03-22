@@ -218,6 +218,7 @@ def rms_l2c(datadir_input, config, output, threshold=0.1):
     f, (ax1, ax2) = pyplot.subplots(1, 2, sharey= True, figsize=(12,5 ))
     xac = numpy.arange(-(nac - 1) * posting/2, (nac + 1)* posting/2, posting)
     print(xac[numpy.where(std_uac > threshold)])
+    print(xac[numpy.where(std_ual > threshold)])
     _ind = numpy.where(numpy.abs(xac)>40)
     print(config, 'uac', numpy.nanmean(std_uac[_ind]))
     print(config, 'ual', numpy.nanmean(std_ual[_ind]))
@@ -250,25 +251,25 @@ if '__main__' == __name__:
 
     list_dir = pl2c['indatadir']
     posting = pl2c['posting']
-    outdatadir = pl2c['outdatadir']
+    outdir = pl2c['outdatadir']
     for i, iconfig in enumerate(list_config):
-        outdatadir = list_dir[i]
-        print(outdatadir, iconfig)
-        outfile = os.path.join(outdatadir, 'std_{}'.format(iconfig))
-        rms_l2c(outdatadir, iconfig, outfile)
-        outfile = os.path.join(outdatadir, 'coherency_{}_obs_model'.format(iconfig))
-        coherency_l2c((outdatadir, outdatadir), (iconfig, iconfig),
+        indatadir = list_dir[i]
+        print(indatadir, iconfig)
+        outfile = os.path.join(outdir, 'std_{}'.format(iconfig))
+        rms_l2c(indatadir, iconfig, outfile)
+        outfile = os.path.join(outdir, 'coherency_{}_obs_model'.format(iconfig))
+        coherency_l2c((indatadir, indatadir), (iconfig, iconfig),
                      ('obs','noerr'), length_al,
                      posting, outfile=outfile)
 
     list_var = ('obs', 'obs', 'obs', 'obs') #, 'obs')
     nal_min = length_al
     print(list_dir, list_config)
-    outfile = os.path.join(outdatadir, 'coherency_obs_{}'.format(list_config[0][:-8]))
+    outfile = os.path.join(outdir, 'coherency_obs_{}'.format(list_config[0][:-8]))
     coherency_l2c(list_dir, list_config, list_var, nal_min,
                   posting, outfile=outfile)
     list_var = ('noerr', 'noerr', 'noerr', 'noerr') #, 'obs')
     print(list_dir, list_config)
-    outfile = os.path.join(outdatadir, 'coherency_noerr_{}'.format(list_config[0][:-8]))
+    outfile = os.path.join(outdir, 'coherency_noerr_{}'.format(list_config[0][:-8]))
     coherency_l2c(list_dir, list_config, list_var, nal_min,
                   posting, outfile=outfile)

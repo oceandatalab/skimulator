@@ -22,7 +22,7 @@ list_angle = params['l2b']['list_angle']
 filesgrid = os.path.join(indatadir, '{}_grid'.format(config))
 
 listfile = glob.glob('{}*.nc'.format(filesgrid))
-files = os.path.join(indatadir, '{}_c01'.format(config))
+files = os.path.join(indatadir, '{}_c'.format(config))
 listfiles = glob.glob('{}*.nc'.format(files))
 listfiles = sorted(listfiles)
 output =  os.path.join(outdatadir, 'Grid_{}.png'.format(config))
