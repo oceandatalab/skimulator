@@ -86,7 +86,8 @@ def initialize_parameters(p):
     p.proc_count = getattr(p, 'proc_number', 1)
     p.progress_bar = getattr(p, 'progress_bar', True)
     p.ac_threshold = getattr(p, 'ac_threshold', 20)  # in km
-    p.resol = getattr(p, 'resol_spatial_l2c', 40) # in km
+    #p.resol = getattr(p, 'resol_spatial_l2c', 40) # in km
+    p.resol = getattr(p, 'resol', 40) # in km
     p.posting = getattr(p, 'posting_l2c', 5) # in km
     p.resol_spatial_l2d = getattr(p, 'resol_spatial_l2d', 50) # in km
     p.resol_temporal_l2d = getattr(p, 'resol_temporal_l2d', 8) # in days
