@@ -443,6 +443,12 @@ def compute_wd_old_par(output_var_i, radial_angle, beam_angle):
     ''' Compute Wave doppler using old parametrisation uwd = Gr * ussr
     and Gr = a * log(b + c/nwr) * (1- tanh(angle))
     '''
+    #required = ('uwnd', 'vwnd', 'uuss', 'vuss')
+    #missing = [_ for _ in required if _ not in p.list_input_var.keys()]
+    #if 0 < len(missing):
+    #    logger.info('Missing file to compute sigma, instrumenta')
+    #    logger.info('Missing parameters: {}'.format(', '.join(missing)))
+    #    return None
     output_var_i['ur_uss'] = mod_tools.proj_radial(output_var_i['uuss'],
                                                    output_var_i['vuss'],
                                                    radial_angle)
@@ -463,6 +469,12 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     ''' Compute wave doppler using coefficients learned from ww3 data 
     '''
     import pkg_resources
+    #required = ('mssx', 'mssy', 'mssd', 'uwnd', 'vwnd', 'hs', 'uuss', 'vuss')
+    #missing = [_ for _ in required if _ not in p.list_input_var.keys()]
+    #if 0 < len(missing):
+    #    logger.info('Missing file to compute sigma, instrumenta')
+    #    logger.info('Missing parameters: {}'.format(', '.join(missing)))
+    #    return None
     # Load Coefficents
     coeff_path = pkg_resources.resource_filename('skimulator',
                                                  'share/coeff.npy')

@@ -208,6 +208,9 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
     shape_i = numpy.shape(sgrid.lon)[0]
     for key in p.list_output:
         output_var_i[key] = numpy.full(shape_i, numpy.nan)
+    for key in p.list_input_var.keys():
+        output_var_i[key] = numpy.full(shape_i, numpy.nan)
+    p.list_output2 = output_var_i.keys()
     #for key in p.list_err:
     #    err_var_i[key] = numpy.full(shape_i, numpy.nan)
 
@@ -376,9 +379,10 @@ def compute_nadir_noise_skim(p, output_var_i, sgrid, cycle):
         output_var_i['instr'] = errnad.nadir
     output_var_i['ssh_obs'] += output_var_i['instr']
     shape_0 = numpy.shape(sgrid.lon)
-    for key in p.list_output:
+    for key in p.list_output2:
         if key not in output_var_i.keys():
             output_var_i[key] = numpy.full(shape_0, numpy.nan)
+    p.list_output2 = output_var_i.keys()
     #if p.wet_tropo is True:
     #    output_var_i['wet_tropo'] = 
     return None
