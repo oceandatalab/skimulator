@@ -11,7 +11,7 @@
                     "WW3_AT_metop_2019_6b_sat1_rot60l40",
                     "WW3_AT_metop_2019_6b_sat1_rot60l50",
                     "WW3_AT_metop_2019_6b_sat1_rot60l30"],
-    "indatadir":  ["/tmp/key/data/skim_eq_output/WW3_EQ_metop_2019_6b",
+    "indatadir":  ["/mnt/data_m/skim_eq_output/WW3_EQ_metop_2019_6b",
                    "/mnt/data_m/skim_at_output/WW3_AT_metop_2019_6b_sat1_rot60",
                    "/mnt/data_m/skim_at_output/WW3_AT_metop_2019_6b_sat1_rot60",
                    "/mnt/data_m/skim_at_output/WW3_AT_metop_2019_6b_sat1_rot60"],

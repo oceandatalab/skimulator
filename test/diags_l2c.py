@@ -256,7 +256,7 @@ if '__main__' == __name__:
         indatadir = list_dir[i]
         print(indatadir, iconfig)
         outfile = os.path.join(outdir, 'std_{}'.format(iconfig))
-        rms_l2c(indatadir, iconfig, outfile)
+        rms_l2c(indatadir, iconfig, outfile, threshold=0.15)
         outfile = os.path.join(outdir, 'coherency_{}_obs_model'.format(iconfig))
         coherency_l2c((indatadir, indatadir), (iconfig, iconfig),
                      ('obs','noerr'), length_al,

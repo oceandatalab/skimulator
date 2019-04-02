@@ -255,7 +255,7 @@ def interpolate_model(p, model_data, list_model_step, grd, list_obs,
             #grid_def = pr.geometry.SwathDefinition(lons=lon, #[ind_lat],
             #                                     lats=grd['lat']) #[ind_lat])
             var = model_step.input_var[ikey]
-            _tmp = interp(swath_def, var, grid_def, p.resol,
+            _tmp = interp(swath_def, var, grid_def, 2*p.resol,
                           interp_type=p.interpolation)
             grd[okey][ind_lat] = _tmp
     return grd
@@ -405,9 +405,11 @@ def worker_method_l2c(*args, **kwargs):
     sbeam_incid = numpy.zeros((nil, nbeams))
     ### TODO Change this
     obs['vobsr'] = numpy.array(data.ur_obs)
+
+    obs['vmodr'] = numpy.array(data.ur_true)
     obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
     obs['vobsr'] = obs['vobsr'].flatten()
-    ind = numpy.where((obs['vobsr'] > -1000))[0]
+    ind = numpy.where((obs['vmodr'] > -100))[0]
     obs['vobsr'] = obs['vobsr'][ind]
     if len(ind) > 2 and len(data.lon_nadir) >2:
         try:

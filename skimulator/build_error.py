@@ -413,11 +413,11 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
         if beam_angle == 12:
             _co = (15.610, 0.955, -6.208, 3.257)
             coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _co[2])**2 + _co[3]
-            sigma_ref = 1
+            sigma_ref = 6.6
         elif beam_angle == 6:
             _co = (26.489, 0.872, -3.356, -3.114)
             coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _co[2]) + _co[3]
-            sigma_ref = 1.5
+            sigma_ref = 9.9
         else:
             logger.error('Unknown instrumental parametrisation for {}'
                          ' angle'.format(beam_angle))
@@ -433,24 +433,134 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
     # del output_var_i['mssxy']
     # Radial projection
     if p.uwb is True:
-        output_var_i['ur_uss'] = mod_tools.proj_radial(output_var_i['uuss'],
-                                                        output_var_i['vuss'],
-                                                        radial_angle)
-        nwr = numpy.sqrt((output_var_i['uwnd'] - output_var_i['ucur'])**2
-                         + (output_var_i['vwnd'] - output_var_i['vcur'])**2)
-        nwr[nwr==0] = numpy.nan
-        _angle = numpy.deg2rad((beam_angle - 25) / 10)
-        GR = 25 * (0.82 * numpy.log(0.2 + 7/nwr)) * (1 - numpy.tanh(_angle))
-        GP = 0
-        output_var_i['uwb_noerr'] = GR * output_var_i['ur_uss']
-        cshape = numpy.shape(output_var_i['uwb_noerr'])
-        #temporary fix for python on mac os
-        _tmp_nonan = + abs(output_var_i['uwb_noerr'])
-        _tmp_nonan[numpy.isnan(_tmp_nonan)] = 0
-        noise = numpy.random.normal(0.0, _tmp_nonan * 0.25, cshape[0])
-        output_var_i['uwb'] = output_var_i['uwb_noerr'] + noise
+        compute_wd_old_par(output_var_i, radial_angle, beam_angle)
+        _, _, _, _ = compute_wd_ai_par(output_var_i, radial_angle, beam_angle)
         #output_var_i['ur_obs'] +=  output_var_i['uwb']
     return None
+
+
+def compute_wd_old_par(output_var_i, radial_angle, beam_angle):
+    ''' Compute Wave doppler using old parametrisation uwd = Gr * ussr
+    and Gr = a * log(b + c/nwr) * (1- tanh(angle))
+    '''
+    output_var_i['ur_uss'] = mod_tools.proj_radial(output_var_i['uuss'],
+                                                   output_var_i['vuss'],
+                                                   radial_angle)
+    nwr = numpy.sqrt((output_var_i['uwnd'] - output_var_i['ucur'])**2
+                     + (output_var_i['vwnd'] - output_var_i['vcur'])**2)
+    nwr[nwr==0] = numpy.nan
+    _angle = numpy.deg2rad((beam_angle - 25) / 10)
+    GR = 25 * (0.82 * numpy.log(0.2 + 7/nwr)) * (1 - numpy.tanh(_angle))
+    GP = 0
+    output_var_i['uwb_noerr'] = GR * output_var_i['ur_uss']
+    cshape = numpy.shape(output_var_i['uwb_noerr'])
+    noise = numpy.random.normal(0, abs(output_var_i['uwb_noerr']) * 0.25, cshape[0])
+    output_var_i['uwb'] = output_var_i['uwb_noerr'] + noise
+    return None
+
+
+def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
+    ''' Compute wave doppler using coefficients learned from ww3 data 
+    '''
+    import pkg_resources
+    # Load Coefficents
+    coeff_path = pkg_resources.resource_filename('skimulator',
+                                                 'share/coeff.npy')
+    coeff = numpy.load(coeff_path)[()]
+    coeff_5dm = coeff['x_5dmean_{:d}deg'.format(int(beam_angle))]
+    coeff_5dstd = coeff['x_5dstd_{:d}deg'.format(int(beam_angle))]
+    coeff_f1ur = coeff['f1URglob{:d}deg'.format(int(beam_angle))]
+    coeff_b1ur = coeff['b1URglob{:d}deg'.format(int(beam_angle))]
+    coeff_4dm = coeff['x_4dmean_{:d}deg'.format(int(beam_angle))]
+    coeff_4dstd = coeff['x_4dstd_{:d}deg'.format(int(beam_angle))]
+    coeff_f1th = coeff['f1thGglob{:d}deg'.format(int(beam_angle))]
+    coeff_b1th = coeff['b1thGglob{:d}deg'.format(int(beam_angle))]
+    ncoeffur = len(coeff_5dm)
+    ncoeffth = len(coeff_4dm)
+    # -- Compute norm --
+    # Construct matrix of input data
+    cshape = numpy.shape(output_var_i['uwnd'])
+    nwnd = numpy.sqrt(output_var_i['uwnd']**2 + output_var_i['vwnd']**2)
+    noise_nwnd = numpy.random.normal(0, nwnd * 0.1, cshape[0])
+    nuss = numpy.sqrt(output_var_i['uuss']**2 + output_var_i['vuss']**2)
+    noise_nuss = numpy.random.normal(0, nuss * 0.25, cshape[0])
+    hs = output_var_i['hs']
+    noise_hs = numpy.random.normal(0, abs(hs) * 0.10, cshape[0])
+    mss = output_var_i['mssu'] + output_var_i['mssc']
+    noise_mss = numpy.random.normal(0, abs(mss) * 0.10, cshape[0])
+    mss[numpy.where(mss == 0)] = numpy.nan
+    mat_noerr = numpy.full((cshape[0], ncoeffur), numpy.nan)
+    mat_noerr[:, 0] = nwnd
+    mat_noerr[:, 1] = numpy.minimum(8., nwnd)
+    mat_noerr[:, 2] = hs
+    mat_noerr[:, 3] = nuss
+    mat_noerr[:, 4] = 1. / mss
+    mat_err = numpy.full((cshape[0], 5), numpy.nan)
+    mat_err[:, 0] = nwnd + noise_nwnd
+    mat_err[:, 1] = numpy.minimum(8., nwnd + noise_nwnd)
+    mat_err[:, 2] = hs + noise_hs
+    mat_err[:, 3] = nuss + noise_nuss
+    mat_err[:, 4] = 1. / (mss + noise_mss)
+    # Normalize with coefficents
+    for i in range(ncoeffur):
+        mat_noerr[:, i] = (mat_noerr[:, i] - coeff_5dm[i]) / coeff_5dstd[i]
+        mat_err[:, i] = (mat_err[:, i] - coeff_5dm[i]) / coeff_5dstd[i]
+
+    # Compute cross product
+    cross = mod_tools.cross_product(mat_noerr, ncoeffur, cshape[0])
+    cross_err = mod_tools.cross_product(mat_err, ncoeffur, cshape[0])
+
+    shape_b1 = numpy.shape(coeff_b1ur)[0]
+    Ulabel = numpy.arange(shape_b1) * ncoeffur / shape_b1
+    Uwd = mod_tools.reconstruct_var(ncoeffur, cshape[0], coeff_f1ur,
+                                    coeff_b1ur, cross, Ulabel)
+    Uwd_err = mod_tools.reconstruct_var(ncoeffur, cshape[0], coeff_f1ur,
+                                    coeff_b1ur, cross_err, Ulabel)
+
+    # -- Compute direction --
+    duss = numpy.arctan2(output_var_i['vuss'], output_var_i['uuss'])
+    noise_duss = numpy.random.normal(0,  10, cshape[0])
+    '''
+    # Construct matrix of input data
+    dwnd = numpy.arctan2(output_var_i['vwnd'], output_var_i['uwnd'])
+    noise_dwnd = numpy.random.normal(0, 10, cshape[0])
+    mat_noerr = numpy.full((cshape[0], ncoeffur), numpy.nan)
+    mat_noerr[:, 0] = dwnd
+    mat_noerr[:, 1] = duss
+    mat_noerr[:, 2] = nwnd
+    mat_noerr[:, 3] = nuss
+    mat_err = numpy.full((cshape[0], ncoeffur), numpy.nan)
+    mat_err[:, 0] = dwnd + noise_dwnd
+    mat_err[:, 1] = duss + noise_duss
+    mat_err[:, 2] = nwnd + noise_nwnd
+    mat_err[:, 3] = nuss + noise_nuss
+
+    # Normalize
+    for i in range(ncoeffth):
+        mat_noerr[:, i] = (mat_noerr[:, i] - coeff_5dm[i]) / coeff_5dstd[i]
+        mat_err[:, i] = (mat_err[:, i] - coeff_5dm[i]) / coeff_5dstd[i]
+
+    # Compute cross products
+    cross = mod_tools.cross_product(mat_noerr, ncoeffth, cshape[0])
+    cross_err = mod_tools.cross_product(mat_err, ncoeffth, cshape[0])
+
+    # Compute direction
+    shabe_b1 = numpy.shape(coeff_b1ur)[0]
+    thlabel = numpy.linspace(-numpy.pi, numpy.pi, shape_b1)
+    dwd = mod_tools.reconstruct_var(ncoeffur, cshape[0], coeff_f1ur,
+                                    coeff_b1ur, cross, Ulabel)
+    dwd_err = mod_tools.reconstruct_var(ncoeffur, cshape[0], coeff_f1ur,
+                                       coeff_b1ur, cross_err, Ulabel)
+    '''
+    # Temporary fix for bug in learning file
+    dwd = duss
+    dwd_err = duss + noise_duss
+    angle_proj = radial_angle - numpy.deg2rad(dwd)
+    output_var_i['uwb_noerr'] = Uwd * numpy.cos(angle_proj)
+    angle_proj = radial_angle - numpy.deg2rad(dwd_err)
+    output_var_i['uwb'] = Uwd_err * numpy.cos(angle_proj)
+    #output_var_i['uwb'] = + output_var_i['uwb_noerr']
+    return Uwd, Uwd_err, dwd, dwd_err
 
 
 def load_yaw(yaw_file):

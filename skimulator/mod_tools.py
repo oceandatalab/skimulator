@@ -246,6 +246,28 @@ def proj_radial(u, v, radial_angle):
     ur = u * numpy.cos(radial_angle) + v * numpy.sin(radial_angle)
     return ur
 
+def cross_product(mat, ncoeff, cshape):
+    ncross = sum(range(ncoeff + 1)) + ncoeff
+    cross = numpy.full((cshape, ncross), numpy.nan)
+    cross[:, 0:ncoeff] = mat[:, :ncoeff]
+    niter = ncoeff
+    for k in range(ncoeff):
+        for l in range(ncoeff - k):
+            cross[:, niter] = mat[:, k]*mat[:, k + l]
+            niter += 1
+    return cross
+
+
+def reconstruct_var(ncoeff, cshape, f1, b1, cross, xlabel):
+    shape_f1 = numpy.shape(f1)[0]
+    shape_b1 = numpy.shape(b1)[0]
+    #f1 = f1.reshape(int(shape_f1//float(shape_b1)), shape_f1)
+    proba = numpy.exp(numpy.dot(cross, f1) + b1)
+    proba_tot = numpy.tile(numpy.nansum(proba, axis=1), (shape_b1, 1))
+    proba = proba / numpy.transpose(proba_tot)
+    var = numpy.sum(proba * numpy.tile(xlabel, (cshape, 1)),axis=1)
+    return var
+
 
 def todict(p):
     result = {}

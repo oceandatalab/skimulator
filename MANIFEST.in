@@ -1,3 +1,4 @@
 include *.txt
 recursive-include docs *.txt
 recursive-include skimulator/share *.txt
+recursive-include skimulator/share *.npy

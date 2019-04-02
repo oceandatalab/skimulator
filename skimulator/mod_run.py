@@ -429,6 +429,8 @@ def compute_sigma_water(input_var, beam_angle, radial_angle):
         input_var['mssx'] = mssxs + mssxl
         input_var['mssy'] = mssys + mssyl
         input_var['mssxy'] = mssxys + mssxyl
+        input_var['mssc'] = mssc
+        input_var['mssu'] = mssu
         R2 = 0.55
         rbeam_angle = numpy.deg2rad(beam_angle)
         mssx = mssxs + mssxl
