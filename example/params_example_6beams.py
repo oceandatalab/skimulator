@@ -119,7 +119,7 @@ list_input_var = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 0],
                   'uuss': ['uuss', 'uss', 0], 'vuss': ['vuss', 'uss', 0],
                   'ice': ['ice', 'ice', 0], 'mssd': ['mssd', 'msd', 0],
                   'mssx': ['mssu', 'mss', 0], 'mssy':['mssc', 'mss', 0],
-                  'ssh': ['wlv', 'wlv', 0],
+                  'ssh': ['wlv', 'wlv', 0], 'hs':['hs', 'hs', 0],
                   'uwnd': ['uwnd', 'wnd', 0], 'vwnd': ['vwnd', 'wnd', 0]}
 # ------ Specify longitude variable:
 lon = ('longitude',)
@@ -147,10 +147,9 @@ file_output = os.path.join(outdatadir, config)
 #        as it is faster and use less memory.)
 interpolation = 'linear'
 # ------ List of output variables:
-list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
-               'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
-               'ssh_true', 'ssh', 'ice', 'mssd',
-               'vindice', 'ur_obs', 'uwnd', 'sigma0']
+list_output = ['ssh_obs', 'ur_true', 'instr',
+               'radial_angle', 'uwb',
+               'ssh_true', 'vindice', 'ur_obs', 'sigma0']
 
 # -----------------------# 
 # SKIM error parameters 
