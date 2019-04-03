@@ -32,7 +32,7 @@ Simulation of the SKIM sampling over synthetic Sea Surface current
 ==================================================================
 From a global or regional OGCM configuration, the software generates radial
 velocities, including instrumental and geophysical noise, for each beam.
-Note that for an accurate instrumental ang geophysical noise, various forcings
+Note that for an accurate instrumental and geophysical noise, various forcings
 are needed such as mean square slope, Stockes drift, wind, ice ...
 
 .. _Fig1:
@@ -110,7 +110,7 @@ Interpolation of model variables on the SKIM grid and nadir track
 --------------------------------------------------------------------------
 A list of model variables should be given to the skimulator, as well as a list
 grids if the coordinates differ from one variable to another.
- The naming of the netcdf files should be
+The naming of the netcdf files should be
 :math:`[pattern\_model]\_[pattern\_variable].nc`, where :math:`pattern\_variable`
 is a string.
 All input variables must be given at the same regular time step.
@@ -121,7 +121,7 @@ order to have a consistent timestamps in the netcdf file.  All provided
 variables are
 interpolated on the SKIM grid and nadir track for each pass and successive
 cycles if the input data exceeds 1 cycle. Current and Stokes drift are then
- projected along the radial component as only measurement along the radial axis
+projected along the radial component as only measurement along the radial axis
 can be made.
 
 No interpolation is made in time (the model file with the closest time step is
@@ -139,7 +139,7 @@ data on the SKIM grid.
 .. _Fig3:
 
 .. figure:: ../images/Fig3.png
-   :alt: Model current and model current interpolated and projeced on SKIM grid
+   :alt: Model current and model current interpolated and projected on SKIM grid
 
    FIG. 3: Model interpolated currents and the corresponding radial currents.
 
@@ -147,9 +147,9 @@ Simulation of errors
 ====================
 
 Instrumental errors
-````````````
+-------------------
 The instrumental error corresponds to the geometric doppler.
-This componant is proportional to sigma0 with a SNR specified in the parameter
+This component is proportional to sigma0 with a SNR specified in the parameter
 file.
 The following variables are needed to compute long range and short range mss:
 mssu, mssc, mssd, uwnd, vwnd, ucur, vcur.
@@ -198,7 +198,7 @@ Computation of total MSS:
 
 with :math:`R^2=0.55` which is a typical value for the tropics in Ka band.
 Note that R depends on the radar frequency, water temperature and salinity
-(eg :math:`R^2=0.50` for 3ºC water).
+(e.g. :math:`R^2=0.50` for 3ºC water).
 
 
 In the presence of ice, we use the concentration of sea ice :math:`C_{ice}`
@@ -215,15 +215,15 @@ Finally, the instrumental error is a random number proportional to
 .. _Fig4:
 
 .. figure:: ../images/Fig4.png
-   :alt: Model current Intrumental noise 
+   :alt: Model current Instrumental noise 
 
-   FIG. 4: Model interpolated currents and the corresponding intrumental error.
+   FIG. 4: Model interpolated currents and the corresponding instrumental error.
 
 
 Wave bias
-````````````````````````
+---------
 The geophysical doppler includes also part of the currents due to the Stokes
-drift. This componant is later refered as the current wave bias :math:`Uwb`.
+drift. This component is later referred as the current wave bias :math:`Uwb`.
 To compute the wave bias, the Stoke drift and the wind are necessary:
 The relation between the wave bias and the Stoke drift is parametrized using a
 radial and perpendicular G parameter.
@@ -245,7 +245,7 @@ Compute the wave bias
     Uwb = G_r * ur_{uss} + G_p * up_{uss}
 
 This wave bias can be corrected assuming that we can compute it using
-neighbors in different azimuthal direction.This corrected componant is called
+neighbors in different azimuthal direction.This corrected component is called
 the remaining wave bias.
 Near the coast, not all azimuth are
 available and thus the drift remaining bias is higher than in the open ocean.
@@ -284,8 +284,8 @@ in SWOT Simulator documentation.
     \newpage
 
 The software
-=============
-The software is written in Python, and uses Numpy, Scipy amd netCDF4 python
+============
+The software is written in Python, and uses Numpy, Scipy and netCDF4 python
 libraries. Pyresample is also required for L2C computation and faster
 interpolation.
 All the parameters that can be modified by the user are read in a
@@ -315,7 +315,7 @@ The software is divided in 6 modules:
 
 
 Inputs
--------
+------
 You can provide to the simulator a list of model outputs in netcdf. You need
 to have at least the meridional and zonal currents to compute error-free radial
 L2B velocities and SSH if you want to simulate nadir data. Wind and MSS
@@ -350,7 +350,7 @@ FIG 19: Example of a list of files, a list is provided in the example directory.
 
 The grid files are provided as a list in the parameter file, using the key
 :ref:`file_grid_model  <params-model>`. Make a list of all grid files that are necessary for
-your variables, the correspondance between the variable and the grid is given
+your variables, the link between the variable and the grid is given
 in a number in the :ref:`list_input_var  <params-model>`.
 If no file_grid_model is provided, The skimulator is going to use the first
 file of your list and data in this file will be ignored.
@@ -369,7 +369,7 @@ netcdf format, the data can be read using
 latitude (:ref:`lat <params-model>`) and longitude
 (:ref:`lon <params-model>`) variables names corresponding to the list of grid
 files provided in :ref:`file_grid_model  <params-model>`.
-All other variables that are to be read, are added to the dictionnary
+All other variables that are to be read, are added to the dictionary
 :ref:`list_input_var <params-model>`:
 
 ::
@@ -466,7 +466,7 @@ and specified in the
 processed (nstep) can be modified in the params file. The value corresponding
 to not a number can be specified in :ref:`model_nan <params-model>`.
 
-Generation of the SKIM gemoetry
+Generation of the SKIM geometry
 -------------------------------
 The SKIM grid is generated in the :mod:`build_swath.py` module. The orbit file
 (:ref:`filesat <params-file>`) is located in :ref:`dir_setup <params-file>` and
@@ -598,10 +598,10 @@ The along track and across track grid resolution is specified in
 5 km.
 The L2c reconstruction uses neighbors to project and interpolate the current.
 The length resolution to select neighbors can be set in
-:ref:`resol <params-l2c>`. Coefficient for the OI are deacreasing exponentially
+:ref:`resol <params-l2c>`. Coefficient for the OI are decreasing exponentially
 with the distance to the pixel.
 As data around nadir are particularly noisy (all radial velocity are
-parrallels), one can mask them by specifiying the distance in km from nadir
+parallels), one can mask them by specifying the distance in km from nadir
 where data are to be masked :ref:`ac_threshold <params-l2c>`.
 The list of variables to be interpolated on the l2d grid is set in
 :ref:`list_input_var_l2c <params-l2c>`.
@@ -625,7 +625,7 @@ interpolate the current.
 The length resolution to select neighbors can be set in
 :ref:`resol_spatial_l2d <params-l2d>` in space and
 :ref:`resol_temporal_l2d <params-l2d>` in time.
-Coefficient for the OI are deacreasing exponentially
+Coefficient for the OI are decreasing exponentially
 with the distance and time to the pixel.
 The time domain to compute L2d can be set in
 :ref:`time_domain <params-l2d>` and the spatial domain in
@@ -722,7 +722,8 @@ Example of Params.txt for SKIM-like data
 References:
 ===========
 .. _SKIM_proposal_2017:
-The SKIM team Sea surface KInematics Multiscale monitoring, full proposal for
-ESA EE9, 2017, The SKIM team
+
+  The SKIM team Sea surface KInematics Multiscale monitoring, full proposal for
+  ESA EE9, 2017, The SKIM team
 
 

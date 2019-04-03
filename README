@@ -66,7 +66,7 @@ Reference orbits data are available online:
    $ tar xJf orbits.tar.xz
 
 Rain data
---------
+---------
 Rain statistical rain flags are available on the ftp for the Gulf Stream Region and the Equator:
 
 
@@ -78,7 +78,7 @@ Rain statistical rain flags are available on the ftp for the Gulf Stream Region 
 
 
 Running
---------
+-------
 Run the SKIM simulator:
 
 For l2b products:
