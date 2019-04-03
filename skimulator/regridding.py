@@ -406,7 +406,7 @@ def worker_method_l2c(*args, **kwargs):
     ### TODO Change this
     obs['vobsr'] = numpy.array(data.ur_obs)
 
-    obs['vmodr'] = numpy.array(data.ur_true)
+    obs['vmodr'] = numpy.array(data.ur_true).flatten()
     obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
     obs['vobsr'] = obs['vobsr'].flatten()
     ind = numpy.where((obs['vmodr'] > -100))[0]

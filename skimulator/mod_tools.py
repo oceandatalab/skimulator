@@ -104,6 +104,31 @@ def initialize_parameters(p):
     p.rain_threshold = getattr(p, 'rain_threshold', 0.1)
     p.attitude = getattr(p, 'attitude', False)
     p.yaw_file = getattr(p, 'yaw_file', None)
+    make_list_output(p)
+    return None
+
+
+def make_list_output(p):
+    #if p.rain is True:
+    compulsory = ('ur_true', 'ur_obs', 'radial_angle', 'vindice', 'ur_obs')
+    for key in compulsory:
+        if key not in p.list_output:
+            p.list_output.append(key)
+    if p.nadir is True:
+        compulsory = ('ssh_obs',)
+        for key in compulsory:
+            if key not in p.list_output:
+                p.list_output.append(key)
+    if p.instr is True:
+        compulsory = ('instr', 'mssxy', 'sigma0')
+        for key in compulsory:
+            if key not in p.list_output:
+                p.list_output.append(key)
+    if p.uwb is True:
+        compulsory = ('mssc', 'mssu', 'ur_uss', 'uwb_noerr', 'uwb')
+        for key in compulsory:
+            if key not in p.list_output:
+                p.list_output.append(key)
     return None
 
 

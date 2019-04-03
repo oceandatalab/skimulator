@@ -327,6 +327,8 @@ def worker_method_skim(*args, **kwargs):
         output_var = {}
         for key in p.list_output:
             output_var[key] = []
+        for key in p.list_input_var.keys():
+            output_var[key] = []
         # Initialize noise to None if this noise is not computed
         # (so that the variable is not written in the netcdf)
         # err_var = {}
@@ -398,9 +400,9 @@ def worker_method_skim(*args, **kwargs):
             time_all.append(time)
             if p.attitude is True:
                 output_var['yaw'].append(yaw)
-            for key in p.list_output:
-                if key in output_var_i.keys():
-                    output_var[key].append(output_var_i[key])
+            for key in output_var_i.keys():
+                #if key in output_var_i.keys():
+                output_var[key].append(output_var_i[key])
         # Compute correction with errdcos formulae
 
         if p.uwb is True:
