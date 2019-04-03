@@ -258,7 +258,7 @@ available and thus the drift remaining bias is higher than in the open ocean.
    FIG. 5: Model interpolated currents and the corresponding wave remaining bias.
 
 Total error
-```````````
+-----------
 All previous errors are added to compute the total error. 
 
 .. _Fig6:
