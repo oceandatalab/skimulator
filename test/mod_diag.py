@@ -228,3 +228,8 @@ def diag_azimuth_rms(listfile, modelbox, output, list_angle):
     if uwbc is True:
         print('uwbc rms 06: {}, uwbc rms 12: {}'.format(nanmeanuwbc06, nanmeanuwbc12))
     return nanstd06, nanstd12, nanstd06norm, nanstd12norm
+
+
+#def bin_rms(listfile, modelbox):
+
+

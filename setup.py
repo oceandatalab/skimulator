@@ -100,8 +100,9 @@ cmds = ['skimul2b = {}.cli:run_script'.format(__package_name__),
 
 # VERSION.txt must be added to the package if the file has been generated
 pkg_data = None
+    pkg_data = {__package_name__: ['share/coeff.npy']}
 if os.path.exists(version_file):
-    pkg_data = {__package_name__: ('share/VERSION.txt', 'share/coeff.npy')}
+    pkg_data[__package_name__].append('share/VERSION.txt')
 
 setup(name=__package_name__,
       version=metadata['__version__'],

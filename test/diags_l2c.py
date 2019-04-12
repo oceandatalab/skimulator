@@ -84,10 +84,10 @@ def coherency_l2c(datadir_input, config, var, nal_min,
             ref['ual'][ref['ual']<-10] = numpy.nan
             ref['ual'] = numpy.ma.masked_invalid(ref['ual'])
             skim['uac'] = numpy.array(fid.variables['u_ac_{}'.format(ivar)][:])
-            skim['uac'][skim['uac']<-10] = numpy.nan
+            skim['uac'][numpy.abs(skim['uac']) > 10] = numpy.nan
             skim['uac'] = numpy.ma.masked_invalid(skim['uac'])
             skim['ual'] = numpy.array(fid.variables['u_al_{}'.format(ivar)][:])
-            skim['ual'][skim['ual']<-10] = numpy.nan
+            skim['ual'][numpy.abs(skim['ual']) > 10] = numpy.nan
             skim['ual'] = numpy.ma.masked_invalid(skim['ual'])
             fid.close()
             if numpy.shape(skim['ual'])[1] < nac:
@@ -174,17 +174,17 @@ def rms_l2c(datadir_input, config, output, threshold=0.1):
         except:
             print(filev)
             continue
-        ref['uac'][ref['uac'] < -10] = numpy.nan
+        ref['uac'][numpy.abs(ref['uac']) > 10] = numpy.nan
         ref['ual'] = numpy.array(fid.variables['u_al_true'][:])
-        ref['ual'][ref['ual'] < -10] = numpy.nan
+        ref['ual'][numpy.abs(ref['ual']) > 10] = numpy.nan
         skim['uacm'] = numpy.array(fid.variables['u_ac_noerr'][:])
-        skim['uacm'][skim['uacm'] < -10] = numpy.nan
+        skim['uacm'][numpy.abs(skim['uacm']) > 10] = numpy.nan
         skim['ualm'] = numpy.array(fid.variables['u_al_noerr'][:])
-        skim['ualm'][skim['ualm'] < -10] = numpy.nan
+        skim['ualm'][numpy.abs(skim['ualm']) > 10] = numpy.nan
         skim['uac'] = numpy.array(fid.variables['u_ac_obs'][:])
-        skim['uac'][skim['uac'] < -10] = numpy.nan
+        skim['uac'][numpy.abs(skim['uac']) > 10] = numpy.nan
         skim['ual'] = numpy.array(fid.variables['u_al_obs'][:])
-        skim['ual'][skim['ual'] < -10] = numpy.nan
+        skim['ual'][numpy.abs(skim['ual']) > 10] = numpy.nan
         nuac = ref['uac'].shape[1]
         fid.close()
         if nuac < 61:
