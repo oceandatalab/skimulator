@@ -21,6 +21,7 @@ import numpy
 from scipy import interpolate
 import netCDF4
 import pickle
+import datetime
 from scipy.ndimage.filters import gaussian_filter
 import skimulator.mod_tools as mod_tools
 import skimulator.fitspline2d as fitspline2d
@@ -576,7 +577,7 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     return Uwd, Uwd_err, dwd, dwd_err
 
 
-def load_yaw_ls(yaw_file):
+def load_yaw_aocs(yaw_file):
     fid = netCDF4.Dataset(yaw_file, 'r')
     time = fid.variables['time'][:]
     time = time / 86400.
@@ -585,37 +586,43 @@ def load_yaw_ls(yaw_file):
     return time, yaw_microrad
 
 
-def make_yaw_ls(time_yaw, vac_yaw, time):
+def make_yaw_aocs(time_yaw, vac_yaw, time):
     max_yaw = numpy.max(time_yaw)
     # ind_time = numpy.where(time > max_yaw)
     # time[ind_time] = time[ind_time] - max_yaw
     time = numpy.mod(time, max_yaw)
     f = interpolate.interp1d(time_yaw, vac_yaw)
-    err_yaw = f(time)
-    return err_yaw
+    yaw_aocs = f(time)
+    return yaw_aocs
 
-def load_yaw_ted(time, angle, first_time):
+def make_yaw_ted(time, angle, first_time):
+    import pkg_resources
     nxspline, nyspline = (64, 64)
     fname = 'Spline_{:d}_{:d}_TED_TAS.npy'.format(nxspline, nyspline)
     coeff_path = pkg_resources.resource_filename('skimulator',
                                                  'share/{}'.format(fname))
 
-    wres=numpy.load(coeff_path)
+    wres = numpy.load(coeff_path)
     param = fitspline2d.ted_tas(wres, nxspline, nyspline)
 
     # Normalize time between 0 and 1 by dividing by the total seconds in 
-    # 1 orbit
+    # 1 orbit and shift for 0s at 0deglat ascending
     max_time_orbit = 6024
-    t_orbit = time / max_time_orbit
-    # Shift angle to along track reference
-    az = numpy.mod(numpy.rad2deg(angle) + 90, 360)
+    tdec = 5.622404310127427501e-02 * 86400
+    t_orbit = numpy.mod(time - tdec, max_time_orbit) / max_time_orbit
+    # Shift angle to across track, clockwise
+    az = numpy.mod(-1 * numpy.rad2deg(angle), 360)
     # Normalize date between 0 and 1 for seasonal cycle
     date_start = datetime.datetime(first_time.year, 1, 1)
     time_d = (first_time - date_start).total_seconds()
     date_end = datetime.datetime(first_time.year, 12, 31, 23, 59, 59)
-    time_total = (date_start - date_end).total_seconds()
-    time_d = time_d / time_total
+    time_total = (date_end - date_start).total_seconds()
+    time_d = numpy.mod(time_d + time, time_total) / time_total
 
     # RESULTAT EN ARCSEC
+    #if (t_orbit < 0).any() or (t_orbit < 1).any() or (az < 0).any() or (az > 360).any() or (time_d <0).any() or (time_d>1).any():
+    #    print(t_orbit, az, time_d)
     yaw_ted = param.transform(t_orbit, az, time_d)
+    # conversion in rad
+    yaw_ted = yaw_ted * numpy.pi * 10**6 / (180 * 3600)
     return yaw_ted

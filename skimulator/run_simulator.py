@@ -212,7 +212,7 @@ def run_simulator(p, die_on_error=False):
     time_yaw = None
     vac_yaw = None
     if p.attitude is True and os.path.isfile(p.yaw_file):
-        time_yaw, vac_yaw = build_error.load_yaw(p.yaw_file)
+        time_yaw, vac_yaw = build_error.load_yaw_aocs(p.yaw_file)
         # time_yaw = time_yaw / 86400
     for sgridfile in listsgridfile:
         jobs.append([sgridfile, p2, listsgridfile, list_file,
@@ -343,7 +343,8 @@ def worker_method_skim(*args, **kwargs):
             output_var['rain'] = []
         if p.attitude is True:
             output_var['yaw'] = []
-            output_var['yaw_corr'] = []
+            output_var['yaw_aocs'] = []
+            output_var['yaw_ted'] = []
         #if 'radial_angle' in p.list_output:
         #    output_var['radial_angle'] = sgrid.radial_angle
         # Loop over the beams
@@ -372,6 +373,13 @@ def worker_method_skim(*args, **kwargs):
                 output_var_i, time = create
                 mod.compute_nadir_noise_skim(p, output_var_i, sgrid, cycle)
 
+                if p.attitude is True:
+                    yaw_aocs = build_error.make_yaw_aocs(time_yaw, vac_yaw, time)
+                    # first_time = datetime.datetime.strptime(p.first_time,
+                    #                                        '%Y-%m-%dT%H:%M:%SZ')
+                    yaw_ted = 0 * yaw_aocs
+                    yaw_total = 0 * yaw_aocs
+
             # Interpolate the velocity and compute the noise for each beam
             else:
                 #Beam angle value to correct for attenuation in radial velocity
@@ -394,15 +402,23 @@ def worker_method_skim(*args, **kwargs):
                 build_error.compute_beam_noise_skim(p, output_var_i,
                                                     radial_angle, beam_angle,
                                                     ac_angle)
-            if p.attitude is True:
-                yaw = build_error.make_yaw(time_yaw, vac_yaw, time)
-                err_yaw = + yaw
+                if p.attitude is True:
+                    yaw_aocs = build_error.make_yaw_aocs(time_yaw, vac_yaw, time)
+                    first_time = datetime.datetime.strptime(p.first_time,
+                                                            '%Y-%m-%dT%H:%M:%SZ')
+                    yaw_ted = + build_error.make_yaw_ted(time, ac_angle,
+                                                         first_time)
+                    # Conversion from microrad to m/s
+                    yaw_total = ((yaw_aocs + yaw_ted) * const.vsat * 10**(-6)
+                                 * numpy.cos(ac_angle))
 
             # Append variables for each beam
             time_all.append(time)
             if p.attitude is True:
-                output_var['yaw'].append(yaw)
-                output_var['yaw_corr'].append(err_yaw)
+                output_var['yaw'].append(yaw_total)
+                output_var['yaw_aocs'].append(yaw_aocs)
+                output_var['yaw_ted'].append(yaw_ted)
+                #output_var['yaw_corr'].append(err_yaw)
             for key in output_var_i.keys():
                 #if key in output_var_i.keys():
                 output_var[key].append(output_var_i[key])

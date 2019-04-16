@@ -44,10 +44,8 @@ B = 10
 Fka = 35.75 * 10**9
 # Satellite cycle (S1) in days
 satcycle = 29.
-# Plateform error model for reconstruction in 3D
-theta1 = 0.7E-4
-theta0 = 0.1
-gamma0 = 1E-4
+# Satellite velocity (m/s)
+vsat = 6657.
 
 
 # ###################################
