@@ -23,6 +23,7 @@ import netCDF4
 import pickle
 from scipy.ndimage.filters import gaussian_filter
 import skimulator.mod_tools as mod_tools
+import skimulator.fitspline2d as fitspline2d
 import logging
 logger = logging.getLogger(__name__)
 
@@ -575,16 +576,16 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     return Uwd, Uwd_err, dwd, dwd_err
 
 
-def load_yaw(yaw_file):
+def load_yaw_ls(yaw_file):
     fid = netCDF4.Dataset(yaw_file, 'r')
     time = fid.variables['time'][:]
     time = time / 86400.
-    vac_yaw = fid.variables['vac_yaw'][:]
+    yaw_microrad = fid.variables['yaw1'][:]
     fid.close()
-    return time, vac_yaw
+    return time, yaw_microrad
 
 
-def make_yaw(time_yaw, vac_yaw, time):
+def make_yaw_ls(time_yaw, vac_yaw, time):
     max_yaw = numpy.max(time_yaw)
     # ind_time = numpy.where(time > max_yaw)
     # time[ind_time] = time[ind_time] - max_yaw
@@ -593,4 +594,28 @@ def make_yaw(time_yaw, vac_yaw, time):
     err_yaw = f(time)
     return err_yaw
 
+def load_yaw_ted(time, angle, first_time):
+    nxspline, nyspline = (64, 64)
+    fname = 'Spline_{:d}_{:d}_TED_TAS.npy'.format(nxspline, nyspline)
+    coeff_path = pkg_resources.resource_filename('skimulator',
+                                                 'share/{}'.format(fname))
 
+    wres=numpy.load(coeff_path)
+    param = fitspline2d.ted_tas(wres, nxspline, nyspline)
+
+    # Normalize time between 0 and 1 by dividing by the total seconds in 
+    # 1 orbit
+    max_time_orbit = 6024
+    t_orbit = time / max_time_orbit
+    # Shift angle to along track reference
+    az = numpy.mod(numpy.rad2deg(angle) + 90, 360)
+    # Normalize date between 0 and 1 for seasonal cycle
+    date_start = datetime.datetime(first_time.year, 1, 1)
+    time_d = (first_time - date_start).total_seconds()
+    date_end = datetime.datetime(first_time.year, 12, 31, 23, 59, 59)
+    time_total = (date_start - date_end).total_seconds()
+    time_d = time_d / time_total
+
+    # RESULTAT EN ARCSEC
+    yaw_ted = param.transform(t_orbit, az, time_d)
+    return yaw_ted

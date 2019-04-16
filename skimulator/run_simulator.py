@@ -343,6 +343,7 @@ def worker_method_skim(*args, **kwargs):
             output_var['rain'] = []
         if p.attitude is True:
             output_var['yaw'] = []
+            output_var['yaw_corr'] = []
         #if 'radial_angle' in p.list_output:
         #    output_var['radial_angle'] = sgrid.radial_angle
         # Loop over the beams
@@ -395,11 +396,13 @@ def worker_method_skim(*args, **kwargs):
                                                     ac_angle)
             if p.attitude is True:
                 yaw = build_error.make_yaw(time_yaw, vac_yaw, time)
+                err_yaw = + yaw
 
             # Append variables for each beam
             time_all.append(time)
             if p.attitude is True:
                 output_var['yaw'].append(yaw)
+                output_var['yaw_corr'].append(err_yaw)
             for key in output_var_i.keys():
                 #if key in output_var_i.keys():
                 output_var[key].append(output_var_i[key])
