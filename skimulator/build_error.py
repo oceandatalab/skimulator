@@ -608,7 +608,8 @@ def make_yaw_ted(time, angle, first_time, beam_angle):
 
     # Normalize time between 0 and 1 by dividing by the total seconds in 
     # 1 orbit and shift for 0s at 0deglat ascending
-    max_time_orbit = 6024
+    max_time_orbit = 6083
+    #max_time_orbit = max(6083, numpy.max(time))
     tdec = 5.622404310127427501e-02 * 86400
     t_orbit = numpy.mod(time - tdec, max_time_orbit) / max_time_orbit
     # Shift angle to across track, clockwise
