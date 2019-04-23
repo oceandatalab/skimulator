@@ -1,6 +1,7 @@
 {
 "l2b":{
     "modelbox": null,
+    "modelbox_bin": [-80,-60, 1, 32, 50, 1],
     "config": "WW3_AT_metop_2019_6b_sat1_rot60",
     "indatadir": "/mnt/data_m/skim_at_output/WW3_AT_metop_2019_6b_sat1_rot60/",
     "outdatadir": "/mnt/data",

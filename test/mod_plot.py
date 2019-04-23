@@ -158,3 +158,30 @@ def plot_vectors(listfile, nvar, modelbox, output, scale=20):
     # Save figure
     pyplot.savefig(output)
     return fig
+
+
+def plot_diag(lon, lat, var, outfile):
+    lon = numpy.mod(lon + 180.0, 360.0) - 180.0
+
+    projection = cartopy.crs.PlateCarree()
+    transform = cartopy.crs.PlateCarree()
+    fig = pyplot.figure(figsize=(12,12))
+    modelbox = [numpy.min(lon), numpy.max(lon), numpy.min(lat), numpy.max(lat)]
+    ax = pyplot.axes(projection=projection)
+    if modelbox is not None:
+        ax.set_extent([modelbox[0], modelbox[1],  modelbox[2], modelbox[3]],
+                      crs=transform)
+        norder = 6
+    else:
+        ax.set_global()
+        norder = 1
+    #ax.add_feature(cartopy.feature.OCEAN, zorder=norder)
+    ax.add_feature(cartopy.feature.LAND, zorder=norder, edgecolor='black')
+    gl = ax.gridlines(crs=transform, draw_labels=True, color='gray',
+                       linestyle='--', alpha=0.5)
+    gl.xlabels_top = False
+    gl.ylabels_left = False
+    ax.pcolormesh(lon, lat, var)
+    pyplot.colorbar()
+    pyplot.savefig(outfile)
+    return None

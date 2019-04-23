@@ -3,6 +3,7 @@ import netCDF4
 import os
 import sys
 import glob
+import pickle
 import matplotlib
 matplotlib.use('Agg')
 from matplotlib import pyplot
@@ -230,50 +231,117 @@ def diag_azimuth_rms(listfile, modelbox, output, list_angle):
     return nanstd06, nanstd12, nanstd06norm, nanstd12norm
 
 
-def bin_rms(listfile, listvar, bin_in, modelbox):
+def bin_variables(listfile, listvar, bin_in, modelbox):
     lonp = numpy.arange(modelbox[0], modelbox[1] + modelbox[2], modelbox[2])
     latp = numpy.arange(modelbox[3], modelbox[4] + modelbox[5], modelbox[5])
-    resol = numpy.sqrt((modelbox[2] * numpy.cos(numpy.deg2rad(latp)) **2 + modelbox[5]**2)
+    resol = numpy.sqrt((modelbox[2] * numpy.cos(numpy.deg2rad(latp))) **2
+                        + modelbox[5]**2)
+    dic_v = {}
     for ifile in listfile:
         data = netCDF4.Dataset(ifile, 'r')
         lon = data['lon'][:]
         lat = data['lat'][:]
-        for j in len(lon):
-            for i in len(lat):
+        for j in range(len(lonp)):
+            for i in range(len(latp)):
                 ind_key = 10000 * int(i) + int(j)
-                dist = numpy.sqrt(((lonp[i, j] - lon)
-                                   *numpy.cos(numpy.deg2rad(lat))**2
-                                   + (latp[i, j] - lat)**2)
+                lon = numpy.mod(lon + 180, 360) - 180
+                dist = numpy.sqrt(((lonp[j] - lon)
+                                   *numpy.cos(numpy.deg2rad(lat)))**2
+                                   + (latp[i] - lat)**2)
                 iiobs = numpy.where(dist < resol[i])
-                if iiobs.isempty():
+                if not iiobs:
                     continue
-                if ind_key not in dic_v.keys()
-                    dic_v[ind_j] = {}
+                if ind_key not in dic_v.keys():
+                    dic_v[ind_key] = {}
                 for ivar in listvar:
                     var = data[ivar][:]
+                    mask = var.mask[iiobs]
+                    var = numpy.array(data.var[iiobs])
                     if ivar not in dic_v[ind_key].keys():
                         dic_v[ind_key][ivar] = []
-                    dic_v[ind_key][ivar].append(var[iiobs]
+                    dic_v[ind_key][ivar].append(var[iiobs])
         data.close()
     with open(bin_in, 'wb') as f:
         pickle.dump(dic_v, f)
 
 
-def read_bin(bin_in, list_var, list_diag, modelbox)
+def compute_rms(bin_in, bin_out, listvar, modelbox):
     with open(bin_in, 'rb') as f:
         dic_v = pickle.load(f)
     lonp = numpy.arange(modelbox[0], modelbox[1] + modelbox[2], modelbox[2])
     latp = numpy.arange(modelbox[3], modelbox[4] + modelbox[5], modelbox[5])
-    for var in list_var:
-        rms[var] = numpy.full((len{latp), len(lonp)), numpy.nan)
-        std[var] = numpy.full((len{latp), len(lonp)), numpy.nan)
-        snr[var] = numpy.full((len{latp), len(lonp)), numpy.nan)
-    for j in len(lon):
-        for i in len(lat):
+    rms = {}
+    std = {}
+    snr = {}
+    rms['lon'] = lonp
+    rms['lat'] = latp
+    std['lon'] = lonp
+    std['lat'] = latp
+    snr['lon'] = lonp
+    snr['lat'] = latp
+    for ivar in listvar:
+        rms[ivar] = numpy.full((len(latp), len(lonp)), numpy.nan)
+        std[ivar] = numpy.full((len(latp), len(lonp)), numpy.nan)
+        snr[ivar] = numpy.full((len(latp), len(lonp)), numpy.nan)
+    for j in range(len(rms['lon'])):
+        for i in range(len(rms['lat'])):
             ind_key = 10000 * int(i) + int(j)
+            if ind_key  not in dic_v.keys():
+                continue
+            var1 = numpy.array(dic_v[ind_key]['ur_true']).flatten()
+            print(var1)
+            print(numpy.nanmean(var1))
+            rms_true = numpy.sqrt(numpy.nanmean(var1**2))
             for ivar in listvar:
-                var = dic_v[ind_key][ivar]
-                rms[var] = numpy.nanrms(var)
-                std[var] = numpy.nanstd(var)
-                std[var] = numpy.nanstd(var)
+                var = numpy.array(dic_v[ind_key][ivar]).flatten()
+                rms[ivar] = numpy.sqrt(numpy.nanmean(var**2))
+                std[ivar] = numpy.nanstd(var)
+                if ivar == 'ur_obs':
+                    _std = numpy.nanstd(var - var1)
+                    snr[ivar] = rms_true / _std
+                elif ivar == 'instr' or ivar == 'uwb_corr':
+                    snr[ivar]  = rms_true / std[ivar]
+    with open('rms_{}'.format(bin_out), 'wb') as f:
+        pickle.dump(rms, f)
+
+    with open('std_{}'.format(bin_out), 'wb') as f:
+        pickle.dump(std, f)
+
+    with open('snr_{}'.format(bin_out), 'wb') as f:
+        pickle.dump(snr, f)
+
+
+def plot_rms(pfile, list_var, outfile, rms=True, std=True, snr=True):
+    import mod_plot
+    if rms is True:
+        with open('rms_{}'.format(pfile), 'rb') as f:
+            rms = pickle.load(f)
+    if std is True:
+        with open('std_{}'.format(pfile), 'rb') as f:
+            std = pickle.load(f)
+    if snr is True:
+        with open('snr_{}'.format(pfile), 'rb') as f:
+            snr = pickle.load(f)
+
+    for ivar in list_var:
+        if ivar in rms.keys() and rms is True:
+            lon = rms['lon']
+            lat = rms['lat']
+            var = rms[ivar]
+            _outfile = 'rms_{}_{}.png'.format(ivar, outfile)
+            mod_plot.plot_diag(lon, lat, var, _outfile)
+        if ivar in std.keys() and std is True:
+            lon = std['lon']
+            lat = std['lat']
+            var = std[ivar]
+            _outfile = 'std_{}_{}.png'.format(ivar, outfile)
+            mod_plot.plot_diag(lon, lat, var, _outfile)
+        if ivar in snr.keys():
+            lon = snr['lon']
+            lat = snr['lat']
+            var = snr[ivar]
+            _outfile = 'snr_{}_{}.png'.format(ivar, outfile)
+            mod_plot.plot_diag(lon, lat, var, _outfile)
+    return None
+
 

@@ -30,4 +30,13 @@ output2 =  os.path.join(outdatadir, 'c_{}.png'.format(config))
 print(config)
 # listfiles.remove('/tmp/key/data/skim_eq_output/WW3_EQ_metop_2018_8a_c01_p022.nc')
 
-mod_diag.diag_rms(listfiles[:], modelbox, output, list_angle)
+#mod_diag.diag_rms(listfiles[:], modelbox, output, list_angle)
+
+listvar = ['ur_true', 'instr', 'ur_obs', 'uwb', 'uwb_corr']
+modelbox2 = params['l2b']['modelbox_bin']
+bin_file = os.path.join(outdatadir, '{}.pyo'.format(config))
+mod_diag.bin_variables(listfiles[:3], listvar, bin_file, modelbox2)
+bin_file2 = '{}.pyo'.format(config)
+mod_diag.compute_rms(bin_file, bin_file2, listvar, modelbox2)
+
+mod_diag.plot_rms(bin_file2, listvar, config)
