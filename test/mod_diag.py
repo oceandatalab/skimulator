@@ -230,6 +230,50 @@ def diag_azimuth_rms(listfile, modelbox, output, list_angle):
     return nanstd06, nanstd12, nanstd06norm, nanstd12norm
 
 
-#def bin_rms(listfile, modelbox):
+def bin_rms(listfile, listvar, bin_in, modelbox):
+    lonp = numpy.arange(modelbox[0], modelbox[1] + modelbox[2], modelbox[2])
+    latp = numpy.arange(modelbox[3], modelbox[4] + modelbox[5], modelbox[5])
+    resol = numpy.sqrt((modelbox[2] * numpy.cos(numpy.deg2rad(latp)) **2 + modelbox[5]**2)
+    for ifile in listfile:
+        data = netCDF4.Dataset(ifile, 'r')
+        lon = data['lon'][:]
+        lat = data['lat'][:]
+        for j in len(lon):
+            for i in len(lat):
+                ind_key = 10000 * int(i) + int(j)
+                dist = numpy.sqrt(((lonp[i, j] - lon)
+                                   *numpy.cos(numpy.deg2rad(lat))**2
+                                   + (latp[i, j] - lat)**2)
+                iiobs = numpy.where(dist < resol[i])
+                if iiobs.isempty():
+                    continue
+                if ind_key not in dic_v.keys()
+                    dic_v[ind_j] = {}
+                for ivar in listvar:
+                    var = data[ivar][:]
+                    if ivar not in dic_v[ind_key].keys():
+                        dic_v[ind_key][ivar] = []
+                    dic_v[ind_key][ivar].append(var[iiobs]
+        data.close()
+    with open(bin_in, 'wb') as f:
+        pickle.dump(dic_v, f)
 
+
+def read_bin(bin_in, list_var, list_diag, modelbox)
+    with open(bin_in, 'rb') as f:
+        dic_v = pickle.load(f)
+    lonp = numpy.arange(modelbox[0], modelbox[1] + modelbox[2], modelbox[2])
+    latp = numpy.arange(modelbox[3], modelbox[4] + modelbox[5], modelbox[5])
+    for var in list_var:
+        rms[var] = numpy.full((len{latp), len(lonp)), numpy.nan)
+        std[var] = numpy.full((len{latp), len(lonp)), numpy.nan)
+        snr[var] = numpy.full((len{latp), len(lonp)), numpy.nan)
+    for j in len(lon):
+        for i in len(lat):
+            ind_key = 10000 * int(i) + int(j)
+            for ivar in listvar:
+                var = dic_v[ind_key][ivar]
+                rms[var] = numpy.nanrms(var)
+                std[var] = numpy.nanstd(var)
+                std[var] = numpy.nanstd(var)
 
