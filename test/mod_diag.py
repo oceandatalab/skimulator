@@ -256,10 +256,11 @@ def bin_variables(listfile, listvar, bin_in, modelbox):
                 for ivar in listvar:
                     var = data[ivar][:]
                     mask = var.mask[iiobs]
-                    var = numpy.array(data.var[iiobs])
+                    var = numpy.array(var.data[iiobs])
                     if ivar not in dic_v[ind_key].keys():
                         dic_v[ind_key][ivar] = []
-                    dic_v[ind_key][ivar].append(var[iiobs])
+                    if var.any():
+                        dic_v[ind_key][ivar].append(var[~mask])
         data.close()
     with open(bin_in, 'wb') as f:
         pickle.dump(dic_v, f)
