@@ -256,10 +256,18 @@ def bin_variables(listfile, listvar, bin_in, modelbox):
                 for ivar in listvar:
                     var = data[ivar][:]
                     mask = var.mask[iiobs]
+                    if ivar == 'ur_obs':
+                        ivar2 = 'diff_ur'
+                        var1 = data['ur_true'][:]
+                        var2 = numpy.array(abs(var.data[iiobs] - var1.data[iiobs]))
+                        if var2.any():
+                            if ivar2 not in dic_v[ind_key].keys():
+                                dic_v[ind_key][ivar2] = []
+                            dic_v[ind_key][ivar2].append(var2[~mask])
                     var = numpy.array(var.data[iiobs])
-                    if ivar not in dic_v[ind_key].keys():
-                        dic_v[ind_key][ivar] = []
                     if var.any():
+                        if ivar not in dic_v[ind_key].keys():
+                            dic_v[ind_key][ivar] = []
                         dic_v[ind_key][ivar].append(var[~mask])
         data.close()
     with open(bin_in, 'wb') as f:
@@ -289,19 +297,23 @@ def compute_rms(bin_in, bin_out, listvar, modelbox):
             ind_key = 10000 * int(i) + int(j)
             if ind_key  not in dic_v.keys():
                 continue
-            var1 = numpy.array(dic_v[ind_key]['ur_true']).flatten()
-            print(var1)
-            print(numpy.nanmean(var1))
+            if 'ur_true' not in dic_v[ind_key].keys():
+                continue
+            var1 = numpy.concatenate(dic_v[ind_key]['ur_true']).ravel()
+            if not var1.any():
+                continue
             rms_true = numpy.sqrt(numpy.nanmean(var1**2))
+            # import pdb ; pdb.set_trace()
             for ivar in listvar:
-                var = numpy.array(dic_v[ind_key][ivar]).flatten()
-                rms[ivar] = numpy.sqrt(numpy.nanmean(var**2))
-                std[ivar] = numpy.nanstd(var)
-                if ivar == 'ur_obs':
-                    _std = numpy.nanstd(var - var1)
-                    snr[ivar] = rms_true / _std
+                if ivar not in dic_v[ind_key].keys():
+                    continue
+                var = numpy.concatenate(dic_v[ind_key][ivar]).ravel()
+                rms[ivar][i, j] = numpy.sqrt(numpy.nanmean(var**2))
+                std[ivar][i, j] = numpy.nanstd(var)
+                if ivar == 'diff_ur':
+                    snr[ivar][i, j] = rms_true / std[ivar][i, j]
                 elif ivar == 'instr' or ivar == 'uwb_corr':
-                    snr[ivar]  = rms_true / std[ivar]
+                    snr[ivar][i, j]  = rms_true / std[ivar][i, j]
     with open('rms_{}'.format(bin_out), 'wb') as f:
         pickle.dump(rms, f)
 
@@ -312,37 +324,37 @@ def compute_rms(bin_in, bin_out, listvar, modelbox):
         pickle.dump(snr, f)
 
 
-def plot_rms(pfile, list_var, outfile, rms=True, std=True, snr=True):
+def plot_rms(pfile, list_var, outfile, isrms=True, isstd=True, issnr=True):
     import mod_plot
-    if rms is True:
+    if isrms is True:
         with open('rms_{}'.format(pfile), 'rb') as f:
             rms = pickle.load(f)
-    if std is True:
+    if isstd is True:
         with open('std_{}'.format(pfile), 'rb') as f:
             std = pickle.load(f)
-    if snr is True:
+    if issnr is True:
         with open('snr_{}'.format(pfile), 'rb') as f:
             snr = pickle.load(f)
 
     for ivar in list_var:
-        if ivar in rms.keys() and rms is True:
+        if ivar in rms.keys() and isrms is True:
             lon = rms['lon']
             lat = rms['lat']
             var = rms[ivar]
             _outfile = 'rms_{}_{}.png'.format(ivar, outfile)
-            mod_plot.plot_diag(lon, lat, var, _outfile)
-        if ivar in std.keys() and std is True:
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=0, vmax=1, cmap='jet')
+        if ivar in std.keys() and isstd is True:
             lon = std['lon']
             lat = std['lat']
             var = std[ivar]
             _outfile = 'std_{}_{}.png'.format(ivar, outfile)
-            mod_plot.plot_diag(lon, lat, var, _outfile)
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=0, vmax=0.3, cmap='jet')
         if ivar in snr.keys():
             lon = snr['lon']
             lat = snr['lat']
             var = snr[ivar]
             _outfile = 'snr_{}_{}.png'.format(ivar, outfile)
-            mod_plot.plot_diag(lon, lat, var, _outfile)
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=0, vmax=20, cmap='jet')
     return None
 
 

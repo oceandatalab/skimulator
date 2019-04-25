@@ -160,9 +160,12 @@ def plot_vectors(listfile, nvar, modelbox, output, scale=20):
     return fig
 
 
-def plot_diag(lon, lat, var, outfile):
+def plot_diag(lon, lat, var, outfile, vmin=None, vmax=None, cmap='jet'):
     lon = numpy.mod(lon + 180.0, 360.0) - 180.0
-
+    if vmin is None:
+        vmin = numpy.nanpercentile(var, 1)
+    if vmax is None:
+        vmax = numpy.nanpercentile(var, 99)
     projection = cartopy.crs.PlateCarree()
     transform = cartopy.crs.PlateCarree()
     fig = pyplot.figure(figsize=(12,12))
@@ -181,7 +184,7 @@ def plot_diag(lon, lat, var, outfile):
                        linestyle='--', alpha=0.5)
     gl.xlabels_top = False
     gl.ylabels_left = False
-    ax.pcolormesh(lon, lat, var)
-    pyplot.colorbar()
+    c = ax.pcolormesh(lon, lat, var, vmin=vmin, vmax=vmax, cmap=cmap)
+    pyplot.colorbar(c)
     pyplot.savefig(outfile)
     return None
