@@ -530,11 +530,11 @@ class Sat_SKIM():
         vx_al_nadir.units = "km"
         vx_al_nadir.long_name = "Nadir along track distance from the"\
                                 "beginning of the cycle"
-        vangle = fid.createVariable('angle', 'f4', (dimsample, dimnbeam))
+        vangle = fid.createVariable('angle', 'f8', (dimsample, dimnbeam))
         vangle.units = "rad"
         vangle.long_name = "Angle of the beam refered to the across track"\
                            " direction"
-        vrangle = fid.createVariable('radial_angle', 'f4',
+        vrangle = fid.createVariable('radial_angle', 'f8',
                                      (dimsample, dimnbeam))
         vrangle.units = "rad"
         vrangle.long_name = "Radial angle refered to (longitude towards east,"\
@@ -570,7 +570,7 @@ class Sat_SKIM():
         vlistpos[:] = self.list_pos
         vlistpos.units = ""
         vlistpos.long_name = "Beam position"
-        vlistangle = fid.createVariable('beam_angle', 'f4', (dimnbeam, ))
+        vlistangle = fid.createVariable('beam_angle', 'f8', (dimnbeam, ))
         vlistangle[:] = self.list_angle
         vlistangle.units = ""
         vlistangle.long_name = "Beam angle"

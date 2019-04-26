@@ -598,36 +598,38 @@ def make_yaw_aocs(time_yaw, vac_yaw, time):
 
 def make_yaw_ted(time, cycle, angle, first_time, beam_angle):
     import pkg_resources
-    nxspline, nyspline = (128, 64)
+    nxspline, nyspline, thedeg = (128, 64, 12)
     fname = 'Spline_{:d}_{:d}_TED_TAS_{:d}_DEG.npy'.format(nxspline, nyspline,
                                                            beam_angle)
     coeff_path = pkg_resources.resource_filename('skimulator',
                                                  'share/{}'.format(fname))
 
     wres = numpy.load(coeff_path)
-    param = fitspline2d.ted_tas(wres, nxspline, nyspline)
-
+    param = fitspline2d.ted_tas(wres, nxspline, nyspline, thedeg)
+    nx, ny = numpy.shape(time)
     # Convert time in seconds
     time = numpy.mod(time, cycle) * 86400
     # Normalize time between 0 and 1 by dividing by the total seconds in 
     # 1 orbit and shift for 0s at 0deglat ascending
-    max_time_orbit = 6083
+    max_time_orbit = 6083.
     #max_time_orbit = max(6083, numpy.max(time))
     tdec = 5.622404310127427501e-02 * 86400
     t_orbit = numpy.mod(time - tdec, max_time_orbit) / max_time_orbit
+    t_orbit = t_orbit.reshape(nx * ny)
     # Shift angle to across track, clockwise
     az = numpy.mod(-1 * numpy.rad2deg(angle), 360)
+    az = az.reshape(nx * ny)
     # Normalize date between 0 and 1 for seasonal cycle
     date_start = datetime.datetime(first_time.year, 1, 1)
     time_d = (first_time - date_start).total_seconds()
     date_end = datetime.datetime(first_time.year, 12, 31, 23, 59, 59)
     time_total = (date_end - date_start).total_seconds()
     time_d = numpy.mod(time_d + time, time_total) / time_total
-
+    time_d = time_d.reshape(nx * ny)
     # RESULTAT EN ARCSEC
     #if (t_orbit < 0).any() or (t_orbit < 1).any() or (az < 0).any() or (az > 360).any() or (time_d <0).any() or (time_d>1).any():
     #    print(t_orbit, az, time_d)
-    yaw_ted = param.transform(t_orbit, az, time_d)
+    yaw_ted = ((param.transform(t_orbit, az, time_d)).reshape(nx, ny)).astype('float32')
     # conversion in rad
     yaw_ted = yaw_ted * numpy.pi * 10**6 / (180 * 3600)
     return yaw_ted

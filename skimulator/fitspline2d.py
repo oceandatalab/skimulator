@@ -120,17 +120,17 @@ class fitspline2d:
 
 
 class ted_tas():
-    def __init__(self, wres, nxspline, nyspline):
+    def __init__(self, wres, nxspline, nyspline, thedeg):
         self.mysp2={}
         self.n_time = 1200
         self.n_az = 120
         for i in range(3):
             self.mysp2[i]=fitspline2d(self.n_time, self.n_az, nxspline,
-                                      nyspline)
-            self.mysp2[i].setparam(wres[0,:])
+                                      nyspline, xcircle=True, ycircle=True)
+            self.mysp2[i].setparam(wres[i,:])
 
 
-    def transform(self,t_orbit,az,t_year):
+    def transform(self, t_orbit, az, t_year):
         '''
         #====================================================================
         # t_orbit : orbital time inside [0,1]; 0 begining of the orbit, 1 end
@@ -146,7 +146,10 @@ class ted_tas():
         delta_az = 360 / self.n_az
         fit_1 = self.mysp2[0].transform(t_orbit * n_time, az / delta_az)
         cos_year = numpy.cos(t_year * 2 * numpy.pi)
-        fit_t = self.mysp2[1].transform(t_orbit * n_time, az / delta_az)
-        fit_2 = fit_t * numpy.cos(t_year * 2 * numpy.pi)
-        fit_3 = fit_t * numpy.sin(t_year * 2 * numpy.pi)
+        t_orbit = numpy.fmod((t_orbit * n_time), n_time)
+        azd = numpy.fmod(az, 360) / delta_az
+        fit_t2 = self.mysp2[1].transform(t_orbit, azd)
+        fit_t3 = self.mysp2[2].transform(t_orbit, azd)
+        fit_2 = fit_t2 * numpy.cos(t_year * 2 * numpy.pi)
+        fit_3 = fit_t3 * numpy.sin(t_year * 2 * numpy.pi)
         return (fit_1 + fit_2 + fit_3)
