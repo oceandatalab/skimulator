@@ -216,7 +216,7 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
 
     date1 = cycle * sgrid.cycle
     # Definition of the time in the model
-    time = sgrid.time / 86400. + date1  # in days
+    time = sgrid.time / 86400. + date1  # convert seconds in days
     lon = sgrid.lon
     lat = sgrid.lat
     timeshift = sgrid.timeshift / 86400.  # in days

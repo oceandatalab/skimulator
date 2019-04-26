@@ -590,6 +590,7 @@ def make_yaw_aocs(time_yaw, vac_yaw, time):
     max_yaw = numpy.max(time_yaw)
     # ind_time = numpy.where(time > max_yaw)
     # time[ind_time] = time[ind_time] - max_yaw
+    time = time * 86400
     time = numpy.mod(time, max_yaw)
     f = interpolate.interp1d(time_yaw, vac_yaw)
     yaw_aocs = f(time)
@@ -606,6 +607,8 @@ def make_yaw_ted(time, angle, first_time, beam_angle):
     wres = numpy.load(coeff_path)
     param = fitspline2d.ted_tas(wres, nxspline, nyspline)
 
+    # Convert time in seconds
+    time = numpy.mod(time, cycle) * 86400
     # Normalize time between 0 and 1 by dividing by the total seconds in 
     # 1 orbit and shift for 0s at 0deglat ascending
     max_time_orbit = 6083

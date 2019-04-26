@@ -125,7 +125,8 @@ class ted_tas():
         self.n_time = 1200
         self.n_az = 120
         for i in range(3):
-            self.mysp2[i]=fitspline2d(self.n_time, self.n_az, nxspline, nyspline)
+            self.mysp2[i]=fitspline2d(self.n_time, self.n_az, nxspline,
+                                      nyspline)
             self.mysp2[i].setparam(wres[0,:])
 
 
