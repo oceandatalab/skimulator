@@ -406,7 +406,8 @@ def worker_method_skim(*args, **kwargs):
                     yaw_aocs = build_error.make_yaw_aocs(time_yaw, vac_yaw, time)
                     first_time = datetime.datetime.strptime(p.first_time,
                                                             '%Y-%m-%dT%H:%M:%SZ')
-                    yaw_ted = + build_error.make_yaw_ted(time, ac_angle,
+                    yaw_ted = + build_error.make_yaw_ted(time, sgrid_tmp.cycle,
+                                                         ac_angle,
                                                          first_time, beam_angle)
                     # Conversion from microrad to m/s
                     yaw_total = ((yaw_aocs + yaw_ted) * const.vsat * 10**(-6)

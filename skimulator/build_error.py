@@ -596,7 +596,7 @@ def make_yaw_aocs(time_yaw, vac_yaw, time):
     yaw_aocs = f(time)
     return yaw_aocs
 
-def make_yaw_ted(time, angle, first_time, beam_angle):
+def make_yaw_ted(time, cycle, angle, first_time, beam_angle):
     import pkg_resources
     nxspline, nyspline = (128, 64)
     fname = 'Spline_{:d}_{:d}_TED_TAS_{:d}_DEG.npy'.format(nxspline, nyspline,
