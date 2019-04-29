@@ -426,11 +426,29 @@ def worker_method_skim(*args, **kwargs):
 
         if p.uwb is True:
             #ouput_var['uwb_corr']
-            _tmp = mod_uwb_corr.compute_erruwb(p, sgrid, output_var)
-            output_var['uwb_corr'] = _tmp
+            lon = numpy.array(sgrid.lon)
+            lat = numpy.array(sgrid.lat)
+            lon_nadir = numpy.array(sgrid.lon_nadir)
+            lat_nadir = numpy.array(sgrid.lat_nadir)
+            uwnd = numpy.array(output_var['uwnd'])
+            vwnd = numpy.array(output_var['vwnd'])
+            wnd_dir = numpy.arctan2(vwnd, uwnd)
+            mss = numpy.array(output_var_i['mssu') + numpy.array(output_var_i['mssc')
+            hs = output_var_i['hs'][0]
+            p.delta_azim = 15
+            usr_comb = mod_uwb_err.combine_usr(lon, lat, usr, p.delta_azim,
+                                               sgrid.angle, wnd_dir)
+            mssclose, hsclose = mod_uwb_err.find_closest(lon, lat, lon_nadir,
+                                                         lat_nadir, mss[:, 1:],
+                                                         hs, p.list_angle)
+            uwd_est = mod_uwb_err.estimate_uwd(usr_comb, output_var, hsclose,
+                                               mssclose, radial_angle,
+                                               p.list_angle)
+            output_var['uwd_est'] = uwd_est
+            corr = output_var['uwd'] - output_var['uwd_est']
             for i in range(len(output_var['ur_obs'])):
                 output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]
-                                               + output_var['uwb_corr'][i][:])
+                                               + corr)
         if p.rain is True:
             mean_time = numpy.mean(time)
             rain, rain_nad = build_error.compute_rain(p, mean_time, sgrid,
