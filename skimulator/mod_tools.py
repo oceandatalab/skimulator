@@ -34,6 +34,7 @@ import sys
 import os
 import types
 import datetime
+import skimulator.const as const
 
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)

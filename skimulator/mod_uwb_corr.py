@@ -1,6 +1,8 @@
 import numpy
 import math
 import logging
+import skimulator.mod_tools as mod_tools
+
 
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
@@ -84,7 +86,7 @@ def compute_erruwb(p, sgrid, ouput_var):
     return err_uwb
 
 
-def combine_usr(lon, lat, usr, dazi, angle, wnd_dir)
+def combine_usr(lon, lat, usr, dazi, angle, wnd_dir):
     '''
     PURPOSE : recombine measurements of various azimuths and ambiguity
     removal using wind direction
@@ -96,102 +98,127 @@ def combine_usr(lon, lat, usr, dazi, angle, wnd_dir)
     OUTPUT : usrhat : estimate of the radial stokes drift [m/s]
     '''
 
+    dazi = 33
     azibin = numpy.arange(0, 180, dazi)
     # Ambiguity from SKIM measurment
     usrabs = numpy.abs(usr)
     # From rad to deg and considering pi ambiguity
-    degangle = numpy.deg2rad(numpy.mod(angle, numpy.pi))
-    nsample, nbeam = numpy.shape(usr)
+    degangle = numpy.rad2deg(numpy.mod(angle, numpy.pi))
+    nsample, nbeam = numpy.shape(usrabs)
     usr_comb = numpy.full((nsample, nbeam), numpy.nan)
+    dmax = 300
     for ibeam in range(nbeam):
-	for isample in range(nsample):
-            if not numpy.isfinite(usrabs):
+        for isample in range(nsample):
+            if not numpy.isfinite(usrabs[isample, ibeam]):
                 continue
             plon = lon[isample, ibeam]
             plat = lat[isample, ibeam]
             pangle = degangle[isample, ibeam]
             rangle = angle[isample, ibeam]
-	    dist = dist_sphere(plon, lon, plat, lat)
-	    Idist0 = numpy.where(dist < dmax)
-	    azimuthr = azimuth[Idist0].ravel()
-	    lonr = lon[Idist0].ravel()
-	    latr = lat[Idist0].ravel()
-	    usrr = usrabs[Idist0].ravel()
+            dist = mod_tools.dist_sphere(plon, lon, plat, lat)
+            Idist0 = numpy.where(dist < dmax)
+            #azimuthr = azimuth[Idist0].ravel()
+            lonr = lon[Idist0].ravel()
+            latr = lat[Idist0].ravel()
+            usrr = usrabs[Idist0].ravel()
             distr = dist[Idist0].ravel()
-	    Iazi = numpy.digitize(degangle[Idist0].ravel(), azibin) - 1
-	    Ifinite = numpy.isfinite(usrr)
-	    # for each bin, find the closest point and append radial Stokes drift with ambiguity on sign
-	    usrazi = numpy.zeros(len(azibin))
-	    for iazi in range(len(azibin)):
-		I1 = numpy.where(numpy.logical_and(Iazi==iazi, Ifinite))
-		#distazi = dist_sphere(plon, lonr[I1], plat, latr[I1])
-		Idist = numpy.argmin(distr)
-		usrazi[iazi] = usrr[I1][Idist]
-	    usrhat[isample,ibeam] = combine_usr(usrazi,dazi,azimuthat[isample],thwnd[isample,ibeam])
-	    iaziat = int(numpy.where(numpy.logical_and(90 > azibin-dazi,
-                                     90 < azibin+dazi))[0])
-	    Iaziatnot = numpy.logical_not(numpy.arange(len(azibin))==iaziat)
-	    # 2. Interpolate input data in the along track direction (will be to avoid as the noise cnnot be removed in that direction)
-	    usrazi[iaziat] = numpy.interp(azibin[iaziat], azibin[Iaziatnot],
+            ang_azi = numpy.digitize(degangle[Idist0].ravel(), azibin) - 1
+            Ifinite = numpy.isfinite(usrr)
+            # for each bin, find the closest point and append radial Stokes drift with ambiguity on sign
+            usrazi = numpy.zeros(len(azibin))
+            for iazi in range(len(azibin)):
+                I1 = numpy.where(numpy.logical_and(ang_azi==iazi, Ifinite))
+                distazi = mod_tools.dist_sphere(plon, lonr[I1], plat, latr[I1])
+                try:
+                    Idist = numpy.argmin(distazi)
+                    usrazi[iazi] = usrr[I1][Idist]
+                except:
+                    usrazi[iazi] = numpy.nan
+            iaziat = int(numpy.where(numpy.logical_and(90 > (azibin),
+                                     90 < (azibin + dazi)))[0])
+            Iaziatnot = numpy.logical_not(numpy.arange(len(azibin))==iaziat)
+            # 2. Interpolate input data in the along track direction (will be to avoid as the noise cnnot be removed in that direction)
+            usrazi[iaziat] = numpy.interp(azibin[iaziat], azibin[Iaziatnot],
                                           usrazi[Iaziatnot], period=180)
-	    # 3. Perform an estimate of the Stokes drift direction and magnitude
-	    c = numpy.fft.fft(usrazi)/len(usrazi)
-	    rd2 = -0.5 * numpy.angle(c[1]) # estimate of Us direction
-	    thrbeam = numpy.mod(rd2, 2 * numpy.pi)
-	    if numpy.cos(wnd_dir[isample, ibeam] - thrbeam) < 0.:
-		thrbeam = numpy.arctan2(-numpy.sin(thrbeam),
+            # 3. Perform an estimate of the Stokes drift direction and magnitude
+            c = numpy.fft.fft(usrazi)/len(usrazi)
+            rd2 = -0.5 * numpy.angle(c[1]) # estimate of Us direction
+            thrbeam = numpy.mod(rd2, 2 * numpy.pi)
+            if numpy.cos(wnd_dir[isample, ibeam] - thrbeam) < 0.:
+                thrbeam = numpy.arctan2(-numpy.sin(thrbeam),
                                         -numpy.cos(thrbeam))
-	    # 4. Ambiguity removal using closeness to estimated direction
+            # 4. Ambiguity removal using closeness to estimated direction
             radazibin = numpy.deg2rad(azibin[iazi])
-            cond = numpy.where(numpy.cos(thrbeam - radazibin) > 0)
+            cond = numpy.where(numpy.cos(thrbeam - radazibin) > 0)[0]
             usfull = - usrazi
-            usfull[cond] = usrazi
-	    usr_comb[isample, ibeam] = numpy.sum(usfull * numpy.cos(radazimuth - rangle)) * 2 * dazi / 180.
+            if cond.any():
+                usfull[(cond)] = usrazi
+            usr_comb[isample, ibeam] = numpy.nansum(usfull * numpy.cos(rangle)) * 2 * dazi / 180.
     return usr_comb
 
 
-def find_closest(lon, lat, lon_nadir, lat_nadir, mss, beam_angle)
+def find_closest(lon, lat, lon_nadir, lat_nadir, mss, hs, beam_angle):
     ''' Find closest mss at 6degree or nadir.
     '''
-    nsample, nbeam = numpy.shape(mss)
-    mssclose = numpy.full((nsample, nbeam))
-    hsclose = numpy.full((nsample, nbeam))
-    ind_6 = numpy.where(beam_angle ==6)
-    mss6 = mss[(:, ind_6 + 1)]
+    nsample, nbeam = numpy.shape(mss[:, 1:])
+    mssclose = numpy.full((nsample, nbeam), numpy.nan)
+    hsclose = numpy.full((nsample, nbeam), numpy.nan)
+    ind_6 = numpy.where(numpy.array(beam_angle) == 6)[0]
+    mss6 = mss[:, (ind_6 + 1)].ravel()
     mss_nadir = mss[:, 0]
-    for isample in range(sample):
+    for isample in range(nsample):
         for ibeam in range(nbeam):
-            if not numpy.isfinite(mss[ibeam, isample]):
+            if not numpy.isfinite(mss[isample, ibeam]):
                 continue
-            plon = lon[isample,ibeam]
-            plat = lat[isample,ibeam]
-            dist_nadir = dist_sphere(plon, lon_nadir, plat, lat_nadir)
-            dist_nadir[numpy.where(numpy.isnan(mss_nadir))] = numpy.nan
-	    inadir = np.nanargmin(dist_nadir)
-	    dnadir = dist_nadir.min()
-	    dist_6 = dist_sphere(plon, lon[(:, ind_6)], plat, lat[(:, ind_6)])
-            dist_nadir[numpy.where(numpy.isnan(mss6))] = numpy.nan
-	    i6 = np.nanargmin(dist_6)
-	    d6 = dist_6.min()
-            hs[isample, ibeam] = hs[inadir]
-	    if d6 < dnadir:
-		mssclose[isample, ibeam] = mss6.ravel()[i6]
-	    else:
-		mssclose[isample, ibeam] = mss_nadir[inadir]
+            plon = lon[isample, ibeam]
+            plat = lat[isample, ibeam]
+            dist_nadir = mod_tools.dist_sphere(plon, lon_nadir, plat, lat_nadir)
+            #dist_nadir[numpy.where(numpy.isnan(mss_nadir))] = numpy.nan
+            # TODO remove ugly try except
+            try:
+                inadir = numpy.nanargmin(dist_nadir)
+            except:
+                continue
+            dnadir = dist_nadir[inadir]
+            dist_6 = mod_tools.dist_sphere(plon, lon[:, (ind_6)].ravel(), plat,
+                                           lat[:, (ind_6)].ravel())
+            try:
+                i6 = numpy.nanargmin(dist_6)
+            except:
+                continue
+            d6 = dist_6[i6]
+            hsclose[isample, ibeam] = hs[inadir]
+            if d6 < dnadir:
+                mssclose[isample, ibeam] = mss6[i6]
+            else:
+                mssclose[isample, ibeam] = mss_nadir[inadir]
     return mssclose, hsclose
 
 
 def estimate_uwd(usr, output_var, hs_nadir, mssclose, radial_angle,
                  beam_angle):
+    import skimulator.build_error as build_error
     nsample, nbeam = numpy.shape(usr)
-    uwd_est = numpy.full((nsample, nbeam))
+    uwdr_est = []
+    uwdr_est.append(numpy.full((nsample), numpy.nan))
     for ibeam in range(nbeam):
-	output_var2 ={}
-	output_var2['ussr'] = usr[:, ibeam]
-	output_var2['uwnd'] = output_var['uwnd'][:, ibeam + 1]
-	output_var2['vwnd'] = output_var['vwnd'][:, ibeam + 1]
-	output_var2['hs'] = hs_nadir[:, ibeam]
-	output_var2['mssclose'] = mssclose[:, ibeam]
+        from matplotlib import pyplot
+        '''
+        pyplot.figure()
+        pyplot.plot(usr[:, ibeam], label='usr')
+        pyplot.plot(output_var['uwnd'][ibeam + 1], label='wnd')
+        pyplot.plot(hs_nadir[:, ibeam], label='hs')
+        pyplot.plot(mssclose[:, ibeam], label='mss')
+        pyplot.legend()
+        pyplot.savefig('test.png')
+        '''
+        output_var2 ={}
+        output_var2['ussr'] = usr[:, ibeam]
+        output_var2['uwnd'] = output_var['uwnd'][ibeam + 1]
+        output_var2['vwnd'] = output_var['vwnd'][ibeam + 1]
+        output_var2['hs'] = hs_nadir[:, ibeam]
+        output_var2['mssclose'] = mssclose[:, ibeam]
         est_wd = build_error.compute_wd_ai_par
-	uwdr_est[:, ibeam] = est_wd(output_var2, radial_angle[:, ibeam],
-                                    beam_angle[ibeam])
+        uwdr_est.append(est_wd(output_var2, radial_angle[:, ibeam],
+                                    beam_angle[ibeam]))
+    return uwdr_est

@@ -205,6 +205,12 @@ def run_simulator(p, die_on_error=False):
     if p.file_input and p.file_grid_model is None:
         logger.info("WARNING: the first file is not used to build data")
         list_file.remove(list_file[0])
+    # Add compulsary key # TODO proof that
+    list_compulsary_key = ['ur_obs', 'ur_true', 'radial_angle', 'ussr', 'uwd']
+    for key in list_compulsary_key:
+        if key not in p.list_output:
+            p.list_output.append(key)
+
 
     # - Loop on SKIM grid files
     jobs = []
@@ -338,7 +344,7 @@ def worker_method_skim(*args, **kwargs):
         if p.instr is True:
             output_var['instr'] = []
         if p.uwb is True:
-            output_var['uwb'] = []
+            output_var['uwd'] = []
         if p.rain is True:
             output_var['rain'] = []
         if p.attitude is True:
@@ -363,7 +369,7 @@ def worker_method_skim(*args, **kwargs):
                 #     output_var_i[key ] = numpy.full(shape_0, numpy.nan)
                 time = sgrid_tmp.time / 86400. + sgrid.cycle * cycle
 
-                # mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
+              # mask_tmp = numpy.full(numpy.shape(sgrid_tmp.lon),
                 #                      numpy.nan)
                 #ssh_i, vindice = create_nadir_data()numpy create a mask from an a
                 create = mod.create_SKIMlikedata(cycle, list_file,
@@ -426,27 +432,35 @@ def worker_method_skim(*args, **kwargs):
 
         if p.uwb is True:
             #ouput_var['uwb_corr']
-            lon = numpy.array(sgrid.lon)
-            lat = numpy.array(sgrid.lat)
-            lon_nadir = numpy.array(sgrid.lon_nadir)
-            lat_nadir = numpy.array(sgrid.lat_nadir)
-            uwnd = numpy.array(output_var['uwnd'])
-            vwnd = numpy.array(output_var['vwnd'])
-            wnd_dir = numpy.arctan2(vwnd, uwnd)
-            mss = numpy.array(output_var_i['mssu') + numpy.array(output_var_i['mssc')
-            hs = output_var_i['hs'][0]
+            lon = numpy.transpose(numpy.array(sgrid.lon))[:, 1:]
+            lat = numpy.transpose(numpy.array(sgrid.lat))[:, 1:]
+            lon_nadir = numpy.array(sgrid.lon[0])
+            lat_nadir = numpy.array(sgrid.lat[0])
+            uwnd = numpy.transpose(numpy.array(output_var['uwnd']))
+            vwnd = numpy.transpose(numpy.array(output_var['vwnd']))
+            wnd_dir = numpy.arctan2(vwnd, uwnd)[:, 1:]
+            mss = (numpy.transpose(numpy.array(output_var['mssu']))
+                   + numpy.transpose(numpy.array(output_var['mssc'])))
+            hs = output_var['hs'][0]
+            usr = numpy.transpose(numpy.array(output_var['ussr']))[:, 1:]
             p.delta_azim = 15
-            usr_comb = mod_uwb_err.combine_usr(lon, lat, usr, p.delta_azim,
-                                               sgrid.angle, wnd_dir)
-            mssclose, hsclose = mod_uwb_err.find_closest(lon, lat, lon_nadir,
-                                                         lat_nadir, mss[:, 1:],
+            usr_comb = mod_uwb_corr.combine_usr(lon, lat, usr, p.delta_azim,
+                                                sgrid.angle, wnd_dir)
+            mssclose, hsclose = mod_uwb_corr.find_closest(lon, lat, lon_nadir,
+                                                         lat_nadir, mss,
                                                          hs, p.list_angle)
-            uwd_est = mod_uwb_err.estimate_uwd(usr_comb, output_var, hsclose,
-                                               mssclose, radial_angle,
-                                               p.list_angle)
+            from matplotlib import pyplot
+            pyplot.figure()
+            pyplot.plot(mssclose, label='mss')
+            pyplot.plot(hsclose, label='mss')
+            pyplot.legend()
+            pyplot.savefig('test.png')
+            uwd_est = mod_uwb_corr.estimate_uwd(usr_comb, output_var, hsclose,
+                                                mssclose, sgrid.radial_angle,
+                                                p.list_angle)
             output_var['uwd_est'] = uwd_est
-            corr = output_var['uwd'] - output_var['uwd_est']
             for i in range(len(output_var['ur_obs'])):
+                corr = output_var['uwd'][i] - output_var['uwd_est'][i]
                 output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]
                                                + corr)
         if p.rain is True:

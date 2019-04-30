@@ -679,8 +679,8 @@ class Sat_SKIM():
                     "ur_obs": "Observed radial velocity (Ur_model+errors)",
                     "index": "Equivalent model output number in list of file",
                     "ur_uss": "Stokes drift radial velocity bias",
-                    "uwb": "Wave bias componant",
-                    "uwb_corr": "Remaining wave bias current after inversion",
+                    "uwd": "True Radial Wave doppler componant",
+                    "uwd_est": "Estimated radial wave doppler componant",
                     "uwnd": "Eastward wind at 10m ",
                     "vwnd": "Northward wind at 10m ",
                     "nadir_err": "Nadir error",
@@ -691,12 +691,15 @@ class Sat_SKIM():
                     }
         unit = {"sigma0": "", "ur_true": "m/s", "ur_obs": "m/s",
                 "index": " ", "ur_uss": "m/s", "uwnd": "m/s",
-                "vwnd": "m/s", "uwb": "m/s", "ucur": "m/s",
+                "vwnd": "m/s", "uwd": "m/s", "ucur": "m/s",
                 "vcur": "m/s", "ssh_obs": "m", "wlv": "m",
-                "nadir_err": "m", "ssh_obs":"m", "uwb_corr": "m/s"
+                "nadir_err": "m", "ssh_obs":"m", "uwd_est": "m/s"
                 }
-        list_nadir = ("nadir_err", "ssh_true", "ssh_obs")
+        list_nadir = ("nadir_err", "ssh_true", "ssh_obs", "ice", "sigma0",
+                      "mssu", "mssc", "uwnd", "vwnd")
         for key, value in outdata.items():
+            if len(value) != nbeam + 1:
+                print(key, 'wrong value dimension')
             if value is not None:
                 if key in list_nadir or key == "vindice" or key == "instr":
                     nvar_nadir = '{}_nadir'.format(key)
@@ -711,7 +714,7 @@ class Sat_SKIM():
                         var_nadir.long_name = longname[str(key)]
                     except:
                         var_nadir.long_name = str(key)
-                if key not in list_nadir:
+                if True: #key not in list_nadir:
                     nvar = '{}'.format(key)
                     var = fid.createVariable(nvar, 'f4', (dimsample, dimnbeam),
                                              fill_value=-1.36e9)
@@ -744,8 +747,8 @@ class Sat_SKIM():
                             else:
                                 continue
                         else:
-                            if key not in list_nadir:
-                                var[:, i - 1] = value_tmp
+                            # if key not in list_nadir:
+                            var[:, i - 1] = value_tmp
 
                 # try:    var.missing_value = p.model_nan
                 # except: var.missing_value = 0.

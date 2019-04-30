@@ -435,8 +435,12 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
     # del output_var_i['mssxy']
     # Radial projection
     if p.uwb is True:
+        output_var_i['ussr'] = mod_tools.proj_radial(output_var_i['uuss'],
+                                                     output_var_i['vuss'],
+                                                     radial_angle)
         # compute_wd_old_par(output_var_i, radial_angle, beam_angle)
-        _, _, _, _ = compute_wd_ai_par(output_var_i, radial_angle, beam_angle)
+        output_var_i['uwd'] = compute_wd_ai_par(output_var_i, radial_angle,
+                                                beam_angle)
         #output_var_i['ur_obs'] +=  output_var_i['uwb']
     return None
 
@@ -479,7 +483,7 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     #    return None
     # Load Coefficents
     coeff_path = pkg_resources.resource_filename('skimulator',
-                                                 'share/coeff.npy')
+                                                 'share/coeffr.npy')
     coeff = numpy.load(coeff_path)[()]
     coeff_f1ur = coeff['f1UWDRglob{:d}deg'.format(int(beam_angle))]
     coeff_b1ur = coeff['b1UWDRglob{:d}deg'.format(int(beam_angle))]
@@ -489,27 +493,27 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     # -- Compute norm --
     # Construct matrix of input data
     cshape = numpy.shape(output_var_i['uwnd'])
-    if 'uuss' in output_var_i.keys():
-        usr = mod_tools.proj_radial(output_var_i['uuss'],
-                                     output_var_i['vuss'],
-                                     radial_angle)
-    else:
-        usr = output_var_i['ussr']
+    usr = output_var_i['ussr']
     wndr = mod_tools.proj_radial(output_var_i['uwnd'],
                                  output_var_i['vwnd'],
                                  radial_angle)
-    hs = output_var_i['hs']
-    noise_hs = numpy.random.normal(0, abs(hs) * 0.02, cshape[0])
-    if 'mssu' in  output_var_i.ke
+    nwnd = numpy.sqrt(output_var_i['uwnd']**2 + output_var_i['vwnd']**2)
+    if 'mssu' in output_var_i.keys():
         mss = output_var_i['mssu'] + output_var_i['mssc']
-        noise_mss = numpy.random.normal(0, abs(mss) * 0.02, cshape[0])
     else:
         mss = output_var_i['mssclose']
     mss[numpy.where(mss == 0)] = numpy.nan
+    hs = output_var_i['hs']
 
+    mat_noerr = numpy.full((cshape[0], ncoeffur), numpy.nan)
+    mat_noerr[:, 0] = usr
+    mat_noerr[:, 1] = wndr
+    mat_noerr[:, 2] = hs
+    mat_noerr[:, 3] = nwnd
+    mat_noerr[:, 4] = 1. / mss
     # Normalize with coefficents
     for i in range(ncoeffur):
-        mat_noerr[:, i] = (mat_noerr[:, i] - coeff_4dm[i]) / coeff_5dstd[i]
+        mat_noerr[:, i] = (mat_noerr[:, i] - coeff_4dm[i]) / coeff_4dstd[i]
 
     # Compute cross product
     cross = mod_tools.cross_product(mat_noerr, ncoeffur, cshape[0])
