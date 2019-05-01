@@ -444,8 +444,9 @@ def worker_method_skim(*args, **kwargs):
             hs = output_var['hs'][0]
             usr = numpy.transpose(numpy.array(output_var['ussr']))[:, 1:]
             p.delta_azim = 15
+            incl = sgrid.incl
             usr_comb = mod_uwb_corr.combine_usr(lon, lat, usr, p.delta_azim,
-                                                sgrid.angle, wnd_dir)
+                                                sgrid.radial_angle, incl, wnd_dir)
             mssclose, hsclose = mod_uwb_corr.find_closest(lon, lat, lon_nadir,
                                                          lat_nadir, mss,
                                                          hs, p.list_angle)
