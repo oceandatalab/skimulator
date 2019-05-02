@@ -43,21 +43,27 @@ def diag_rms(listfile, modelbox, output, list_angle):
         lat_nadir = data.variables['lat_nadir'][:]
         vartrue = data.variables['ur_true'][:]
         varobs = data.variables['ur_obs'][:]
+        if len(lon_nadir) < 700:
+            continue
         if 'instr' in data.variables.keys():
             instr = True
             varinstr = data.variables['instr'][:]
-        if 'uwb' in data.variables.keys():
+        if 'uwd' in data.variables.keys():
             uwb = True
-            varuwb = data.variables['uwb'][:]
-        if 'uwb_corr' in data.variables.keys():
+            varuwb = data.variables['uwd'][:]
+        if 'uwd_est' in data.variables.keys():
             uwbc = True
-            varuwbc = data.variables['uwb_corr'][:]
+            varuwbc = data.variables['uwd_est'][:]
+            varuwbc = varuwbc - varuwb
 
         mask = ((abs(vartrue)>100) | (abs(varobs)>100))
         #vartrue[mask] = numpy.nan
         #varobs[mask] = numpy.nan
         beam_angle = list_angle #data['beam_angle'][:]
         data.close()
+        # Remove borders
+        ind0 = 100
+        ind1 = -100
         if numpy.shape(lon)[0]<100:
             continue
         for i in range(numpy.shape(lon)[1]):
@@ -153,12 +159,12 @@ def diag_azimuth_rms(listfile, modelbox, output, list_angle):
         if 'instr' in data.variables.keys():
             instr = True
             varinstr = data.variables['instr'][:]
-        if 'uwb' in data.variables.keys():
+        if 'uwd' in data.variables.keys():
             uwb = True
-            varuwb = data.variables['uwb'][:]
-        if 'uwb_corr' in data.variables.keys():
+            varuwb = data.variables['uwd'][:]
+        if 'uwd_est' in data.variables.keys():
             uwbc = True
-            varuwbc = data.variables['uwb_corr'][:]
+            varuwbc = data.variables['uwd_est'][:]
 
         mask = ((abs(vartrue)>100) | (abs(varobs)>100))
         #vartrue[mask] = numpy.nan
@@ -254,7 +260,9 @@ def bin_variables(listfile, listvar, bin_in, modelbox):
                 if ind_key not in dic_v.keys():
                     dic_v[ind_key] = {}
                 for ivar in listvar:
-                    var = data[ivar][:]
+                    try:
+                        var = data[ivar][:]
+                    except: print(ifile, ivar)
                     mask = var.mask[iiobs]
                     if ivar == 'ur_obs':
                         ivar2 = 'diff_ur'
@@ -264,6 +272,28 @@ def bin_variables(listfile, listvar, bin_in, modelbox):
                             if ivar2 not in dic_v[ind_key].keys():
                                 dic_v[ind_key][ivar2] = []
                             dic_v[ind_key][ivar2].append(var2[~mask])
+                        ivar2 = 'cov_ur'
+                        cov = numpy.cov(var.data[iiobs], var1.data[iiobs])
+                        var2 = (200*cov[0, 1] / (numpy.trace(cov)))
+                        if var2.any():
+                            if ivar2 not in dic_v[ind_key].keys():
+                                dic_v[ind_key][ivar2] = []
+                            dic_v[ind_key][ivar2].append(var2)
+                    if ivar == 'uwd_est':
+                        ivar2 = 'diff_uwdr'
+                        var1 = data['uwd'][:]
+                        var2 = numpy.array(abs(var.data[iiobs] - var1.data[iiobs]))
+                        if var2.any():
+                            if ivar2 not in dic_v[ind_key].keys():
+                                dic_v[ind_key][ivar2] = []
+                            dic_v[ind_key][ivar2].append(var2[~mask])
+                        ivar2 = 'cov_uwdr'
+                        cov = numpy.cov(var.data[iiobs], var1.data[iiobs])
+                        var2 = (200*cov[0, 1] / (numpy.trace(cov)))
+                        if var2.any():
+                            if ivar2 not in dic_v[ind_key].keys():
+                                dic_v[ind_key][ivar2] = []
+                            dic_v[ind_key][ivar2].append(var2)
                     var = numpy.array(var.data[iiobs])
                     if var.any():
                         if ivar not in dic_v[ind_key].keys():
@@ -282,16 +312,23 @@ def compute_rms(bin_in, bin_out, listvar, modelbox):
     rms = {}
     std = {}
     snr = {}
+    cov = {}
     rms['lon'] = lonp
     rms['lat'] = latp
     std['lon'] = lonp
     std['lat'] = latp
     snr['lon'] = lonp
     snr['lat'] = latp
+    if 'uwd_est' in listvar:
+        listvar.append('diff_uwdr')
+    listvar.append('diff_ur')
+    listvar.append('cov_ur')
+    listvar.append('cov_uwdr')
     for ivar in listvar:
         rms[ivar] = numpy.full((len(latp), len(lonp)), numpy.nan)
         std[ivar] = numpy.full((len(latp), len(lonp)), numpy.nan)
         snr[ivar] = numpy.full((len(latp), len(lonp)), numpy.nan)
+        cov[ivar] = numpy.full((len(latp), len(lonp)), numpy.nan)
     for j in range(len(rms['lon'])):
         for i in range(len(rms['lat'])):
             ind_key = 10000 * int(i) + int(j)
@@ -299,8 +336,12 @@ def compute_rms(bin_in, bin_out, listvar, modelbox):
                 continue
             if 'ur_true' not in dic_v[ind_key].keys():
                 continue
+            if 'uwd' not in dic_v[ind_key].keys():
+                continue
             var1 = numpy.concatenate(dic_v[ind_key]['ur_true']).ravel()
-            if not var1.any():
+            if 'uwd' in dic_v[ind_key].keys():
+                var2 = numpy.concatenate(dic_v[ind_key]['uwd']).ravel()
+            if not var1.any() or not var2.any():
                 continue
             rms_true = numpy.sqrt(numpy.nanmean(var1**2))
             # import pdb ; pdb.set_trace()
@@ -312,8 +353,10 @@ def compute_rms(bin_in, bin_out, listvar, modelbox):
                 std[ivar][i, j] = numpy.nanstd(var)
                 if ivar == 'diff_ur':
                     snr[ivar][i, j] = rms_true / std[ivar][i, j]
-                elif ivar == 'instr' or ivar == 'uwb_corr':
+                elif ivar == 'instr' or ivar == 'diff_uwdr':
                     snr[ivar][i, j]  = rms_true / std[ivar][i, j]
+                elif 'cov' in ivar:
+                    cov[ivar][i, j] = numpy.nanmean(var)
     with open('rms_{}'.format(bin_out), 'wb') as f:
         pickle.dump(rms, f)
 
@@ -323,8 +366,11 @@ def compute_rms(bin_in, bin_out, listvar, modelbox):
     with open('snr_{}'.format(bin_out), 'wb') as f:
         pickle.dump(snr, f)
 
+    with open('cov_{}'.format(bin_out), 'wb') as f:
+        pickle.dump(cov, f)
 
-def plot_rms(pfile, list_var, outfile, isrms=True, isstd=True, issnr=True):
+def plot_rms(pfile, list_var, outfile, isrms=True, isstd=True, issnr=True, 
+             isvar=True):
     import mod_plot
     if isrms is True:
         with open('rms_{}'.format(pfile), 'rb') as f:
@@ -335,26 +381,47 @@ def plot_rms(pfile, list_var, outfile, isrms=True, isstd=True, issnr=True):
     if issnr is True:
         with open('snr_{}'.format(pfile), 'rb') as f:
             snr = pickle.load(f)
+    if isvar is True:
+        with open('cov_{}'.format(pfile), 'rb') as f:
+            cov = pickle.load(f)
 
+    if 'uwd_est' in list_var:
+        list_var.append('diff_uwdr')
+    list_var.append('diff_ur')
     for ivar in list_var:
         if ivar in rms.keys() and isrms is True:
             lon = rms['lon']
             lat = rms['lat']
             var = rms[ivar]
             _outfile = 'rms_{}_{}.png'.format(ivar, outfile)
-            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=0, vmax=1, cmap='jet')
+            vmin = numpy.nanpercentile(var, 5)
+            vmax = numpy.nanpercentile(var, 95)
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=vmin, vmax=vmax, cmap='jet')
         if ivar in std.keys() and isstd is True:
             lon = std['lon']
             lat = std['lat']
             var = std[ivar]
+            vmin = numpy.nanpercentile(var, 5)
+            vmax = numpy.nanpercentile(var, 95)
             _outfile = 'std_{}_{}.png'.format(ivar, outfile)
-            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=0, vmax=0.3, cmap='jet')
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=vmin, vmax=vmax, cmap='jet')
         if ivar in snr.keys():
             lon = snr['lon']
             lat = snr['lat']
             var = snr[ivar]
+            vmin = numpy.nanpercentile(var, 5)
+            vmax = numpy.nanpercentile(var, 95)
             _outfile = 'snr_{}_{}.png'.format(ivar, outfile)
-            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=0, vmax=20, cmap='jet')
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=vmin, vmax=vmax, cmap='jet')
+    for ivar in ['cov_uwdr', 'cov_ur']:
+        if ivar in cov.keys():
+            lon = cov['lon']
+            lat = cov['lat']
+            var = cov[ivar]
+            vmin = numpy.nanpercentile(var, 5)
+            vmax = numpy.nanpercentile(var, 95)
+            _outfile = 'snr_{}_{}.png'.format(ivar, outfile)
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=vmin, vmax=vmax, cmap='jet')
     return None
 
 

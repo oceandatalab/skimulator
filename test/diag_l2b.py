@@ -22,7 +22,7 @@ list_angle = params['l2b']['list_angle']
 filesgrid = os.path.join(indatadir, '{}_grid'.format(config))
 
 listfile = glob.glob('{}*.nc'.format(filesgrid))
-files = os.path.join(indatadir, '{}_c'.format(config))
+files = os.path.join(indatadir, '{}_c01'.format(config))
 listfiles = glob.glob('{}*.nc'.format(files))
 listfiles = sorted(listfiles)
 output =  os.path.join(outdatadir, 'Grid_{}.png'.format(config))
@@ -30,12 +30,12 @@ output2 =  os.path.join(outdatadir, 'c_{}.png'.format(config))
 print(config)
 # listfiles.remove('/tmp/key/data/skim_eq_output/WW3_EQ_metop_2018_8a_c01_p022.nc')
 
-#mod_diag.diag_rms(listfiles[:], modelbox, output, list_angle)
+mod_diag.diag_rms(listfiles[:], modelbox, output, list_angle)
 
-listvar = ['ur_true', 'instr', 'ur_obs', 'uwb', 'uwb_corr']
+listvar = ['ur_true', 'instr', 'ur_obs', 'uwd', 'uwd_est']
 modelbox2 = params['l2b']['modelbox_bin']
 bin_file = os.path.join(outdatadir, '{}.pyo'.format(config))
-#mod_diag.bin_variables(listfiles[:], listvar, bin_file, modelbox2)
+mod_diag.bin_variables(listfiles[:], listvar, bin_file, modelbox2)
 bin_file2 = '{}.pyo'.format(config)
 #mod_diag.compute_rms(bin_file, bin_file2, listvar, modelbox2)
 

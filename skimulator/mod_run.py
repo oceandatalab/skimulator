@@ -206,6 +206,10 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
     #   Initialiaze errors and velocity
     output_var_i = {}
     shape_i = numpy.shape(sgrid.lon)[0]
+    list_compulsary_key = ['ur_obs', 'ur_true', 'radial_angle', 'ussr', 'uwd']
+    for key in list_compulsary_key:
+        if key not in p.list_output:
+            p.list_output.append(key)
     for key in p.list_output:
         output_var_i[key] = numpy.full(shape_i, numpy.nan)
     for key in p.list_input_var.keys():

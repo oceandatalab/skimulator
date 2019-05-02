@@ -157,7 +157,7 @@ def plot_vectors(listfile, nvar, modelbox, output, scale=20):
                     transform=transform)
     # Save figure
     pyplot.savefig(output)
-    return fig
+    fig.close()
 
 
 def plot_diag(lon, lat, var, outfile, vmin=None, vmax=None, cmap='jet'):
@@ -187,4 +187,5 @@ def plot_diag(lon, lat, var, outfile, vmin=None, vmax=None, cmap='jet'):
     c = ax.pcolormesh(lon, lat, var, vmin=vmin, vmax=vmax, cmap=cmap)
     pyplot.colorbar(c)
     pyplot.savefig(outfile)
+    fig.close()
     return None

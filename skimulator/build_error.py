@@ -409,7 +409,7 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
     output_var_i['radial_angle'] = radial_angle
     if p.instr is True:
         # Compute sigma0:
-        sigma0 = mod.compute_sigma(output_var_i, beam_angle, radial_angle, p)
+        #sigma0 = mod.compute_sigma(output_var_i, beam_angle, radial_angle, p)
         sigma0 = mod.compute_sigma(output_var_i, beam_angle, ac_angle, p)
         output_var_i['sigma0'] = sigma0
         if beam_angle == 12:
@@ -435,8 +435,12 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
     # del output_var_i['mssxy']
     # Radial projection
     if p.uwb is True:
-        compute_wd_old_par(output_var_i, radial_angle, beam_angle)
-        _, _, _, _ = compute_wd_ai_par(output_var_i, radial_angle, beam_angle)
+        output_var_i['ussr'] = mod_tools.proj_radial(output_var_i['uuss'],
+                                                     output_var_i['vuss'],
+                                                     radial_angle)
+        # compute_wd_old_par(output_var_i, radial_angle, beam_angle)
+        output_var_i['uwd'] = compute_wd_ai_par(output_var_i, radial_angle,
+                                                beam_angle)
         #output_var_i['ur_obs'] +=  output_var_i['uwb']
     return None
 
@@ -468,6 +472,61 @@ def compute_wd_old_par(output_var_i, radial_angle, beam_angle):
 
 
 def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
+    ''' Compute wave doppler using coefficients learned from ww3 data 
+    '''
+    import pkg_resources
+    #required = ('mssx', 'mssy', 'mssd', 'uwnd', 'vwnd', 'hs', 'uuss', 'vuss')
+    #missing = [_ for _ in required if _ not in p.list_input_var.keys()]
+    #if 0 < len(missing):
+    #    logger.info('Missing file to compute sigma, instrumenta')
+    #    logger.info('Missing parameters: {}'.format(', '.join(missing)))
+    #    return None
+    # Load Coefficents
+    coeff_path = pkg_resources.resource_filename('skimulator',
+                                                 'share/coeffr.npy')
+    coeff = numpy.load(coeff_path)[()]
+    coeff_f1ur = coeff['f1UWDRglob{:d}deg'.format(int(beam_angle))]
+    coeff_b1ur = coeff['b1UWDRglob{:d}deg'.format(int(beam_angle))]
+    coeff_4dm = coeff['x_4dmean_{:d}deg'.format(int(beam_angle))]
+    coeff_4dstd = coeff['x_4dstd_{:d}deg'.format(int(beam_angle))]
+    ncoeffur = len(coeff_4dm)
+    # -- Compute norm --
+    # Construct matrix of input data
+    cshape = numpy.shape(output_var_i['uwnd'])
+    usr = output_var_i['ussr']
+    wndr = mod_tools.proj_radial(output_var_i['uwnd'],
+                                 output_var_i['vwnd'],
+                                 radial_angle)
+    nwnd = numpy.sqrt(output_var_i['uwnd']**2 + output_var_i['vwnd']**2)
+    if 'mssu' in output_var_i.keys():
+        mss = output_var_i['mssu'] + output_var_i['mssc']
+    else:
+        mss = output_var_i['mssclose']
+    mss[numpy.where(mss == 0)] = numpy.nan
+    hs = output_var_i['hs']
+
+    mat_noerr = numpy.full((cshape[0], ncoeffur), numpy.nan)
+    mat_noerr[:, 0] = usr
+    mat_noerr[:, 1] = wndr
+    mat_noerr[:, 2] = hs
+    mat_noerr[:, 3] = nwnd
+    mat_noerr[:, 4] = 1. / mss
+    # Normalize with coefficents
+    for i in range(ncoeffur):
+        mat_noerr[:, i] = (mat_noerr[:, i] - coeff_4dm[i]) / coeff_4dstd[i]
+
+    # Compute cross product
+    cross = mod_tools.cross_product(mat_noerr, ncoeffur, cshape[0])
+
+    shape_b1 = numpy.shape(coeff_b1ur)[0]
+    Ulabel = numpy.arange(-shape_b1, shape_b1, 2) * ncoeffur / shape_b1
+    Uwd = mod_tools.reconstruct_var(ncoeffur, cshape[0], coeff_f1ur,
+                                    coeff_b1ur, cross, Ulabel)
+
+    return Uwd
+
+
+def compute_wd_ai_par_old(output_var_i, radial_angle, beam_angle):
     ''' Compute wave doppler using coefficients learned from ww3 data 
     '''
     import pkg_resources

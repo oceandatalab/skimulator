@@ -34,6 +34,7 @@ import sys
 import os
 import types
 import datetime
+import skimulator.const as const
 
 # Define logger level for debug purposes
 logger = logging.getLogger(__name__)
@@ -265,6 +266,16 @@ def cart2spher(x, y, z):
 
     lon = lon * 180/math.pi
     return lon % 360, lat
+
+def dist_sphere(lon1,lon2,lat1,lat2):
+    R = const.Rearth
+    radlat1 = numpy.deg2rad(lat1)
+    radlat2 = numpy.deg2rad(lat2)
+    raddifflon = numpy.deg2rad(lon2 - lon1)
+    d = numpy.arccos(numpy.sin(radlat2) * numpy.sin(radlat1)
+                     + numpy.cos(radlat2) * numpy.cos(radlat1)
+                     * numpy.cos(raddifflon))
+    return d * R / 1000. # in km
 
 
 def proj_radial(u, v, radial_angle):
