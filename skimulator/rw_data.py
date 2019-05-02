@@ -716,7 +716,11 @@ class Sat_SKIM():
                         var_nadir.long_name = str(key)
                 if True: #key not in list_nadir:
                     nvar = '{}'.format(key)
-                    var = fid.createVariable(nvar, 'f4', (dimsample, dimnbeam),
+                    if key == 'radial_angle':
+                        ntype = 'f8'
+                    else:
+                        ntype = 'f4'
+                    var = fid.createVariable(nvar, ntype, (dimsample, dimnbeam),
                                              fill_value=-1.36e9)
                     try:
                         var.units = unit[str(key)]
