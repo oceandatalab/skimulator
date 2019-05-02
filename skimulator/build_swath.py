@@ -448,7 +448,7 @@ def worker_method_grid(*args, **kwargs):
             else:
                 inclination = math.pi + inclination_angle[shift::nbeam]
                 # inclination = + inclination_angle[shift::nbeam]
-                inclination_save = math.pi + inclination_angle[0::nbeam]
+                inclination_save = inclination_angle[0::nbeam]
                 radial_angle = -beam_angle + inclination - math.pi / 2.
             lon_tmp = (lonnad[shift::nbeam] + (xal * numpy.cos(inclination)
                        + xac * numpy.sin(inclination))
