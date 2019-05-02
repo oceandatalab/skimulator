@@ -109,7 +109,7 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
     # Inclination of pass (along track angle)
     inclination = numpy.transpose([incl, ]* nbeam)
     angle_al = numpy.mod(inclination - angle - numpy.pi/2, 2*numpy.pi)
-    az_al = numpy.mod(incl - numpy.pi, numpy.pi)
+    az_al = numpy.mod(inclination - numpy.pi, numpy.pi)
     degangle = numpy.mod(numpy.rad2deg(angle_al), 180)
     az_al = numpy.mod(numpy.rad2deg(az_al), 180)
     # Initialize the reconstruction of ussr
@@ -165,7 +165,7 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
             cond = numpy.where(numpy.cos(thrbeam - radazibin) > 0)[0]
             usfull = - usrazi * 1
             if cond.any():
-                usfull[(cond)] = usrazi
+                usfull[(cond)] = usrazi[(cond)]
             angle_usr = radazibin - rangle
             usr_comb[isample, ibeam] = (numpy.nansum(usfull
                                                      * numpy.cos(angle_usr))
