@@ -438,7 +438,7 @@ def worker_method_skim(*args, **kwargs):
             lat_nadir = numpy.array(sgrid.lat[0])
             uwnd = numpy.transpose(numpy.array(output_var['uwnd']))
             vwnd = numpy.transpose(numpy.array(output_var['vwnd']))
-            wnd_dir = numpy.arctan2(vwnd, uwnd)[:, 1:]
+            wnd_dir = numpy.mod(numpy.arctan2(vwnd, uwnd)[:, 1:], 2*numpy.pi)
             mss = (numpy.transpose(numpy.array(output_var['mssu']))
                    + numpy.transpose(numpy.array(output_var['mssc'])))
             hs = output_var['hs'][0]
@@ -446,16 +446,10 @@ def worker_method_skim(*args, **kwargs):
             p.delta_azim = 15
             incl = sgrid.incl
             usr_comb = mod_uwb_corr.combine_usr(lon, lat, usr, p.delta_azim,
-                                                sgrid.radial_angle, incl, wnd_dir)
+                                                sgrid.angle, incl, wnd_dir)
             mssclose, hsclose = mod_uwb_corr.find_closest(lon, lat, lon_nadir,
                                                          lat_nadir, mss,
                                                          hs, p.list_angle)
-            from matplotlib import pyplot
-            pyplot.figure()
-            pyplot.plot(mssclose, label='mss')
-            pyplot.plot(hsclose, label='mss')
-            pyplot.legend()
-            pyplot.savefig('test.png')
             uwd_est = mod_uwb_corr.estimate_uwd(usr_comb, output_var, hsclose,
                                                 mssclose, sgrid.radial_angle,
                                                 p.list_angle)
