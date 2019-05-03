@@ -145,14 +145,14 @@ def perform_oi_1(grd, obs, resol, desc=False):
                 M = numpy.dot(H.T, RiH)
                 Mi = numpy.linalg.inv(M)
                 eta_obs = numpy.dot(numpy.dot(Mi, RiH.T), obs['vobsr'][ios])
-                eta_mod = numpy.dot(numpy.dot(Mi, RiH.T), obs['vmodr'][ios])
+                #eta_mod = numpy.dot(numpy.dot(Mi, RiH.T), obs['vmodr'][ios])
                 j2 = j
                 #if desc is True:
                 #    j2 = grd['nac'] - 1 - j
                 grd['vobsal'][i, j2]=eta_obs[0]
                 grd['vobsac'][i, j2]=eta_obs[1]
-                grd['vmodal'][i, j2]=eta_mod[0]
-                grd['vmodac'][i, j2]=eta_mod[1]
+                #grd['vmodal'][i, j2]=eta_mod[0]
+                #grd['vmodac'][i, j2]=eta_mod[1]
     return grd
 
 """
@@ -400,27 +400,34 @@ def worker_method_l2c(*args, **kwargs):
                     x_ac=[])
 
     obs = {}
+    noerr = {}
     test = numpy.array(data.ucur)
     nil, nbeams = numpy.shape(test)
     sbeam_incid = numpy.zeros((nil, nbeams))
     ### TODO Change this
     obs['vobsr'] = numpy.array(data.ur_obs)
 
-    obs['vmodr'] = numpy.array(data.ur_true).flatten()
+    noerr['vmodr'] = numpy.array(data.ur_true).flatten()
+    noerr['vobsr'] = numpy.array(data.ur_true).flatten()
     obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
     obs['vobsr'] = obs['vobsr'].flatten()
-    ind = numpy.where((obs['vmodr'] > -100))[0]
-    obs['vobsr'] = obs['vobsr'][ind]
-    if len(ind) > 2 and len(data.lon_nadir) >2:
+    ind1 = numpy.where((noerr['vmodr'] > -100))[0]
+    ind2 = numpy.where((obs['vobsr'] > -100))[0]
+    obs['vobsr'] = obs['vobsr'][ind2]
+    noerr['vobsr'] = noerr['vobsr'][ind1]
+    if len(ind2) > 2 and len(data.lon_nadir) >2:
         try:
-            obs = make_obs(data, grid, obs, ind)
+            obs = make_obs(data, grid, obs, ind2)
+            noerr = make_obs(data, grid, noerr, ind1)
             grd = make_grid(grid, obs, p.posting, desc=desc)
             ## TODO proof error
             if grd is None:
                 return
 
             # OI
+            grdnoerr = grd
             grd = perform_oi_1(grd, obs, p.resol, desc=desc)
+            grdnoerr = perform_oi_1(grdnoerr, noerr, p.resol, desc=desc)
         except:
             print(passn)
             return
@@ -429,6 +436,8 @@ def worker_method_l2c(*args, **kwargs):
         ind = numpy.where(diff_indice != 0)[0]
         first_lat = numpy.min(grd['lat'])
         sign_uv = -1
+        grd['vmodac'] = + grdnoerr['vobsac']
+        grd['vmodal'] = + grdnoerr['vobsal']
         if desc is True:
             first_lat = numpy.max(grd['lat'])
             sign_uv = -1
