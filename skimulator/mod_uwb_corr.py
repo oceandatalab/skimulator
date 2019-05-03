@@ -146,12 +146,16 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
                     usrazi[iazi] = usrr[I1][Idist]
                 except:
                     usrazi[iazi] = numpy.nan
-            iaziat = int(numpy.where(numpy.logical_and(iincl > (azibin),
-                                     iincl < (azibin + dazi)))[0])
-            Iaziatnot = numpy.logical_not(numpy.arange(len(azibin))==iaziat)
+            try:
+                iaziat = int(numpy.where(numpy.logical_and(iincl > (azibin),
+                                         iincl < (azibin + dazi)))[0])
+                Iaziatnot = numpy.logical_not(numpy.arange(len(azibin))==iaziat)
+            except:
+                iaziat = None
+            if iaziat:
             # Interpolate input data in the along track direction (will be to
             # avoid as the noise cnnot be removed in that direction)
-            usrazi[iaziat] = numpy.interp(azibin[iaziat], azibin[Iaziatnot],
+                usrazi[iaziat] = numpy.interp(azibin[iaziat], azibin[Iaziatnot],
                                           usrazi[Iaziatnot], period=180)
             # 3. Perform an estimate of the Stokes drift direction and magnitude
             c = numpy.fft.fft(usrazi)/len(usrazi)
