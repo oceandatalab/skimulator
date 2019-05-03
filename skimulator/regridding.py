@@ -27,7 +27,6 @@ def make_obs(data, grid, obs, ind):
     obs['time'] = numpy.array(data.time).flatten()[ind] #+ (cycle-1)*self.tcycle 
     obs['time_nadir'] = numpy.array(data.time_nadir[:])
     obs['vindice'] = numpy.array(data.vindice).flatten()[ind]
-
     obs['dir'] = numpy.mod(grid.angle + numpy.pi/2, 2*numpy.pi).flatten()[ind]
     obs['angle'] = numpy.mod(grid.radial_angle, 2*numpy.pi).flatten()[ind]
     obs['al_nadir'] = grid.x_al_nadir
@@ -410,6 +409,7 @@ def worker_method_l2c(*args, **kwargs):
     noerr['vmodr'] = numpy.array(data.ur_true).flatten()
     noerr['vobsr'] = numpy.array(data.ur_true).flatten()
     obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
+    noerr['nsamp'], noerr['nbeam'] = numpy.shape(obs['vobsr'])
     obs['vobsr'] = obs['vobsr'].flatten()
     ind1 = numpy.where((noerr['vmodr'] > -100))[0]
     ind2 = numpy.where((obs['vobsr'] > -100))[0]
@@ -419,7 +419,10 @@ def worker_method_l2c(*args, **kwargs):
         try:
             obs = make_obs(data, grid, obs, ind2)
             noerr = make_obs(data, grid, noerr, ind1)
+            obs = make_obs(data, grid, obs, ind2)
+            noerr = make_obs(data, grid, noerr, ind1)
             grd = make_grid(grid, obs, p.posting, desc=desc)
+            #grdnoerr = make_grid(grid, noerr, p.posting, desc=desc)
             ## TODO proof error
             if grd is None:
                 return
