@@ -438,7 +438,7 @@ def worker_method_l2c(*args, **kwargs):
         diff_indice = vindice[1:] - vindice[:-1]
         ind = numpy.where(diff_indice != 0)[0]
         first_lat = numpy.min(grd['lat'])
-        sign_uv = -1
+        sign_uv = 1
         grd['vmodac'] = + grdnoerr['vobsac']
         grd['vmodal'] = + grdnoerr['vobsal']
         if desc is True:
