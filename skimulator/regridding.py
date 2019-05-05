@@ -119,14 +119,16 @@ def make_grid(grid, obs, posting, desc=False):
     grd['angle'][:, -1]= grd['angle'][:, -2]
 
 
-    grd['vobsal'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
-    grd['vobsac'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
-    grd['vmodal'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
-    grd['vmodac'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
+    #grd['vobsal'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
+    #grd['vobsac'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
+    #grd['vmodal'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
+    #grd['vmodac'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
     return grd
 
 
 def perform_oi_1(grd, obs, resol, desc=False):
+    obsal = numpy.full((grd['nal'], grd['nac']), numpy.nan)
+    obsac = numpy.full((grd['nal'], grd['nac']), numpy.nan)
     for j in range(grd['nac']):
         for i in range(grd['nal']):
             dist = numpy.sqrt((obs['ac'] - grd['ac2'][i, j])**2
@@ -148,11 +150,11 @@ def perform_oi_1(grd, obs, resol, desc=False):
                 j2 = j
                 #if desc is True:
                 #    j2 = grd['nac'] - 1 - j
-                grd['vobsal'][i, j2]=eta_obs[0]
-                grd['vobsac'][i, j2]=eta_obs[1]
+                obsal[i, j2]=eta_obs[0]
+                obsac[i, j2]=eta_obs[1]
                 #grd['vmodal'][i, j2]=eta_mod[0]
                 #grd['vmodac'][i, j2]=eta_mod[1]
-    return grd
+    return obsal, obsac
 
 """
 def perform_oi_2(grd, obs, resol):
@@ -254,7 +256,7 @@ def interpolate_model(p, model_data, list_model_step, grd, list_obs,
             #grid_def = pr.geometry.SwathDefinition(lons=lon, #[ind_lat],
             #                                     lats=grd['lat']) #[ind_lat])
             var = model_step.input_var[ikey]
-            _tmp = interp(swath_def, var, grid_def, 2*p.resol,
+            _tmp = interp(swath_def, var, grid_def, 4*p.resol,
                           interp_type=p.interpolation)
             grd[okey][ind_lat] = _tmp
     return grd
@@ -428,9 +430,9 @@ def worker_method_l2c(*args, **kwargs):
                 return
 
             # OI
-            grdnoerr = grd
-            grd = perform_oi_1(grd, obs, p.resol, desc=desc)
-            grdnoerr = perform_oi_1(grdnoerr, noerr, p.resol, desc=desc)
+            grdnoerr = grd.copy()
+            noerral, noerrac = perform_oi_1(grdnoerr, noerr, p.resol, desc=desc)
+            obsal, obsac = perform_oi_1(grd, obs, p.resol, desc=desc)
         except:
             print(passn)
             return
@@ -439,8 +441,12 @@ def worker_method_l2c(*args, **kwargs):
         ind = numpy.where(diff_indice != 0)[0]
         first_lat = numpy.min(grd['lat'])
         sign_uv = 1
-        grd['vmodac'] = + grdnoerr['vobsac']
-        grd['vmodal'] = + grdnoerr['vobsal']
+        grd['vobsac'] = obsac
+        grd['vobsal'] = obsal
+        grd['vmodac'] = noerrac
+        grd['vmodal'] = noerral
+        #grd['vmodac'] = + grdnoerr['vobsac'][:]
+        #grd['vmodal'] = + grdnoerr['vobsal'][:]
         if desc is True:
             first_lat = numpy.max(grd['lat'])
             sign_uv = -1
