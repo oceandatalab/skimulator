@@ -44,7 +44,7 @@ def cpsd1d(hh1=None, hh2=None, dx=1.,tap=0.05, detrend=True):
 
 
 def coherency_l2c(datadir_input, config, var, nal_min,
-                  posting, outfile='coherency'):
+                  posting, outfile='coherency', fsize=1):
     list_files_all = []
     pyplot.figure()
     for indir, iconfig, ivar in zip(datadir_input, config, var):
@@ -75,12 +75,14 @@ def coherency_l2c(datadir_input, config, var, nal_min,
             fid = netCDF4.Dataset(ifile, 'r')
             try:
                 ref['uac'] = numpy.array(fid.variables['u_ac_true'][:])
+                ref['uac'] = scipy.ndimage.uniform_filter(ref['uac'], size=fisze)
             except:
                 print(ifile)
                 continue
             ref['uac'][ref['uac']<-10] = numpy.nan
             ref['uac'] = numpy.ma.masked_invalid(ref['uac'])
             ref['ual'] = numpy.array(fid.variables['u_al_true'][:])
+            ref['ual'] = scipy.ndimage.uniform_filter(ref['ual'], size=fsize)
             ref['ual'][ref['ual']<-10] = numpy.nan
             ref['ual'] = numpy.ma.masked_invalid(ref['ual'])
             skim['uac'] = numpy.array(fid.variables['u_ac_{}'.format(ivar)][:])
@@ -135,14 +137,14 @@ def coherency_l2c(datadir_input, config, var, nal_min,
     pyplot.ylabel('coherency')
     pyplot.savefig('{}.png'.format(outfile))
 
-def rms_l2c(datadir_input, config, output, threshold=0.1):
+def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
     datadir_output = output
     glob_files = os.path.join(datadir_input, '{}_l2c_c01*p*.nc'.format(config))
     list_files = glob.glob(glob_files)
     ref = {}
     skim = {}
 
-    fid = netCDF4.Dataset(list_files[0], 'r')
+    fid = netCDF4.Dataset(list_files[5], 'r')
     try:
         _tmp = numpy.array(fid.variables['u_ac_true'][:])
     except:
@@ -161,21 +163,24 @@ def rms_l2c(datadir_input, config, output, threshold=0.1):
     std_ualm = numpy.zeros(nal)
     ntot_acm = numpy.zeros(nac)
     ntot_alm = numpy.zeros(nal)
+    print(nac)
 
     for filev in list_files:
         fid = netCDF4.Dataset(filev, 'r')
         ipath = int(filev[-6:-3])
-        if ipath > 400:
-            continue
+        #if ipath > 400:
+        #    continue
        # if ipath%2==0:
         #   continue
         try:
             ref['uac'] = numpy.array(fid.variables['u_ac_true'][:])
+            ref['uac'] = scipy.ndimage.uniform_filter(ref['uac'], size=fsize)
         except:
             print(filev)
             continue
         ref['uac'][numpy.abs(ref['uac']) > 10] = numpy.nan
         ref['ual'] = numpy.array(fid.variables['u_al_true'][:])
+        ref['ual'] = scipy.ndimage.uniform_filter(ref['ual'], size=fsize)
         ref['ual'][numpy.abs(ref['ual']) > 10] = numpy.nan
         skim['uacm'] = numpy.array(fid.variables['u_ac_noerr'][:])
         skim['uacm'][numpy.abs(skim['uacm']) > 10] = numpy.nan
@@ -189,27 +194,48 @@ def rms_l2c(datadir_input, config, output, threshold=0.1):
         fid.close()
         if nuac < 61:
             continue
+        ind0 = 50
+        ind1 = -50
         for i in range(nuac):
-            it_ac = len(numpy.where(numpy.isnan(skim['uac'][:, i]) == False)[0])
-            if it_ac >= 62:
-                std_uac[i] += numpy.nanstd(skim['uac'][:, i]
-                                           - ref['uac'][:, i])*it_ac
-                ntot_ac[i] += it_ac
-            it_al = len(numpy.where(numpy.isnan(skim['ual'][:, i]) == False)[0])
-            if it_al >= 62:
-                std_ual[i] += numpy.nanstd(skim['ual'][:, i]
-                                           - ref['ual'][:, i])*it_al
-                ntot_al[i] += it_al
-            it_acm = len(numpy.where(numpy.isnan(skim['uacm'][:, i]) == False)[0])
-            if it_acm >= 62:
-                std_uacm[i] += numpy.nanstd(skim['uacm'][:, i]
-                                            - ref['uac'][:, i])*it_acm
-                ntot_acm[i] += it_acm
-            it_alm = len(numpy.where(numpy.isnan(skim['ualm'][:, i]) == False)[0])
-            if it_alm >= 62:
-                std_ualm[i] += numpy.nanstd(skim['ualm'][:, i]
-                                            - ref['ual'][:, i])*it_alm
-                ntot_alm[i] += it_alm
+            it_ac = len(numpy.where(numpy.isnan(skim['uac'][ind0:ind1, i]) == False)[0])
+            if it_ac >= 100:
+                _std = numpy.nanstd(skim['uac'][ind0:ind1, i] - ref['uac'][ind0:ind1, i])*it_ac
+                if numpy.isfinite(_std):
+                    std_uac[i] += _std
+                    ntot_ac[i] += it_ac
+                else:
+                    std_uac[i] += 0
+                    ntot_ac[i] += 0
+            it_al = len(numpy.where(numpy.isnan(skim['ual'][ind0:ind1, i]) == False)[0])
+            if it_al >= 100:
+                _std = numpy.nanstd(skim['ual'][ind0:ind1, i]
+                                    - ref['ual'][ind0:ind1, i])*it_al
+                if numpy.isfinite(_std):
+                    std_ual[i] += _std
+                    ntot_al[i] += it_al
+                else:
+                    std_ual[i] += 0
+                    ntot_al[i] += 0
+            it_acm = len(numpy.where(numpy.isnan(skim['uacm'][ind0:ind1, i]) == False)[0])
+            if it_acm >= 100:
+                _std = numpy.nanstd(skim['uacm'][ind0:ind1, i]
+                                    - ref['uac'][ind0:ind1, i])*it_acm
+                if numpy.isfinite(_std):
+                    std_uacm[i] += _std
+                    ntot_acm[i] += it_acm
+                else:
+                    std_uacm[i] += 0
+                    ntot_acm[i] += 0
+            it_alm = len(numpy.where(numpy.isnan(skim['ualm'][ind0:ind1, i]) == False)[0])
+            if it_alm >= 100:
+                _std = numpy.nanstd(skim['ualm'][ind0:ind1, i]
+                                    - ref['ual'][ind0:ind1, i])*it_alm
+                if numpy.isfinite(_std):
+                    std_ualm[i] += _std
+                    ntot_alm[i] += it_alm
+                else:
+                    std_ualm[i] += 0
+                    ntot_alm[i] += 0
 
     std_uac = std_uac/ntot_ac
     std_ual = std_ual/ntot_al
@@ -228,10 +254,11 @@ def rms_l2c(datadir_input, config, output, threshold=0.1):
     ax1.plot(xac, std_ual, 'b', label='along track')
     ax1.axhline(y=0.1, color="0.5")
     ax1.set_title('Observation {}'.format(config))
-    ax1.set_ylim([0.00, 0.18])
+    ax1.set_ylim([0.00, 0.4])
     ax1.legend()
     ax2.plot(xac, std_uacm, 'r', label='across track')
     ax2.plot(xac, std_ualm, 'b', label='along track')
+    ax2.axhline(y=0.1, color="0.5")
     ax2.set_title('Error-free {}'.format(config))
     ax2.legend()
     pyplot.savefig('{}.png'.format(datadir_output))
@@ -252,24 +279,26 @@ if '__main__' == __name__:
     list_dir = pl2c['indatadir']
     posting = pl2c['posting']
     outdir = pl2c['outdatadir']
+    list_filter_size = pl2c['filter_size']
     for i, iconfig in enumerate(list_config):
+        filter_size = list_filter_size[i]
         indatadir = list_dir[i]
         print(indatadir, iconfig)
         outfile = os.path.join(outdir, 'std_{}'.format(iconfig))
-        rms_l2c(indatadir, iconfig, outfile, threshold=0.15)
+        rms_l2c(indatadir, iconfig, outfile, threshold=0.15, fsize=filter_size)
         outfile = os.path.join(outdir, 'coherency_{}_obs_model'.format(iconfig))
-        coherency_l2c((indatadir, indatadir), (iconfig, iconfig),
-                     ('obs','noerr'), length_al,
-                     posting, outfile=outfile)
+        #coherency_l2c((indatadir, indatadir), (iconfig, iconfig),
+        #             ('obs','noerr'), length_al,
+        #             posting, outfile=outfile, fsize=filter_size)
 
     list_var = ('obs', 'obs', 'obs', 'obs') #, 'obs')
     nal_min = length_al
     print(list_dir, list_config)
     outfile = os.path.join(outdir, 'coherency_obs_{}'.format(list_config[0][:-8]))
-    coherency_l2c(list_dir, list_config, list_var, nal_min,
-                  posting, outfile=outfile)
+    #coherency_l2c(list_dir, list_config, list_var, nal_min,
+    #              posting, outfile=outfile, fsize=filter_size)
     list_var = ('noerr', 'noerr', 'noerr', 'noerr') #, 'obs')
     print(list_dir, list_config)
     outfile = os.path.join(outdir, 'coherency_noerr_{}'.format(list_config[0][:-8]))
-    coherency_l2c(list_dir, list_config, list_var, nal_min,
-                  posting, outfile=outfile)
+    #coherency_l2c(list_dir, list_config, list_var, nal_min,
+    #              posting, outfile=outfile, fsize=filter_size)
