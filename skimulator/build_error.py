@@ -502,7 +502,7 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
         mss = output_var_i['mssu'] + output_var_i['mssc']
     else:
         mss = output_var_i['mssclose']
-    mss[numpy.where(mss == 0)] = numpy.nan
+    mss[numpy.where(mss == 0)] = 0.001
     hs = output_var_i['hs']
 
     mat_noerr = numpy.full((cshape[0], ncoeffur), numpy.nan)
@@ -523,6 +523,7 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     Uwd = mod_tools.reconstruct_var(ncoeffur, cshape[0], coeff_f1ur,
                                     coeff_b1ur, cross, Ulabel)
 
+    Uwd[numpy.where(mss == 0)] = 0.001
     return Uwd
 
 
