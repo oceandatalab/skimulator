@@ -188,7 +188,7 @@ def find_closest(lon, lat, lon_nadir, lat_nadir, mss, hs, beam_angle):
     mss_nadir = mss[:, 0]
     for isample in range(nsample):
         for ibeam in range(nbeam):
-            if not numpy.isfinite(mss[isample, ibeam]):
+            if not numpy.isfinite(mss[isample, ibeam + 1]):
                 continue
             plon = lon[isample, ibeam]
             plat = lat[isample, ibeam]
@@ -199,6 +199,9 @@ def find_closest(lon, lat, lon_nadir, lat_nadir, mss, hs, beam_angle):
                 inadir = numpy.nanargmin(dist_nadir)
             except:
                 continue
+            mss6[mss6==0] = numpy.nan
+            mss_nadir[mss_nadir==0] = numpy.nan
+
             dnadir = dist_nadir[inadir]
             dist_6 = mod_tools.dist_sphere(plon, lon[:, (ind_6)].ravel(), plat,
                                            lat[:, (ind_6)].ravel())
@@ -207,11 +210,15 @@ def find_closest(lon, lat, lon_nadir, lat_nadir, mss, hs, beam_angle):
             except:
                 continue
             d6 = dist_6[i6]
+            if d6 > 200 and dnadir > 200:
+                continue
             hsclose[isample, ibeam] = hs[inadir]
             if d6 < dnadir:
                 mssclose[isample, ibeam] = mss6[i6]
             else:
                 mssclose[isample, ibeam] = mss_nadir[inadir]
+            if mss[isample, ibeam + 1] == 0:
+                mssclose[isample, ibeam] = 0
     return mssclose, hsclose
 
 
