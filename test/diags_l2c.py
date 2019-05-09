@@ -263,6 +263,175 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
     ax2.legend()
     pyplot.savefig('{}.png'.format(datadir_output))
 
+def bin_variables(listfile, listvar, bin_in, modelbox):
+    lonp = numpy.arange(modelbox[0], modelbox[1] + modelbox[2], modelbox[2])
+    latp = numpy.arange(modelbox[3], modelbox[4] + modelbox[5], modelbox[5])
+    resol = numpy.sqrt((modelbox[2] * numpy.cos(numpy.deg2rad(latp))) **2
+                        + modelbox[5]**2)
+    dic_v = {}
+    for ifile in listfile:
+        data = netCDF4.Dataset(ifile, 'r')
+        lon = data['lon'][:]
+        lat = data['lat'][:]
+        for j in range(len(lonp)):
+            for i in range(len(latp)):
+                ind_key = 10000 * int(i) + int(j)
+                lon = numpy.mod(lon + 180, 360) - 180
+                dist = numpy.sqrt(((lonp[j] - lon)
+                                   *numpy.cos(numpy.deg2rad(lat)))**2
+                                   + (latp[i] - lat)**2)
+                iiobs = numpy.where(dist < resol[i])
+                if iiobs[0].shape == (0, ):
+                    continue
+                if ind_key not in dic_v.keys():
+                    dic_v[ind_key] = {}
+                for ivar in listvar:
+                    ivaro = '{}_obs'.format(ivar)
+                    ivart = '{}_noerr'.format(ivar)
+                    ivarr = '{}_true'.format(ivar)
+                    idvaro = '{}_diff_obs'.format(ivar)
+                    idvart = '{}_diff_noerr'.format(ivar)
+                    if ivar == 'norm':
+                        varo = numpy.sqrt(data['u_ac_obs'][iiobs]**2
+                                          + data['u_al_obs'][iiobs]**2)
+                        vart = numpy.sqrt(data['u_ac_noerr'][iiobs]**2
+                                          + data['u_al_noerr'][iiobs]**2)
+                        varr = numpy.sqrt(data['u_ac_true'][iiobs]**2
+                                          + data['u_al_true'][iiobs]**2)
+                    else:
+                        try:
+                            varo = numpy.ma.array(data[ivaro][iiobs])
+                        except: print(ifile, ivar, iiobs)
+                        vart = data[ivart][iiobs]
+                        varr = data[ivarr][iiobs]
+                    mask = varo.mask
+                    dvaro = numpy.array(abs(varo.data - varr.data))
+                    dvart = numpy.array(abs(vart.data - varr.data))
+                    if varo.any():
+                        if ivaro not in dic_v[ind_key].keys():
+                            dic_v[ind_key][ivaro] = []
+                        if ivart not in dic_v[ind_key].keys():
+                            dic_v[ind_key][ivart] = []
+                        if ivarr not in dic_v[ind_key].keys():
+                            dic_v[ind_key][ivarr] = []
+                        if idvaro not in dic_v[ind_key].keys():
+                            dic_v[ind_key][idvaro] = []
+                        if idvart not in dic_v[ind_key].keys():
+                            dic_v[ind_key][idvart] = []
+                        dic_v[ind_key][ivaro].append(varo[~mask])
+                        dic_v[ind_key][ivart].append(vart[~mask])
+                        dic_v[ind_key][ivarr].append(varr[~mask])
+                        dic_v[ind_key][idvart].append(dvart[~mask])
+                        dic_v[ind_key][idvaro].append(dvaro[~mask])
+                        dic_v[ind_key][ivart].append(varo[~mask])
+                        dic_v[ind_key][ivart].append(varo[~mask])
+                        dic_v[ind_key][ivart].append(varo[~mask])
+        data.close()
+    with open(bin_in, 'wb') as f:
+        pickle.dump(dic_v, f)
+
+
+def compute_rms(bin_in, bin_out, listvar, modelbox):
+    with open(bin_in, 'rb') as f:
+        dic_v = pickle.load(f)
+    lonp = numpy.arange(modelbox[0], modelbox[1] + modelbox[2], modelbox[2])
+    latp = numpy.arange(modelbox[3], modelbox[4] + modelbox[5], modelbox[5])
+    rms = {}
+    std = {}
+    snr = {}
+    cov = {}
+    rms['lon'] = lonp
+    rms['lat'] = latp
+    std['lon'] = lonp
+    std['lat'] = latp
+    snr['lon'] = lonp
+    snr['lat'] = latp
+    for ivar in listvar:
+        _list = ['_obs', '_noerr', '_true', '_diff_obs', 'diff_noerr']
+        for ivar2 in _list:
+            ivar3 = '{}{}'.format(ivar, ivar2)
+            rms[ivar3] = numpy.full((len(latp), len(lonp)), numpy.nan)
+            std[ivar3] = numpy.full((len(latp), len(lonp)), numpy.nan)
+            snr[ivar3] = numpy.full((len(latp), len(lonp)), numpy.nan)
+    for j in range(len(rms['lon'])):
+        for i in range(len(rms['lat'])):
+            ind_key = 10000 * int(i) + int(j)
+            if ind_key  not in dic_v.keys():
+                continue
+            # import pdb ; pdb.set_trace()
+            for ivar in listvar:
+                ivaro = '{}_obs'.format(ivar)
+                ivart = '{}_noerr'.format(ivar)
+                ivarr = '{}_true'.format(ivar)
+                idvaro = '{}_diff_obs'.format(ivar)
+                idvart = '{}_diff_noerr'.format(ivar)
+                if ivaro not in dic_v[ind_key].keys():
+                    continue
+                varo = numpy.concatenate(dic_v[ind_key][ivar]).ravel()
+                vart = numpy.concatenate(dic_v[ind_key][ivar]).ravel()
+                varr = numpy.concatenate(dic_v[ind_key][ivar]).ravel()
+                rms_true = numpy.sqrt(numpy.nanmean(varr**2))
+                rms[ivaro][i, j] = numpy.sqrt(numpy.nanmean(varo**2))
+                std[ivaro][i, j] = numpy.nanstd(varo)
+                snr[ivaro][i, j] = rms_true / std[idvaro][i, j]
+                rms[ivart][i, j] = numpy.sqrt(numpy.nanmean(vart**2))
+                std[ivart][i, j] = numpy.nanstd(vart)
+                snr[ivart][i, j] = rms_true / std[idvart][i, j]
+                rms[ivarr][i, j] = numpy.sqrt(numpy.nanmean(varr**2))
+                std[ivarr][i, j] = numpy.nanstd(varr)
+    with open('rms_{}'.format(bin_out), 'wb') as f:
+        pickle.dump(rms, f)
+
+    with open('std_{}'.format(bin_out), 'wb') as f:
+        pickle.dump(std, f)
+
+    with open('snr_{}'.format(bin_out), 'wb') as f:
+        pickle.dump(snr, f)
+
+
+def plot_rms(pfile, list_var, outfile, isrms=True, isstd=True, issnr=True,
+             isvar=True):
+    import mod_plot
+    if isrms is True:
+        with open('rms_{}'.format(pfile), 'rb') as f:
+            rms = pickle.load(f)
+    if isstd is True:
+        with open('std_{}'.format(pfile), 'rb') as f:
+            std = pickle.load(f)
+    if issnr is True:
+        with open('snr_{}'.format(pfile), 'rb') as f:
+            snr = pickle.load(f)
+    if isvar is True:
+        with open('cov_{}'.format(pfile), 'rb') as f:
+            cov = pickle.load(f)
+    list_var = rms.keys()
+    for ivar in list_var:
+        if ivar in rms.keys() and isrms is True:
+            lon = rms['lon']
+            lat = rms['lat']
+            var = rms[ivar]
+            _outfile = 'rms_{}_{}.png'.format(ivar, outfile)
+            vmin = numpy.nanpercentile(var, 5)
+            vmax = numpy.nanpercentile(var, 95)
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=vmin, vmax=vmax, cmap='jet')
+        if ivar in std.keys() and isstd is True:
+            lon = std['lon']
+            lat = std['lat']
+            var = std[ivar]
+            vmin = numpy.nanpercentile(var, 5)
+            vmax = numpy.nanpercentile(var, 95)
+            _outfile = 'std_{}_{}.png'.format(ivar, outfile)
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=vmin, vmax=vmax, cmap='jet')
+        if ivar in snr.keys():
+            lon = snr['lon']
+            lat = snr['lat']
+            var = snr[ivar]
+            vmin = numpy.nanpercentile(var, 5)
+            vmax = numpy.nanpercentile(var, 95)
+            _outfile = 'snr_{}_{}.png'.format(ivar, outfile)
+            mod_plot.plot_diag(lon, lat, var, _outfile, vmin=vmin, vmax=vmax, cmap='jet')
+    return None
+
 
 if '__main__' == __name__:
     if len(sys.argv) < 1:
@@ -283,9 +452,9 @@ if '__main__' == __name__:
     for i, iconfig in enumerate(list_config):
         filter_size = list_filter_size[i]
         indatadir = list_dir[i]
-        print(indatadir, iconfig)
+ #       print(indatadir, iconfig)
         outfile = os.path.join(outdir, 'std_{}'.format(iconfig))
-        rms_l2c(indatadir, iconfig, outfile, threshold=0.15, fsize=filter_size)
+  #      rms_l2c(indatadir, iconfig, outfile, threshold=0.15, fsize=filter_size)
         outfile = os.path.join(outdir, 'coherency_{}_obs_model'.format(iconfig))
         #coherency_l2c((indatadir, indatadir), (iconfig, iconfig),
         #             ('obs','noerr'), length_al,
@@ -293,7 +462,7 @@ if '__main__' == __name__:
 
     list_var = ('obs', 'obs', 'obs', 'obs') #, 'obs')
     nal_min = length_al
-    print(list_dir, list_config)
+#    print(list_dir, list_config)
     outfile = os.path.join(outdir, 'coherency_obs_{}'.format(list_config[0][:-8]))
     #coherency_l2c(list_dir, list_config, list_var, nal_min,
     #              posting, outfile=outfile, fsize=filter_size)
@@ -302,3 +471,18 @@ if '__main__' == __name__:
     outfile = os.path.join(outdir, 'coherency_noerr_{}'.format(list_config[0][:-8]))
     #coherency_l2c(list_dir, list_config, list_var, nal_min,
     #              posting, outfile=outfile, fsize=filter_size)
+    listvar = ['u_ac', 'u_al', 'ux', 'uy', 'norm']
+    modelbox2 = params['l2b']['modelbox_bin']
+    for i, iconfig in enumerate(list_config):
+        filter_size = list_filter_size[i]
+        indatadir = list_dir[i]
+        print(indatadir, iconfig)
+        files = os.path.join(indatadir, '{}_l2c_c01'.format(iconfig))
+        listfiles = glob.glob('{}*.nc'.format(files))
+        bin_file = os.path.join(outdir, '{}_l2c.pyo'.format(iconfig))
+        bin_variables(listfiles[:10], listvar, bin_file, modelbox2)
+        bin_file2 = '{}_l2c.pyo'.format(iconfig)
+        compute_rms(bin_file, bin_file2, listvar, modelbox2)
+
+        plot_rms(bin_file2, listvar, iconfig)
+
