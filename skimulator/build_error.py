@@ -413,21 +413,28 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
         sigma0 = mod.compute_sigma(output_var_i, beam_angle, ac_angle, p)
         output_var_i['sigma0'] = sigma0
         if beam_angle == 12:
-            _co = (15.610, 0.955, -6.208, 3.257)
+            if p.instr_configuration == 'A':
+                _co = (-15.998, 0.657, -4.174, 15.260)
+            if p.instr_configuration == 'B':
+                _co = (16.409, 0.963, -6.232, 2.823)
             coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _co[2])**2 + _co[3]
             sigma_ref = 6.6
         elif beam_angle == 6:
-            _co = (26.489, 0.872, -3.356, -3.114)
+            if p.instr_configuration == 'A':
+                _co = (17.272, -1.105, -2.977, 6.108)
+            if p.instr_configuration == 'B':
+                _co = (12.299, 1.667, -1.045, 14.071)
             coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _co[2]) + _co[3]
             sigma_ref = 9.9
         else:
             logger.error('Unknown instrumental parametrisation for {}'
                          ' angle'.format(beam_angle))
-        coeff_random = (coeff * 10**(-2) * output_var_i['sigma0']/sigma_ref
-                        * numpy.sin(numpy.deg2rad(beam_angle)))
+        coeff_random = (coeff * 10**(-2) / output_var_i['sigma0']*sigma_ref
+                        #* numpy.sin(numpy.deg2rad(beam_angle)))
         cshape = numpy.shape(coeff_random)
         center = numpy.zeros(cshape)
         output_var_i['instr'] = numpy.random.normal(0, abs(coeff_random), cshape[0])
+        output_var_i['instr'][output_var_i['sigma0']<0.1] = numpy.nan
         output_var_i['ur_obs'] += output_var_i['instr']
 
     # del output_var_i['mssx']

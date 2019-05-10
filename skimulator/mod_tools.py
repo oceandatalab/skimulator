@@ -105,6 +105,7 @@ def initialize_parameters(p):
     p.rain_threshold = getattr(p, 'rain_threshold', 0.1)
     p.attitude = getattr(p, 'attitude', False)
     p.yaw_file = getattr(p, 'yaw_file', None)
+    p.instr_configuration = getattr(p, 'instr_configuration', 'A')
     make_list_output(p)
     return None
 

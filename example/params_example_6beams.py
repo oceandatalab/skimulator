@@ -168,6 +168,8 @@ ncomp1d = 3000
 ncomp2d = 2000
 # ------- Instrument white noise error
 instr = True
+# ------- Instrument configuration choice
+instr_configuration = 'A'
 # ------- Coefficient SNR to retrieve instrumental noise from sigma, 
 #         Recommanded value for 1024 pulses: 3e-2, for 512 pulses: 3sqrt(2)e-3
 snr_coeff = 1.4142*6e-3
