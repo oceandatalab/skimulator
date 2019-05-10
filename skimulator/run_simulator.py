@@ -454,6 +454,8 @@ def worker_method_skim(*args, **kwargs):
             mssclose, hsclose = mod_uwb_corr.find_closest(lon, lat, lon_nadir,
                                                          lat_nadir, mss,
                                                          hs, p.list_angle)
+            # Temporary trick to compensate for bad usr correction
+            usr_comb = usr_comb / 3 + 2 * usr / 3
             uwd_est = mod_uwb_corr.estimate_uwd(usr_comb, output_var, hsclose,
                                                 mssclose, sgrid.radial_angle,
                                                 p.list_angle)
