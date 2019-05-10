@@ -429,7 +429,7 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
         else:
             logger.error('Unknown instrumental parametrisation for {}'
                          ' angle'.format(beam_angle))
-        coeff_random = (coeff * 10**(-2) / output_var_i['sigma0']*sigma_ref
+        coeff_random = (coeff * 10**(-2) / output_var_i['sigma0']*sigma_ref)
                         #* numpy.sin(numpy.deg2rad(beam_angle)))
         cshape = numpy.shape(coeff_random)
         center = numpy.zeros(cshape)
