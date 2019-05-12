@@ -35,9 +35,9 @@ mod_diag.diag_rms(listfiles[:], modelbox, output, list_angle)
 listvar = ['ur_true', 'instr', 'ur_obs', 'uwd', 'uwd_est']
 modelbox2 = params['l2b']['modelbox_bin']
 bin_file = os.path.join(outdatadir, '{}.pyo'.format(config))
-mod_diag.bin_variables(listfiles[:], listvar, bin_file, modelbox2)
+#mod_diag.bin_variables(listfiles[:], listvar, bin_file, modelbox2)
 bin_file2 = '{}.pyo'.format(config)
-mod_diag.compute_rms(bin_file, bin_file2, listvar, modelbox2)
+#mod_diag.compute_rms(bin_file, bin_file2, listvar, modelbox2)
 
-mod_diag.plot_rms(bin_file2, listvar, config)
+#mod_diag.plot_rms(bin_file2, listvar, config)
 

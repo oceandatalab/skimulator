@@ -35,35 +35,40 @@ def diag_rms(listfile, modelbox, output, list_angle):
     for ifile in listfile:
         print(ifile)
         data = netCDF4.Dataset(ifile, 'r')
-        lon = data.variables['lon'][:]
-        lat = data.variables['lat'][:]
+        ind0 = 100
+        ind1 = -100
+        sig = data.variables['sigma0'][ind0:ind1, :]
+        uwnd = data.variables['uwnd'][ind0:ind1, :]
+        vwnd = data.variables['vwnd'][ind0:ind1, :]
+        wnd = numpy.sqrt(uwnd**2 + vwnd**2)
+        lon = data.variables['lon'][ind0:ind1, :]
+        lat = data.variables['lat'][ind0:ind1, :]
         lon = numpy.mod(lon + 180.0, 360.0) - 180.0
-        lon_nadir = data.variables['lon_nadir'][:]
+        lon_nadir = data.variables['lon_nadir'][ind0:ind1]
         lon_nadir = numpy.mod(lon_nadir + 180.0, 360) - 180.0
-        lat_nadir = data.variables['lat_nadir'][:]
-        vartrue = data.variables['ur_true'][:]
-        varobs = data.variables['ur_obs'][:]
+        lat_nadir = data.variables['lat_nadir'][ind0:ind1]
+        vartrue = data.variables['ur_true'][ind0:ind1, :]
+        varobs = data.variables['ur_obs'][ind0:ind1, :]
         if len(lon_nadir) < 700:
             continue
         if 'instr' in data.variables.keys():
             instr = True
-            varinstr = data.variables['instr'][:]
+            varinstr = data.variables['instr'][ind0:ind1, :]
+            varinstr[numpy.where(abs(varinstr) > 1)] = numpy.nan
         if 'uwd' in data.variables.keys():
             uwb = True
-            varuwb = data.variables['uwd'][:]
+            varuwb = data.variables['uwd'][ind0:ind1, :]
         if 'uwd_est' in data.variables.keys():
             uwbc = True
-            varuwbc = data.variables['uwd_est'][:]
+            varuwbc = data.variables['uwd_est'][ind0:ind1, :]
             varuwbc = varuwbc - varuwb
 
-        mask = ((abs(vartrue)>100) | (abs(varobs)>100))
-        #vartrue[mask] = numpy.nan
-        #varobs[mask] = numpy.nan
+        mask = ((abs(vartrue)>100) | (abs(varobs)>100) | numpy.isnan(varinstr))
+        vartrue[mask] = numpy.nan
+        varobs[mask] = numpy.nan
         beam_angle = list_angle #data['beam_angle'][:]
         data.close()
         # Remove borders
-        ind0 = 100
-        ind1 = -100
         if numpy.shape(lon)[0]<100:
             continue
         for i in range(numpy.shape(lon)[1]):
@@ -71,21 +76,23 @@ def diag_rms(listfile, modelbox, output, list_angle):
                 continue
             if varuwbc[:, i].mask.all():
                 continue
+            _ind = numpy.where((wnd[:, i]>7) & (wnd[:, i]<10))
+            #_ind = numpy.where((sig[:, i]>10**-5) & (wnd[:, i]>3))
             try:
-                _tmp = numpy.nanmean(((varobs[:, i] - vartrue[:,i])/vartrue[:,i])**2)
-                _tmp = numpy.nanmean(((varobs[:, i] - vartrue[:,i]))**2)
-                _tmp2 =  numpy.nanmean(abs(vartrue[:, i])**2)
+                _tmp = numpy.nanmean(((varobs[_ind, i] - vartrue[_ind,i])/vartrue[_ind,i])**2)
+                _tmp = numpy.nanmean(((varobs[_ind, i] - vartrue[_ind,i]))**2)
+                _tmp2 =  numpy.nanmean(abs(vartrue[_ind, i])**2)
             except:
                 continue
             if instr is True:
-                _tmpinstr = numpy.nanmean(abs(varinstr[:, i])**2)
+                _tmpinstr = numpy.nanmean(abs(varinstr[_ind, i])**2)
             if uwb is True:
                 try:
-                    _tmpuwb = numpy.nanmean(abs(varuwb[:, i])**2)
+                    _tmpuwb = numpy.nanmean(abs(varuwb[_ind, i])**2)
                 except:
                     continue
             if uwbc is True:
-                _tmpuwbc = numpy.nanmean(abs(varuwbc[:, i])**2)
+                _tmpuwbc = numpy.nanmean(abs(varuwbc[_ind, i])**2)
             if beam_angle[i] == 6:
                 nanstd06norm += _tmp/_tmp2
                 nanstd06 += _tmp
@@ -263,7 +270,8 @@ def bin_variables(listfile, listvar, bin_in, modelbox):
                     try:
                         var = data[ivar][:]
                     except: print(ifile, ivar)
-                    mask = var.mask[iiobs]
+                    _mask = numpy.ma.getmaskarray(var)
+                    mask = _mask[iiobs]
                     if ivar == 'ur_obs':
                         ivar2 = 'diff_ur'
                         var1 = data['ur_true'][:]
@@ -348,7 +356,10 @@ def compute_rms(bin_in, bin_out, listvar, modelbox):
             for ivar in listvar:
                 if ivar not in dic_v[ind_key].keys():
                     continue
-                var = numpy.concatenate(dic_v[ind_key][ivar]).ravel()
+                try:
+                    var = numpy.concatenate(dic_v[ind_key][ivar]).ravel()
+                except:
+                    continue
                 rms[ivar][i, j] = numpy.sqrt(numpy.nanmean(var**2))
                 std[ivar][i, j] = numpy.nanstd(var)
                 if ivar == 'diff_ur':

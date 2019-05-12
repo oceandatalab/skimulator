@@ -454,7 +454,7 @@ if '__main__' == __name__:
         indatadir = list_dir[i]
  #       print(indatadir, iconfig)
         outfile = os.path.join(outdir, 'std_{}'.format(iconfig))
-  #      rms_l2c(indatadir, iconfig, outfile, threshold=0.15, fsize=filter_size)
+        rms_l2c(indatadir, iconfig, outfile, threshold=0.15, fsize=filter_size)
         outfile = os.path.join(outdir, 'coherency_{}_obs_model'.format(iconfig))
         #coherency_l2c((indatadir, indatadir), (iconfig, iconfig),
         #             ('obs','noerr'), length_al,
@@ -480,9 +480,9 @@ if '__main__' == __name__:
         files = os.path.join(indatadir, '{}_l2c_c01'.format(iconfig))
         listfiles = glob.glob('{}*.nc'.format(files))
         bin_file = os.path.join(outdir, '{}_l2c.pyo'.format(iconfig))
-        bin_variables(listfiles[:10], listvar, bin_file, modelbox2)
-        bin_file2 = '{}_l2c.pyo'.format(iconfig)
-        compute_rms(bin_file, bin_file2, listvar, modelbox2)
+    #    bin_variables(listfiles[:10], listvar, bin_file, modelbox2)
+    #    bin_file2 = '{}_l2c.pyo'.format(iconfig)
+    #    compute_rms(bin_file, bin_file2, listvar, modelbox2)
 
-        plot_rms(bin_file2, listvar, iconfig)
+    #    plot_rms(bin_file2, listvar, iconfig)
 

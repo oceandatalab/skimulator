@@ -8,7 +8,6 @@ matplotlib.use('Agg')
 from matplotlib import pyplot
 import cartopy
 import skimulator.rw_data as rw
-import params as p
 
 # Initialize color
 listcolor = ['c', 'y', 'b', 'g', 'k', 'r', 'c', 'y']
