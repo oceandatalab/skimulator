@@ -433,7 +433,7 @@ def compute_sigma_water(input_var, beam_angle, radial_angle):
         msscs = mssshort - mssds
         mssxs = msscs * numpy.sin(wrd)**2 + mssds * numpy.cos(wrd)**2
         mssys = mssds * numpy.sin(wrd)**2 + msscs * numpy.cos(wrd)**2
-        mssxys = abs(mssds - msscs) * numpy.sin(2* wrd)
+        mssxys = abs(mssds - msscs) * numpy.sin(2* wrd) / 2
         input_var['mssx'] = mssxs + mssxl
         input_var['mssy'] = mssys + mssyl
         input_var['mssxy'] = mssxys + mssxyl

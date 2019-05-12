@@ -418,23 +418,25 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
             if p.instr_configuration == 'B':
                 _co = (16.409, 0.963, -6.232, 2.823)
             coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _co[2])**2 + _co[3]
-            sigma_ref = 6.6
+            sigma_ref = 10**(0.66)
         elif beam_angle == 6:
             if p.instr_configuration == 'A':
                 _co = (17.272, -1.105, -2.977, 6.108)
             if p.instr_configuration == 'B':
                 _co = (12.299, 1.667, -1.045, 14.071)
             coeff = _co[0] * numpy.sin(ac_angle * _co[1] + _co[2]) + _co[3]
-            sigma_ref = 9.9
+            #igma_ref = 9.9
+            sigma_ref = 10**(0.99)
         else:
             logger.error('Unknown instrumental parametrisation for {}'
                          ' angle'.format(beam_angle))
-        coeff_random = (coeff * 10**(-2) / output_var_i['sigma0']*sigma_ref)
+        coeff_random = (coeff * 10**(-2) * output_var_i['sigma0']/sigma_ref)
                         #* numpy.sin(numpy.deg2rad(beam_angle)))
         cshape = numpy.shape(coeff_random)
         center = numpy.zeros(cshape)
         output_var_i['instr'] = numpy.random.normal(0, abs(coeff_random), cshape[0])
-        output_var_i['instr'][output_var_i['sigma0']<0.1] = numpy.nan
+        output_var_i['instr'][output_var_i['sigma0']<10**-5] = numpy.nan
+        output_var_i['instr'][numpy.isnan(output_var_i['sigma0'])] = numpy.nan
         output_var_i['ur_obs'] += output_var_i['instr']
 
     # del output_var_i['mssx']
@@ -509,6 +511,8 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
         mss = output_var_i['mssu'] + output_var_i['mssc']
     else:
         mss = output_var_i['mssclose']
+    #    noise_nwnd = numpy.random.normal(0, 10, cshape[0])
+    #    wndr = wndr + noise_nwnd
     _ind = numpy.where(mss == 0)
     mss[_ind] = 0.001
     hs = output_var_i['hs']
