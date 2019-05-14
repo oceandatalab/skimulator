@@ -465,16 +465,22 @@ def worker_method_skim(*args, **kwargs):
                 output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]
                                                + corr)
         if p.rain is True:
-            mean_time = numpy.mean(time)
-            rain, rain_nad = build_error.compute_rain(p, mean_time, sgrid,
-                                                      rain_dic, rain_size)
-            for i in range(len(output_var['ur_obs'])):
-                if i == 0:
-                    _rain = rain_nad[:]
-                else:
-                    _rain = rain[:, i - 1]
-                output_var['rain'].append(_rain)
-                output_var['ur_obs'][i][_rain > p.rain_threshold] = numpy.nan
+            if p.rain_file is None:
+                if 'rain' in output_var.keys():
+                    for i in range(len(output_var['ur_obs'])):
+                        _rain = output_var['rain'][i]
+                        output_var['ur_obs'][i][_rain > p.rain_threshold] = numpy.nan
+            else:
+                mean_time = numpy.mean(time)
+                rain, rain_nad = build_error.compute_rain(p, mean_time, sgrid,
+                                                          rain_dic, rain_size)
+                for i in range(len(output_var['ur_obs'])):
+                    if i == 0:
+                        _rain = rain_nad[:]
+                    else:
+                        _rain = rain[:, i - 1]
+                    output_var['rain'].append(_rain)
+                    output_var['ur_obs'][i][_rain > p.rain_threshold] = numpy.nan
 
         #   Compute errdcos if Formula is True
 
