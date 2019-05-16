@@ -15,11 +15,15 @@ import traceback
 logger = logging.getLogger(__name__)
 
 
-def make_obs(data, grid, obs, ind):
+def make_obs(p, data, grid, obs, ind):
     #obs['vrt'] = obs['vrt'][ind]
     obs['vxt'] = numpy.array(data.ucur).flatten()[ind]
     obs['vyt'] = numpy.array(data.vcur).flatten()[ind]
     obs['vmodr'] = numpy.array(data.ur_true).flatten()[ind]
+    if p.instr is True:
+        obs['instr'] = numpy.array(data.instr).flatten()[ind]
+    if p.uwb is True:
+        obs['uwdre'] = numpy.array(data.uwd).flatten()[ind] - numpy.array(data.uwd_est).flatten()[ind]
     obs['lon'] = numpy.array(data.lon).flatten()[ind]
     obs['lat'] = numpy.array(data.lat).flatten()[ind]
     obs['lon_nadir'] = numpy.array(data.lon_nadir[:])
@@ -115,7 +119,8 @@ def make_grid(grid, obs, posting, desc=False):
                                              (grd['al']), method='linear')
     grd['angle'] = numpy.full((grd['nal'], grd['nac']), numpy.nan)
     grd['angle'][:, :-1]  = numpy.angle((grd['lon'][:, 1:] - grd['lon'][:, :-1])
-                             + 1j * (grd['lat'][:, 1:] - grd['lat'][:, :-1]))
+                                         * (numpy.cos(numpy.deg2rad(grd['lat'][:, 1:])))
+                                         + 1j * (grd['lat'][:, 1:] - grd['lat'][:, :-1]))
     grd['angle'][:, -1]= grd['angle'][:, -2]
 
 
@@ -225,14 +230,14 @@ def read_model(p, indice):
     return model_data, list_model_step, list_file
 
 
-def interpolate_model(p, model_data, list_model_step, grd, list_obs,
+def interpolate_model(p, model_data, list_model_step, grd, list_obs, list_key,
                       desc=False):
     import pyresample as pr
     wrap_lon = pr.utils.wrap_longitudes
     geom = pr.geometry.SwathDefinition
     interp = mod.interpolate_irregular_pyresample
     lon = wrap_lon(grd['lon'])
-    list_key = {'ucur':'u_model', 'vcur':'v_model'}
+    # list_key = {'ucur':'u_model', 'vcur':'v_model'}
 
     for ikey, okey in list_key.items():
         grd[okey] = numpy.full(numpy.shape(grd['lat']), numpy.nan)
@@ -296,6 +301,9 @@ def write_l2(outfile, grd, obs, cycle, passn, firsttime):
                  ux_noerr=grd['vmodx'], uy_noerr=grd['vmody'],
                  ux_true=grd['u_model'], uy_true=grd['v_model'],
                  u_ac_true=grd['vtrueac'], u_al_true=grd['vtrueal'],
+                 u_ac_instr=grd['instrac'], u_al_instr=grd['instral'],
+                 u_ac_wdrem=grd['uwdreac'], u_al_wdrem=grd['uwdreal'],
+                 uwnd=grd['uwnd'], vwnd=grd['vwnd'], rain=grd['rain']
                  )
 
 
@@ -396,7 +404,8 @@ def worker_method_l2c(*args, **kwargs):
     grid = rw.Sat_SKIM(ifile=fileg)
     data.load_data(p, ur_true=[], ur_obs=[], ucur=[],
                    vcur=[], time=[], lon_nadir=[], lat_nadir=[],
-                   lon=[], lat=[], time_nadir=[], vindice=[])
+                   lon=[], lat=[], time_nadir=[], vindice=[],
+                   instr=[], uwd=[], uwd_est=[])
     grid.load_swath(p, radial_angle=[], angle=[], x_al=[], x_al_nadir=[],
                     x_ac=[])
 
@@ -418,18 +427,31 @@ def worker_method_l2c(*args, **kwargs):
     obs['vobsr'] = obs['vobsr'][ind2]
     noerr['vobsr'] = noerr['vobsr'][ind1]
     if len(ind2) > 2 and len(data.lon_nadir) >2:
-        try:
-            obs = make_obs(data, grid, obs, ind2)
-            noerr = make_obs(data, grid, noerr, ind1)
-            obs = make_obs(data, grid, obs, ind2)
-            noerr = make_obs(data, grid, noerr, ind1)
+        if True:
+            print('bouh')
+            obs = make_obs(p, data, grid, obs, ind2)
+            print('bouh')
+            noerr = make_obs(p, data, grid, noerr, ind1)
+            obs = make_obs(p, data, grid, obs, ind2)
+            noerr = make_obs(p, data, grid, noerr, ind1)
             grd = make_grid(grid, obs, p.posting, desc=desc)
+            print('bouh')
             #grdnoerr = make_grid(grid, noerr, p.posting, desc=desc)
             ## TODO proof error
             if grd is None:
                 return
+        try:
 
+            print('bouh')
             # OI
+            if p.instr is True:
+                grdinstr = grd.copy()
+                instral, instrac = perform_oi_1(grdinstr, noerr, p.resol, desc=desc)
+            print('bouh')
+            if p.uwb is True:
+                grduwd = grd.copy()
+                uwdreal, uwdreac = perform_oi_1(grduwd, noerr, p.resol, desc=desc)
+            print('bouh')
             grdnoerr = grd.copy()
             noerral, noerrac = perform_oi_1(grdnoerr, noerr, p.resol, desc=desc)
             obsal, obsac = perform_oi_1(grd, obs, p.resol, desc=desc)
@@ -445,6 +467,10 @@ def worker_method_l2c(*args, **kwargs):
         grd['vobsal'] = obsal
         grd['vmodac'] = noerrac
         grd['vmodal'] = noerral
+        grd['instrac'] = instrac
+        grd['instral'] = instral
+        grd['uwdreac'] = uwdreac
+        grd['uwdreal'] = uwdreal
         #grd['vmodac'] = + grdnoerr['vobsac'][:]
         #grd['vmodal'] = + grdnoerr['vobsal'][:]
         if desc is True:
@@ -464,7 +490,13 @@ def worker_method_l2c(*args, **kwargs):
         if numpy.any(vmask):
             vindice[numpy.where(vmask)] = 0
         model_data, model_step, list_file2 = read_model(p, vindice)
-        grd = interpolate_model(p, model_data, model_step, grd, ind_lat,
+        list_key = {'ucur':'u_model', 'vcur':'v_model', 'uwnd': 'uwnd',
+                    'vwnd': 'vwnd'}
+        if (p.rain is True) and (p.rain_file is None):
+            list_key['rain'] = 'rain'
+        else:
+            grd['rain'] = numpy.array([])
+        grd = interpolate_model(p, model_data, model_step, grd, ind_lat, list_key,
                                 desc=desc)
         ac_thresh = p.ac_threshold
         grd['vobsac'][numpy.abs(grd['ac2']) < ac_thresh] = numpy.nan
@@ -497,6 +529,10 @@ def worker_method_l2c(*args, **kwargs):
         grd['vmodal'][mask] = numpy.nan
         grd['vmodx'][mask] = numpy.nan
         grd['vmody'][mask] = numpy.nan
+        grd['instrac'][mask] = numpy.nan
+        grd['instral'][mask] = numpy.nan
+        grd['uwdreac'][mask] = numpy.nan
+        grd['uwdreal'][mask] = numpy.nan
         pattern_out = '{}{}_l2c_c{:02d}_p{:03d}.nc'.format(p.config,
                                                            p.config_l2c, cycle,
                                                            passn)
