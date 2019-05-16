@@ -170,7 +170,8 @@ def run_l2d(p, die_on_error=False):
     window = dt / 2.
     enstime = enstime + window
     indice_mask = make_mask(p, 'ucur', grd)
-    list_key = {'ucur':'ux_true', 'vcur':'uy_true'}
+    list_key = {'ucur':'ux_true', 'vcur':'uy_true', 'uwnd':'uwnd',
+                'vwnd': 'vwnd'}
     list_input = {}
     for key in list_key:
         list_input[key] = p.list_input_var_l2d[key]
