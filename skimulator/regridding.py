@@ -411,6 +411,8 @@ def worker_method_l2c(*args, **kwargs):
 
     obs = {}
     noerr = {}
+    instr = {}
+    wdre = {}
     test = numpy.array(data.ucur)
     nil, nbeams = numpy.shape(test)
     sbeam_incid = numpy.zeros((nil, nbeams))
@@ -419,39 +421,40 @@ def worker_method_l2c(*args, **kwargs):
 
     noerr['vmodr'] = numpy.array(data.ur_true).flatten()
     noerr['vobsr'] = numpy.array(data.ur_true).flatten()
+    instr['vobsr'] = numpy.array(data.instr).flatten()
+    wdre['vobsr'] = numpy.array(data.uwd - data.uwd_est).flatten()
     obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
     noerr['nsamp'], noerr['nbeam'] = numpy.shape(obs['vobsr'])
+    instr['nsamp'], instr['nbeam'] = numpy.shape(obs['vobsr'])
+    wdre['nsamp'], wdre['nbeam'] = numpy.shape(obs['vobsr'])
     obs['vobsr'] = obs['vobsr'].flatten()
     ind1 = numpy.where((noerr['vmodr'] > -100))[0]
     ind2 = numpy.where((obs['vobsr'] > -100))[0]
     obs['vobsr'] = obs['vobsr'][ind2]
     noerr['vobsr'] = noerr['vobsr'][ind1]
+    instr['vobsr'] = instr['vobsr'][ind1]
+    wdre['vobsr'] = wdre['vobsr'][ind1]
     if len(ind2) > 2 and len(data.lon_nadir) >2:
-        if True:
-            print('bouh')
+        try:
             obs = make_obs(p, data, grid, obs, ind2)
-            print('bouh')
             noerr = make_obs(p, data, grid, noerr, ind1)
             obs = make_obs(p, data, grid, obs, ind2)
             noerr = make_obs(p, data, grid, noerr, ind1)
+            instr = make_obs(p, data, grid, instr, ind1)
+            wdre = make_obs(p, data, grid, wdre, ind1)
             grd = make_grid(grid, obs, p.posting, desc=desc)
-            print('bouh')
             #grdnoerr = make_grid(grid, noerr, p.posting, desc=desc)
             ## TODO proof error
             if grd is None:
                 return
-        try:
 
-            print('bouh')
             # OI
             if p.instr is True:
                 grdinstr = grd.copy()
-                instral, instrac = perform_oi_1(grdinstr, noerr, p.resol, desc=desc)
-            print('bouh')
+                instral, instrac = perform_oi_1(grdinstr, instr, p.resol, desc=desc)
             if p.uwb is True:
                 grduwd = grd.copy()
-                uwdreal, uwdreac = perform_oi_1(grduwd, noerr, p.resol, desc=desc)
-            print('bouh')
+                uwdreal, uwdreac = perform_oi_1(grduwd, wdre, p.resol, desc=desc)
             grdnoerr = grd.copy()
             noerral, noerrac = perform_oi_1(grdnoerr, noerr, p.resol, desc=desc)
             obsal, obsac = perform_oi_1(grd, obs, p.resol, desc=desc)
