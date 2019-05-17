@@ -406,7 +406,7 @@ def load_rain(rain_file):
 
 
 def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
-                            ac_angle):
+                            ac_angle, pdf, xe):
     import skimulator.mod_run as mod
     output_var_i['ur_true'] = mod_tools.proj_radial(output_var_i['ucur'],
                                                     output_var_i['vcur'],
@@ -443,6 +443,11 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
         output_var_i['instr'] = numpy.random.normal(0, abs(coeff_random), cshape[0])
         output_var_i['instr'][output_var_i['sigma0']<10**-5] = numpy.nan
         output_var_i['instr'][numpy.isnan(output_var_i['sigma0'])] = numpy.nan
+        _ind = findindicesigma0
+        for i in nump
+        distribution = pdf[:, ind_sig]/ numpy.sum(pdf[:, ind_sig])
+        res = numpy.random.choice(xe, size=cshape[0], replace=True, p=distribution)
+
         output_var_i['ur_obs'] += output_var_i['instr']
 
     # del output_var_i['mssx']
@@ -707,3 +712,29 @@ def make_yaw_ted(time, cycle, angle, first_time, beam_angle):
     # conversion in rad
     yaw_ted = yaw_ted * numpy.pi * 10**6 / (180 * 3600)
     return yaw_ted
+
+
+def compute_pdf_dsigma():
+
+    # Compute sigma for pdf altika
+    sig_altika = numpy.arange(7, 15)
+    siglin = 10.**(sig_altika / 10)
+    R = 0.55
+    mss = R**2 / siglin
+
+    xe = numpy.linspace(-0.02, 0.02, 1001)
+    dxe = xe[1] - xe[0]
+
+    # Compute sum of pdfs
+    a = 19.5
+    nu = 4.635 * numpy.exp(-0.03 * (sig_altika - 12)**2)
+    nu_m = numpy.array([nu, ]* len(xe))
+    c = 0.000045 / (10**((sig_altika + 1.5)**2 / 100)) + 4.9e-7 * sig_altika
+    c_m = numpy.array([c, ]*len(xe))
+    xe_m = numpy.array([xe, ] * len(sig_altika)).transpose()
+    mat_pdf = 10**((a - (3 + nu_m) * numpy.log(1 + xe_m**2
+                    / ((1 + nu_m) * c_m)))/10)
+    sum_pdf = numpy.array([numpy.sum(mat_pdf, axis=1), ] * len(mss)).transpose()
+    norm_pdf0 = mat_pdf / (sum_pdf) # * dxe)
+
+    return xe, mat_pdf
