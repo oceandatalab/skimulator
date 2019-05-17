@@ -324,6 +324,16 @@ def fromdict(result):
     return p
 
 
+def convert_dbkm2ms(var_out, ac_angle, beam_angle):
+    # Computation of lobe antenna
+    th3 = numpy.deg2rad(0.57)
+    an = th3 / numpy.sqrt(8 * numpy.log(2))
+    # Computation of mispointing
+    delta = an**2 / numpy.sin(numpy.deg2rad(beam_angle))**2 * var_out
+    out = var_out * const.vsat * numpy.cos(ac_angle))
+
+
+
 def update_progress_multiproc(status, info):
     """Creation of progress bar: print on screen progress of run, optimized
     for parrallelised tasks"""

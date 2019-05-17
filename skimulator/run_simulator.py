@@ -347,6 +347,7 @@ def worker_method_skim(*args, **kwargs):
             output_var['uwd'] = []
         if p.rain is True:
             output_var['rain'] = []
+            output_var['gsig_atm_err'] = []
         if p.attitude is True:
             output_var['yaw'] = []
             output_var['yaw_aocs'] = []
@@ -472,15 +473,24 @@ def worker_method_skim(*args, **kwargs):
                         output_var['ur_obs'][i][_rain > p.rain_threshold] = numpy.nan
             else:
                 mean_time = numpy.mean(time)
-                rain, rain_nad = build_error.compute_rain(p, mean_time, sgrid,
+                rain, rain_nad, gpia, gpia_nad = build_error.compute_rain(p, mean_time, sgrid,
                                                           rain_dic, rain_size)
                 for i in range(len(output_var['ur_obs'])):
                     if i == 0:
                         _rain = rain_nad[:]
+                        _gpia_err = gpia_nad[:]
                     else:
+                        #Beam angle value to correct for attenuation in radial velocity
+                        beam_angle = p.list_angle[i - 1]
+                        ac_angle =  sgrid.angle[:, i - 1]
                         _rain = rain[:, i - 1]
+                        _gpia_err = gpia[:, i - 1]
+                    _gpia_err = mod_tools.convert_dbkm2ms(_gpia_err, ac_angle, beam_angle)
                     output_var['rain'].append(_rain)
+                    output_var['gsig_atm_err'].append(_gpia_err)
                     output_var['ur_obs'][i][_rain > p.rain_threshold] = numpy.nan
+                    output_var['ur_obs'][i][abs(_gpia_err) > 1] = numpy.nan
+                    output_var['ur_obs'] += output_var['gsig_atm_err']
 
         #   Compute errdcos if Formula is True
 

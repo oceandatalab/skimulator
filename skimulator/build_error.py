@@ -370,6 +370,7 @@ def compute_rain(p, time, sgrid, dic, size_dic):
     rr_ind = int(numpy.random.random_sample() * size_dic)
     xal = dic['xal'][hour][rr_ind]
     var = dic['rr'][hour][rr_ind]
+    var2 = dic['pia'][hour][rr_ind]
     xac = dic['xac'][hour][rr_ind]
     x_al_g_tot = + sgrid.x_al
     for i in range(numpy.shape(sgrid.x_al)[1]):
@@ -381,15 +382,20 @@ def compute_rain(p, time, sgrid, dic, size_dic):
         # Trick to avoid nan in interpolation
     var_mask = + var
     var_mask[numpy.isnan(var_mask)] = 0.
+    var2_mask = + var2
+    var2_mask[numpy.isnan(var2_mask)] = 0.
     # Interpolate variable
     _var_out = interp(xal, xac, var_mask, kx=1, ky=1, s=0)
     var_out = _var_out.ev(xal_g, sgrid.x_ac)
+    _var2_out = interp(xal, xac, var2_mask, kx=1, ky=1, s=0)
+    var2_out = _var2_out.ev(xal_g, sgrid.x_ac)
     # Mask variable with Teval
+    var2_out[Teval > 0] = numpy.nan
     var_out[Teval > 0] = numpy.nan
     xal_n = numpy.mod(sgrid.x_al_nadir - numpy.min(sgrid.x_al_nadir),
                       numpy.max(xal))
     var_nad = numpy.zeros(numpy.shape(xal_n))
-    return var_out, var_nad
+    return var_out, var_nad, var2_out, var_nad
 
 
 def load_rain(rain_file):
