@@ -406,7 +406,7 @@ def load_rain(rain_file):
 
 
 def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
-                            ac_angle, pdf, xe):
+                            ac_angle):
     import skimulator.mod_run as mod
     output_var_i['ur_true'] = mod_tools.proj_radial(output_var_i['ucur'],
                                                     output_var_i['vcur'],
@@ -443,12 +443,39 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
         output_var_i['instr'] = numpy.random.normal(0, abs(coeff_random), cshape[0])
         output_var_i['instr'][output_var_i['sigma0']<10**-5] = numpy.nan
         output_var_i['instr'][numpy.isnan(output_var_i['sigma0'])] = numpy.nan
-        _ind = findindicesigma0
-        for i in nump
-        distribution = pdf[:, ind_sig]/ numpy.sum(pdf[:, ind_sig])
-        res = numpy.random.choice(xe, size=cshape[0], replace=True, p=distribution)
+        mss = output_var_i['mssu'] + output_var_i['mssc']
+        output_var_i['dsigma'] = numpy.full(cshape, numpy.nan)
+        xe, pdf = compute_pdf_dsigma(beam_angle)
+        inc = numpy.deg2rad(beam_angle)
+        # ration altika - skim
+        r = 0.66
+        # to change
+        sat_elev = 817
+        for i in range(cshape[0]):
+            if not numpy.isfinite(output_var_i['sigma0'][i]):
+                continue
+            if numpy.isnan(output_var_i['sigma0'][i]) or numpy.isnan(mss[i]):
+                continue
 
+            siglog = 10*numpy.log10(output_var_i['sigma0'][i])
+            ind_sig = numpy.floor(siglog) - 7
+            ind_sig = max(ind_sig, 7)
+            ind_sig = int(min(ind_sig, 0))
+            pdf_stretched = pdf[:, ind_sig]
+            distribution = pdf_stretched / numpy.sum(pdf_stretched)
+            try:
+                res = numpy.random.choice(xe, size=1, p=distribution)
+                output_var_i['dsigma'][i] = res[0]
+            except:
+                output_var_i['dsigma'][i] = numpy.nan
+#            hs = 1.5 + 5/(siglog - 6)**2
+#            AA = numpy.pi * sat_elev * (ctau + 2*Hs)/(1 + sat_elev/const.Rearth)
+        #    output_var_i['dsigma'] = r * output_var_i['dsigma']/10*numpy.log(10) * sat_elev * numpy.sin(inc) * numpy.sqrt(AA)
+        output_var_i['dsigma'] = r * output_var_i['dsigma']/(10*numpy.log(10)) * sat_elev * numpy.sin(inc)
+        output_var_i['dsigma'] = mod_tools.convert_dbkm2ms(output_var_i['dsigma'], ac_angle, beam_angle)
         output_var_i['ur_obs'] += output_var_i['instr']
+        output_var_i['ur_obs'] += output_var_i['dsigma']
+
 
     # del output_var_i['mssx']
     # del output_var_i['mssy']
@@ -679,6 +706,7 @@ def make_yaw_aocs(time_yaw, vac_yaw, time):
     yaw_aocs = f(time)
     return yaw_aocs
 
+
 def make_yaw_ted(time, cycle, angle, first_time, beam_angle):
     import pkg_resources
     nxspline, nyspline, thedeg = (128, 64, 12)
@@ -714,13 +742,15 @@ def make_yaw_ted(time, cycle, angle, first_time, beam_angle):
     return yaw_ted
 
 
-def compute_pdf_dsigma():
+def compute_pdf_dsigma(beam_angle):
 
     # Compute sigma for pdf altika
+    inc = numpy.deg2rad(beam_angle)
     sig_altika = numpy.arange(7, 15)
     siglin = 10.**(sig_altika / 10)
     R = 0.55
     mss = R**2 / siglin
+    dmssdsig0 = -R**2 / siglin**2
 
     xe = numpy.linspace(-0.02, 0.02, 1001)
     dxe = xe[1] - xe[0]
@@ -732,9 +762,21 @@ def compute_pdf_dsigma():
     c = 0.000045 / (10**((sig_altika + 1.5)**2 / 100)) + 4.9e-7 * sig_altika
     c_m = numpy.array([c, ]*len(xe))
     xe_m = numpy.array([xe, ] * len(sig_altika)).transpose()
+    sigbeam = (R**2.*numpy.exp(-(numpy.tan(inc)**2 / mss))
+                             / (mss * numpy.cos(inc)**4))
+    dmss = 0.0001
+    dsigdbeam = (R**2*numpy.exp(-(numpy.tan(inc)**2./(mss + dmss)))
+                                 / ((mss + dmss)*numpy.cos(inc)**4) - sigbeam) / dmss
+    stretched_fac = siglin * dmssdsig0 * dsigdbeam / sigbeam
+    stretched_fac_m =  numpy.array([stretched_fac, ]*len(xe))
+    dxe = xe[1] - xe[0]
+
     mat_pdf = 10**((a - (3 + nu_m) * numpy.log(1 + xe_m**2
                     / ((1 + nu_m) * c_m)))/10)
     sum_pdf = numpy.array([numpy.sum(mat_pdf, axis=1), ] * len(mss)).transpose()
     norm_pdf0 = mat_pdf / (sum_pdf) # * dxe)
+    stretched_pdf = abs(1/stretched_fac)*10**((a - (3 + nu_m) * numpy.log(1
+                         + (xe_m/stretched_fac)**2
+                         / ((1 + nu_m) * c_m)))/10) #/sum_pdf
 
-    return xe, mat_pdf
+    return xe, stretched_pdf

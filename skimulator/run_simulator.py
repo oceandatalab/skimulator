@@ -206,7 +206,7 @@ def run_simulator(p, die_on_error=False):
         logger.info("WARNING: the first file is not used to build data")
         list_file.remove(list_file[0])
     # Add compulsary key # TODO proof that
-    list_compulsary_key = ['ur_obs', 'ur_true', 'radial_angle', 'ussr', 'uwd']
+    list_compulsary_key = ['ur_obs', 'ur_true', 'radial_angle', 'ussr', 'uwd', 'dsigma']
     for key in list_compulsary_key:
         if key not in p.list_output:
             p.list_output.append(key)
@@ -219,11 +219,10 @@ def run_simulator(p, die_on_error=False):
     vac_yaw = None
     if p.attitude is True and os.path.isfile(p.yaw_file):
         time_yaw, vac_yaw = build_error.load_yaw_aocs(p.yaw_file)
-    xe, mat_pdf = build_error.compute_pdf_dsigma()
         # time_yaw = time_yaw / 86400
     for sgridfile in listsgridfile:
         jobs.append([sgridfile, p2, listsgridfile, list_file,
-                     modelbox, model_data, modeltime, time_yaw, vac_yaw, xe, mat_pdf])
+                     modelbox, model_data, modeltime, time_yaw, vac_yaw])
     ok = False
     try:
         ok = make_skim_data(p.proc_count, jobs, die_on_error, p.progress_bar)
@@ -295,7 +294,7 @@ def err_formatter(pid, grid, cycle, exc):
 
 def worker_method_skim(*args, **kwargs):
     msg_queue, sgridfile, p2, listsgridfile = args[:4]
-    list_file, modelbox, model_data, modeltime, time_yaw, vac_yaw, xe, mat_pdf = args[4:]
+    list_file, modelbox, model_data, modeltime, time_yaw, vac_yaw = args[4:]
     p = mod_tools.fromdict(p2)
     #   Load SKIM grid files (Swath and nadir)
     sgrid = mod.load_sgrid(sgridfile, p)
@@ -410,7 +409,7 @@ def worker_method_skim(*args, **kwargs):
                 output_var_i, time = create
                 build_error.compute_beam_noise_skim(p, output_var_i,
                                                     radial_angle, beam_angle,
-                                                    ac_angle, pdf, xe)
+                                                    ac_angle)
                 if p.attitude is True:
                     yaw_aocs = build_error.make_yaw_aocs(time_yaw, vac_yaw, time)
                     first_time = datetime.datetime.strptime(p.first_time,
@@ -492,7 +491,7 @@ def worker_method_skim(*args, **kwargs):
                     output_var['gsig_atm_err'].append(_gpia_err)
                     output_var['ur_obs'][i][_rain > p.rain_threshold] = numpy.nan
                     output_var['ur_obs'][i][abs(_gpia_err) > 1] = numpy.nan
-                    output_var['ur_obs'] += output_var['gsig_atm_err']
+                    output_var['ur_obs'][i] += _gpia_err
 
         #   Compute errdcos if Formula is True
 

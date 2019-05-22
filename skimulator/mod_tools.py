@@ -326,11 +326,12 @@ def fromdict(result):
 
 def convert_dbkm2ms(var_out, ac_angle, beam_angle):
     # Computation of lobe antenna
-    th3 = numpy.deg2rad(0.57)
-    an = th3 / numpy.sqrt(8 * numpy.log(2))
+    th3 = numpy.deg2rad(0.65)
+    an = th3 / numpy.sqrt(4 * numpy.log(2))
     # Computation of mispointing
     delta = an**2 / numpy.sin(numpy.deg2rad(beam_angle))**2 * var_out
-    out = var_out * const.vsat * numpy.cos(ac_angle))
+    out = delta *const.vsat * numpy.cos(ac_angle)
+    return out
 
 
 

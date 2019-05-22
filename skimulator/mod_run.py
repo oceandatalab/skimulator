@@ -206,7 +206,8 @@ def create_SKIMlikedata(cycle, list_file, modelbox,
     #   Initialiaze errors and velocity
     output_var_i = {}
     shape_i = numpy.shape(sgrid.lon)[0]
-    list_compulsary_key = ['ur_obs', 'ur_true', 'radial_angle', 'ussr', 'uwd']
+    list_compulsary_key = ['ur_obs', 'ur_true', 'radial_angle', 'ussr', 'uwd',
+                           'dsigma']
     for key in list_compulsary_key:
         if key not in p.list_output:
             p.list_output.append(key)
@@ -447,6 +448,7 @@ def compute_sigma_water(input_var, beam_angle, radial_angle):
         mask = ((mssx == 0) | (mssy == 0))
         mssx[mask] = numpy.nan
         mssy[mask] = numpy.nan
+
         expo = (-0.5 * numpy.tan(rbeam_angle)**2 * (numpy.cos(radial_angle)**2
                 *mssy + numpy.sin(radial_angle)**2 * mssx
                 - numpy.sin(2 * radial_angle) * mssxy) / (mssx * mssy))
