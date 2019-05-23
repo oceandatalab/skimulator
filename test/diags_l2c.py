@@ -164,6 +164,13 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
     ntot_acm = numpy.zeros(nac)
     ntot_alm = numpy.zeros(nal)
     print(nac)
+    list_key = ['u_al_wd', 'u_ac_wd', 'u_al_wdrem', 'u_ac_wdrem',
+                'u_ac_instr', 'u_al_instr', 'u_ac_dsigma', 'u_al_dsigma']
+    std_err = {}
+    ntot_err = {}
+    for ikey in list_key:
+        std_err[ikey] = numpy.zeros(nac)
+        ntot_err[ikey] = numpy.zeros(nac)
 
     for filev in list_files:
         fid = netCDF4.Dataset(filev, 'r')
@@ -190,6 +197,9 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
         skim['uac'][numpy.abs(skim['uac']) > 10] = numpy.nan
         skim['ual'] = numpy.array(fid.variables['u_al_obs'][:])
         skim['ual'][numpy.abs(skim['ual']) > 10] = numpy.nan
+        for ikey in list_key:
+            skim[ikey] = numpy.array(fid.variables[ikey][:])
+            skim[ikey][numpy.abs(skim[ikey]) > 1] = numpy.nan
         nuac = ref['uac'].shape[1]
         fid.close()
         if nuac < 61:
@@ -236,12 +246,22 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
                 else:
                     std_ualm[i] += 0
                     ntot_alm[i] += 0
+            for ikey in list_key:
+                it_alm = len(numpy.where(numpy.isnan(skim[ikey][ind0:ind1, i]) == False)[0])
+                if it_alm >= 100:
+                    _std = numpy.nanstd(skim[ikey][ind0:ind1, i]) * it_alm
+                    if numpy.isfinite(_std):
+                        std_err[ikey][i] += _std
+                        ntot_err[ikey][i] += it_alm
+                    else:
+                        std_err[ikey][i] += 0
+                        ntot_err[ikey][i] += 0
 
     std_uac = std_uac/ntot_ac
     std_ual = std_ual/ntot_al
     std_uacm = std_uacm/ntot_acm
     std_ualm = std_ualm/ntot_alm
-    f, (ax1, ax2) = pyplot.subplots(1, 2, sharey= True, figsize=(12,5 ))
+    f, (ax1, ax2, ax3) = pyplot.subplots(1, 3, sharey= True, figsize=(20,5 ))
     xac = numpy.arange(-(nac - 1) * posting/2, (nac + 1)* posting/2, posting)
     print(xac[numpy.where(std_uac > threshold)])
     print(xac[numpy.where(std_ual > threshold)])
@@ -250,6 +270,9 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
     print(config, 'ual', numpy.nanmean(std_ual[_ind]))
     print(config, 'uacm', numpy.nanmean(std_uacm[_ind]))
     print(config, 'ualm', numpy.nanmean(std_ualm[_ind]))
+    for ikey in list_key:
+        std_err[ikey] = std_err[ikey] /  ntot_err[ikey]
+        print(config, ikey, numpy.nanmean(std_err[ikey][_ind]))
     ax1.plot(xac, std_uac, 'r', label='across track')
     ax1.plot(xac, std_ual, 'b', label='along track')
     ax1.axhline(y=0.1, color="0.5")
@@ -261,6 +284,13 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
     ax2.axhline(y=0.1, color="0.5")
     ax2.set_title('Error-free {}'.format(config))
     ax2.legend()
+    ax3.plot(xac, std_uacm, 'r', label='across track regridding')
+    ax3.plot(xac, std_ualm, 'b', label='along track regridding')
+    for ikey in list_key:
+        ax3.plot(xac, std_err[ikey], label=ikey)
+        ax3.axhline(y=0.1, color="0.5")
+    ax3.set_title('Error decomposition {}'.format(config))
+    ax3.legend()
     pyplot.savefig('{}.png'.format(datadir_output))
 
 def bin_variables(listfile, listvar, bin_in, modelbox):

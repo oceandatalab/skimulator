@@ -26,6 +26,10 @@ def diag_rms(listfile, modelbox, output, list_angle):
     nanmeanuwb06 = 0
     nanmeanuwbc12 = 0
     nanmeanuwbc06 = 0
+    nanmeandsig12 = 0
+    nanmeandsig06 = 0
+    nanmeangsig12 = 0
+    nanmeangsig06 = 0
     nanstd12 = 0
     nanstd06 = 0
     nanstd12norm = 0
@@ -51,18 +55,29 @@ def diag_rms(listfile, modelbox, output, list_angle):
         varobs = data.variables['ur_obs'][ind0:ind1, :]
         if len(lon_nadir) < 700:
             continue
+        instr = False
         if 'instr' in data.variables.keys():
             instr = True
             varinstr = data.variables['instr'][ind0:ind1, :]
             varinstr[numpy.where(abs(varinstr) > 1)] = numpy.nan
+        uwb = False
         if 'uwd' in data.variables.keys():
             uwb = True
             varuwb = data.variables['uwd'][ind0:ind1, :]
+        uwbc = False
         if 'uwd_est' in data.variables.keys():
             uwbc = True
             varuwbc = data.variables['uwd_est'][ind0:ind1, :]
             varuwbc = varuwbc - varuwb
+        dsigma = False
+        if 'dsigma' in data.variables.keys():
+            dsigma = True
+            vardsig = data.variables['dsigma'][ind0:ind1, :]
+        gsig_atm = False
 
+        if 'gsig_atm_err' in data.variables.keys():
+            gsig_atm = False
+            vargsig = data.variables['gsig_atm_err'][ind0:ind1, :]
         mask = ((abs(vartrue)>100) | (abs(varobs)>100) | numpy.isnan(varinstr))
         vartrue[mask] = numpy.nan
         varobs[mask] = numpy.nan
@@ -93,8 +108,12 @@ def diag_rms(listfile, modelbox, output, list_angle):
                     continue
             if uwbc is True:
                 _tmpuwbc = numpy.nanmean(abs(varuwbc[_ind, i])**2)
+            if dsigma is True:
+                _tmpdsig = numpy.nanmean(abs(vardsig[_ind, i])**2)
+            if gsig_atm is True:
+                _tmpgsig = numpy.nanmean(abs(vargsig[_ind, i])**2)
             if beam_angle[i] == 6:
-                nanstd06norm += _tmp/_tmp2
+                nanstd06norm += _tmp2
                 nanstd06 += _tmp
                 if instr is True:
                     nanmeaninstr06 += _tmpinstr
@@ -102,21 +121,31 @@ def diag_rms(listfile, modelbox, output, list_angle):
                     nanmeanuwb06 += _tmpuwb
                 if uwbc is True:
                     nanmeanuwbc06 += _tmpuwbc
+                if dsigma is True:
+                    nanmeandsig06 += _tmpdsig
+                if gsig_atm is True:
+                    nanmeangsig06 += _tmpgsig
                 i06 += 1
             else:
                 nanstd12 += _tmp
-                nanstd12norm += _tmp/_tmp2
+                nanstd12norm += _tmp2
                 if instr is True:
                     nanmeaninstr12 += _tmpinstr
                 if uwb is True:
                     nanmeanuwb12 += _tmpuwb
                 if uwbc is True:
                     nanmeanuwbc12 += _tmpuwbc
+                if dsigma is True:
+                    nanmeandsig12 += _tmpdsig
+                if gsig_atm is True:
+                    nanmeangsig12 += _tmpgsig
                 i12 += 1
     nanstd06 = numpy.sqrt(nanstd06/i06)
     nanstd12 = numpy.sqrt(nanstd12/i12)
     # nanstd06 = numpy.sqrt(nanstd06/i06)
     # nanstd12 = numpy.sqrt(nanstd12/i12)
+    nanstd06norm = numpy.sqrt(nanstd06norm/i06)
+    nanstd12norm = numpy.sqrt(nanstd12norm/i12)
     if instr is True:
         nanmeaninstr06 = numpy.sqrt(nanmeaninstr06/i06)
         nanmeaninstr12 = numpy.sqrt(nanmeaninstr12/i12)
@@ -126,6 +155,12 @@ def diag_rms(listfile, modelbox, output, list_angle):
     if uwbc is True:
         nanmeanuwbc06 = numpy.sqrt(nanmeanuwbc06/i06)
         nanmeanuwbc12 = numpy.sqrt(nanmeanuwbc12/i12)
+    if dsigma is True:
+        nanmeandsig06 = numpy.sqrt(nanmeandsig06/i06)
+        nanmeandsig12 = numpy.sqrt(nanmeandsig12/i12)
+    if gsig_atm is True:
+        nanmeangsig06 = numpy.sqrt(nanmeangsig06/i06)
+        nanmeangsig12 = numpy.sqrt(nanmeangsig12/i12)
     print('RMSE 06: {}, RMSE 12: {}'.format(nanstd06, nanstd12))
     print('NRMSE 06: {}, NRMSE 12: {}'.format(nanstd06norm, nanstd12norm))
     if instr is True:
@@ -134,6 +169,11 @@ def diag_rms(listfile, modelbox, output, list_angle):
         print('uwb rms 06: {}, uwb rms 12: {}'.format(nanmeanuwb06, nanmeanuwb12))
     if uwbc is True:
         print('uwbc rms 06: {}, uwbc rms 12: {}'.format(nanmeanuwbc06, nanmeanuwbc12))
+    if dsigma is True:
+        print('dsigma rms 06: {}, dsigma rms 12: {}'.format(nanmeandsig06, nanmeandsig12))
+    if gsig_atm is True:
+
+        print('gsig rms 06: {}, gsig rms 12: {}'.format(nanmeangsig06, nanmeangsig12))
     return nanstd06, nanstd12, nanstd06norm, nanstd12norm
 
 
