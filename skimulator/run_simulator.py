@@ -446,7 +446,7 @@ def worker_method_skim(*args, **kwargs):
                    + numpy.transpose(numpy.array(output_var['mssc'])))
             hs = output_var['hs'][0]
             usr = numpy.transpose(numpy.array(output_var['ussr']))[:, 1:]
-            p.delta_azim = 15
+            p.delta_azim = 10
             incl = sgrid.incl
             _angle = +  sgrid.angle
             if (sgrid.ipass %2) != 0:
@@ -457,13 +457,15 @@ def worker_method_skim(*args, **kwargs):
                                                          lat_nadir, mss,
                                                          hs, p.list_angle)
             # Temporary trick to compensate for bad usr correction
-            usr_comb = usr_comb / 3 + 2 * usr / 3
+            #usr_comb = usr_comb / 3 + 2 * usr / 3
             uwd_est = mod_uwb_corr.estimate_uwd(usr_comb, output_var, hsclose,
                                                 mssclose, sgrid.radial_angle,
                                                 p.list_angle)
             output_var['uwd_est'] = uwd_est
             for i in range(len(output_var['ur_obs'])):
+                output_var['uwd_est'][i] = output_var['uwd_est'][i] / 3 + output_var['uwd'][i] * 2 /3
                 corr = output_var['uwd'][i] - output_var['uwd_est'][i]
+                print(corr)
                 output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]
                                                + corr)
         if p.rain is True:
@@ -471,7 +473,7 @@ def worker_method_skim(*args, **kwargs):
                 if 'rain' in output_var.keys():
                     for i in range(len(output_var['ur_obs'])):
                         _rain = output_var['rain'][i]
-                        output_var['ur_obs'][i][_rain > p.rain_threshold] = numpy.nan
+                        output_var['ur_obs'][i][numpy.where(_rain > p.rain_threshold)] = numpy.nan
             else:
                 mean_time = numpy.mean(time)
                 rain, rain_nad, gpia, gpia_nad = build_error.compute_rain(p, mean_time, sgrid,

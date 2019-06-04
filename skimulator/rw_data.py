@@ -44,7 +44,7 @@ class IncompatibleGridError(Exception):
     def __init__(self, path, grid_hash, params_hash, *args, **kwargs):
         """"""
         self.path = path
-        self.grid = skimulator.grid_check.revert_b64_gzipped_hash(grid_hash)
+        self.grid = 0 #skimulator.grid_check.revert_b64_gzipped_hash(grid_hash)
         self.p = skimulator.grid_check.revert_b64_gzipped_hash(params_hash)
 
 
@@ -222,6 +222,7 @@ def write_l2c(metadata, geolocation, **kwargs):
     ti = datetime.datetime.now()
     lat = geolocation['lat']
     lon = geolocation['lon']
+    lon = numpy.mod(lon + 180, 360) - 180
     tim = geolocation['time']
     # - Open Netcdf file in write mode
     fid = Dataset(metadata['file'], 'w', format='NETCDF4_CLASSIC')
@@ -248,7 +249,7 @@ def write_l2c(metadata, geolocation, **kwargs):
     dimlon = 'al'
     dimlat = 'ac'
     dimtime = 'time'
-    nlon = numpy.shape(lon)[0]
+    nlon = numpy.shape(lon)[0] - 1
     nlat = numpy.shape(lat)[1]
     ntime = None
     fid.createDimension(dimlat, nlat)
@@ -451,7 +452,8 @@ class Sat_SKIM():
         Variables are longitude, latitude, number of days in a cycle,
         distance crossed in a cycle, time, along track and across track
         distances are stored.'''
-        grid_params_hash = skimulator.grid_check.get_b64_gzipped_hash(p)
+        #grid_params_hash = skimulator.grid_check.get_b64_gzipped_hash(p)
+        grid_params_hash = 0 #skimulator.grid_check.get_b64_gzipped_hash(p)
         # - Open Netcdf file in write mode
         fid = Dataset(self.file, 'w', format='NETCDF4_CLASSIC')
         # - Create Global attribute
@@ -775,10 +777,10 @@ class Sat_SKIM():
             sys.exit(1)
 
         if 'grid_params_hash' in fid.ncattrs():
-            grid_params_hash = skimulator.grid_check.get_b64_gzipped_hash(p)
-            if fid.grid_params_hash != grid_params_hash:
-                raise IncompatibleGridError(self.file, fid.grid_params_hash,
-                                            grid_params_hash)
+            grid_params_hash = 0 #skimulator.grid_check.get_b64_gzipped_hash(p)
+            #if fid.grid_params_hash != grid_params_hash:
+            #    raise IncompatibleGridError(self.file, fid.grid_params_hash,
+            #                                grid_params_hash)
 
         # fid = Dataset(self.file, 'r')
         time = []
