@@ -327,6 +327,7 @@ def bin_variables(listfile, listvar, bin_in, modelbox):
                         + modelbox[5]**2)
     dic_v = {}
     for ifile in listfile:
+        print(ifile)
         data = netCDF4.Dataset(ifile, 'r')
         lon = data['lon'][:]
         lat = data['lat'][:]

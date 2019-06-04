@@ -396,6 +396,9 @@ def compute_rms(bin_in, bin_out, listvar, modelbox):
             for ivar in listvar:
                 if ivar not in dic_v[ind_key].keys():
                     continue
+                if len(dic_v[ind_key][ivar]) == 0:
+                    continue
+                print(len(dic_v[ind_key][ivar]))
                 try:
                     var = numpy.concatenate(dic_v[ind_key][ivar]).ravel()
                 except:

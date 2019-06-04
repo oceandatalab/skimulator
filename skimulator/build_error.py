@@ -780,3 +780,50 @@ def compute_pdf_dsigma(beam_angle):
                          / ((1 + nu_m) * c_m)))/10) #/sum_pdf
 
     return xe, stretched_pdf
+
+
+class ted_residu:
+    def __init__(self,n12deg=3,nbeam=5):
+	import pkg_resources
+	coeff_path_avv6 = pkg_resources.resource_filename('skimulator',
+						     'share/AVV_6deg.npy')
+	coeff_path_avv12 = pkg_resources.resource_filename('skimulator',
+						     'share/AVV_12deg.npy')
+	coeff_path_std6 = pkg_resources.resource_filename('skimulator',
+						     'share/AVV_6deg.npy')
+	coeff_path_std12 = pkg_resources.resource_filename('skimulator',
+						     'share/AVV_6deg.npy')
+
+        self.avv6 = numpy.load('/home1/datawork/jmdeloui/SKIM_RESIDU/AVV_6deg.npy')
+        self.std6 = numpy.load('/home1/datawork/jmdeloui/SKIM_RESIDU/STD_6deg.npy')
+        self.avv12 = numpy.load('/home1/datawork/jmdeloui/SKIM_RESIDU/AVV_12deg.npy')
+        self.std12 = numpy.load('/home1/datawork/jmdeloui/SKIM_RESIDU/STD_12deg.npy')
+        self.DT_ORBIT=(6083)
+        self.n12deg=n12deg
+        self.nbeam=5
+
+    def calc(self, radial_angle, time):
+        pidx = ((128*radial_angle / numpy.pi / 2 + 0.49999).astype('int')) % 128
+        oidx = ((64*(3600*24*(time)) / self.DT_ORBIT + 0.49999).astype('int')) % 64
+        nx, ny = radial_angle.shape
+        res = numpy.zeros([nx,ny])
+        noise = numpy.random.randn(nx,ny)
+
+        res[:, 0: self.n12deg] = self.std12[0,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]
+        res[:, 0: self.n12deg] += self.std12[1,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]*numpy.cos(time[:,0:self.n12deg]/365.25/2./numpy.pi)
+        res[:, 0: self.n12deg] += self.std12[2,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]*numpy.sin(time[:,0:self.n12deg]/365.25/2./numpy.pi)
+        res[:, 0: self.n12deg] = res[:,0:self.n12deg]*noise[:,0:self.n12deg]
+        res[:, 0: self.n12deg] += self.avv12[0,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]
+        res[:, 0: self.n12deg] += self.avv12[1,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]*numpy.cos(time[:,0:self.n12deg]/365.25/2./numpy.pi)
+        res[:, 0: self.n12deg] + =self.avv12[2,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]*numpy.sin(time[:,0:self.n12deg]/365.25/2./numpy.pi)
+
+        res[:, self.n12deg:] = self.std6[0,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]
+        res[:, self.n12deg:] += self.std6[1,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]*numpy.cos(time[:,self.n12deg:]/365.25/2./numpy.pi)
+        res[:, self.n12deg:] += self.std6[2,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]*numpy.sin(time[:,self.n12deg:]/365.25/2./numpy.pi)
+        res[:, self.n12deg:] = res[:,self.n12deg:]*noise[:,self.n12deg:]
+        res[:, self.n12deg:] += self.avv6[0,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]
+        res[:, self.n12deg:] += self.avv6[1,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]*numpy.cos(time[:,self.n12deg:]/365.25/2./numpy.pi)
+        res[:, self.n12deg:] += self.avv6[2,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]*numpy.sin(time[:,self.n12deg:]/365.25/2./numpy.pi)
+        return(res)
+~
+
