@@ -165,7 +165,9 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
     ntot_alm = numpy.zeros(nal)
     print(nac)
     list_key = ['u_al_wd', 'u_ac_wd', 'u_al_wdrem', 'u_ac_wdrem',
-                'u_ac_instr', 'u_al_instr', 'u_ac_dsigma', 'u_al_dsigma']
+                'u_ac_instr', 'u_al_instr', 'u_ac_dsigma', 'u_al_dsigma',
+                'u_ac_true', 'u_al_true']
+    list_fkey = ['uwnd', 'vwnd', 'rain', 'mssu', 'mssc']
     std_err = {}
     ntot_err = {}
     for ikey in list_key:
@@ -197,15 +199,36 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
         skim['uac'][numpy.abs(skim['uac']) > 10] = numpy.nan
         skim['ual'] = numpy.array(fid.variables['u_al_obs'][:])
         skim['ual'][numpy.abs(skim['ual']) > 10] = numpy.nan
+        for ikey in list_fkey:
+            skim[ikey] = numpy.array(fid.variables[ikey][:])
+        wnd = numpy.sqrt(skim['uwnd']**2 + skim['vwnd']**2)
         for ikey in list_key:
             skim[ikey] = numpy.array(fid.variables[ikey][:])
-            skim[ikey][numpy.abs(skim[ikey]) > 1] = numpy.nan
+            skim[ikey][numpy.abs(skim[ikey]) > 100] = numpy.nan
+            skim['uac'][numpy.isnan(skim[ikey])] = numpy.nan
+            skim['ual'][numpy.isnan(skim[ikey])] = numpy.nan
+            skim[ikey][numpy.where((wnd > 5) & (wnd < 10))] = numpy.nan
+            skim[ikey][numpy.where((skim['rain'] > 0.1))] = numpy.nan
+        skim['uac'][numpy.where((wnd > 5) & (wnd < 10))] = numpy.nan
+        skim['ual'][numpy.where((wnd > 5) & (wnd < 10))] = numpy.nan
+        skim['uac'][numpy.where((skim['rain'] > 0.1))] = numpy.nan
+        skim['ual'][numpy.where((skim['rain'] > 0.1))] = numpy.nan
+        _indwdal = numpy.where(abs(skim['u_al_wdrem']) > 1)
+        _indwdac = numpy.where(abs(skim['u_ac_wdrem']) > 1)
+        skim['uac'][_indwdac] = numpy.nan
+        skim['ual'][_indwdal] = numpy.nan
+        #skim['u_ac_wdrem'][_indwdac] = numpy.nan
+        #skim['u_al_wdrem'][_indwdal] = numpy.nan
+
+        # skim['ual'][numpy.isnan(skim[ikey])] = numpy.nan
         nuac = ref['uac'].shape[1]
         fid.close()
         if nuac < 61:
             continue
         ind0 = 50
         ind1 = -50
+       # skim['ual'] = skim['ualm'] + skim['u_al_instr'] +  skim['u_al_dsigma'] + skim['u_al_wdrem'] 
+       # skim['uac'] = skim['uacm'] + skim['u_ac_instr'] +  skim['u_ac_dsigma'] + skim['u_ac_wdrem'] 
         for i in range(nuac):
             it_ac = len(numpy.where(numpy.isnan(skim['uac'][ind0:ind1, i]) == False)[0])
             if it_ac >= 100:
@@ -263,6 +286,9 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
     std_ualm = std_ualm/ntot_alm
     f, (ax1, ax2, ax3) = pyplot.subplots(1, 3, sharey= True, figsize=(20,5 ))
     xac = numpy.arange(-(nac - 1) * posting/2, (nac + 1)* posting/2, posting)
+    indx = numpy.where(abs(xac)<= 40)
+    #std_uac[indx] = numpy.nan
+    #std_ual[indx] = numpy.nan
     print(xac[numpy.where(std_uac > threshold)])
     print(xac[numpy.where(std_ual > threshold)])
     _ind = numpy.where(numpy.abs(xac)>40)
@@ -275,23 +301,24 @@ def rms_l2c(datadir_input, config, output, threshold=0.1, fsize=1):
         print(config, ikey, numpy.nanmean(std_err[ikey][_ind]))
     ax1.plot(xac, std_uac, 'r', label='across track')
     ax1.plot(xac, std_ual, 'b', label='along track')
-    ax1.axhline(y=0.1, color="0.5")
+    ax1.axhline(y=0.15, color="0.5")
     ax1.set_title('Observation {}'.format(config))
     ax1.set_ylim([0.00, 0.4])
     ax1.legend()
     ax2.plot(xac, std_uacm, 'r', label='across track')
     ax2.plot(xac, std_ualm, 'b', label='along track')
-    ax2.axhline(y=0.1, color="0.5")
+    ax2.axhline(y=0.15, color="0.5")
     ax2.set_title('Error-free {}'.format(config))
     ax2.legend()
     ax3.plot(xac, std_uacm, 'r', label='across track regridding')
     ax3.plot(xac, std_ualm, 'b', label='along track regridding')
     for ikey in list_key:
+        std_err[ikey][indx] = numpy.nan
         ax3.plot(xac, std_err[ikey], label=ikey)
-        ax3.axhline(y=0.1, color="0.5")
+    ax3.axhline(y=0.15, color="0.5")
     ax3.set_title('Error decomposition {}'.format(config))
     ax3.legend()
-    pyplot.savefig('{}.png'.format(datadir_output))
+    pyplot.savefig('{}.pdf'.format(datadir_output))
 
 def bin_variables(listfile, listvar, bin_in, modelbox):
     lonp = numpy.arange(modelbox[0], modelbox[1] + modelbox[2], modelbox[2])

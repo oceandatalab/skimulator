@@ -91,7 +91,7 @@ def diag_rms(listfile, modelbox, output, list_angle):
                 continue
             if varuwbc[:, i].mask.all():
                 continue
-            _ind = numpy.where((wnd[:, i]>7) & (wnd[:, i]<10))
+            _ind = numpy.where((wnd[:, i]>4) & (wnd[:, i]<15))
             #_ind = numpy.where((sig[:, i]>10**-5) & (wnd[:, i]>3))
             try:
                 _tmp = numpy.nanmean(((varobs[_ind, i] - vartrue[_ind,i])/vartrue[_ind,i])**2)
