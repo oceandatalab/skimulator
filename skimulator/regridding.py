@@ -408,7 +408,7 @@ def worker_method_l2c(*args, **kwargs):
     data.load_data(p, ur_true=[], ur_obs=[], ucur=[],
                    vcur=[], time=[], lon_nadir=[], lat_nadir=[],
                    lon=[], lat=[], time_nadir=[], vindice=[],
-                   instr=[], uwd=[], uwd_est=[], dsigma=[])
+                   instr=[], uwd=[], uwd_est=[], dsigma=[], rain=[])
     grid.load_swath(p, radial_angle=[], angle=[], x_al=[], x_al_nadir=[],
                     x_ac=[])
 
@@ -423,7 +423,8 @@ def worker_method_l2c(*args, **kwargs):
     sbeam_incid = numpy.zeros((nil, nbeams))
     ### TODO Change this
     obs['vobsr'] = numpy.array(data.ur_obs)
-
+    obs['rain'] = numpy.array(data.rain)
+    obs['vobsr'][obs['rain']>0.15] = numpy.nan
     noerr['vmodr'] = numpy.array(data.ur_true).flatten()
     noerr['vobsr'] = numpy.array(data.ur_true).flatten()
     instr['vobsr'] = numpy.array(data.instr).flatten()
@@ -438,7 +439,7 @@ def worker_method_l2c(*args, **kwargs):
     dsigma['nsamp'], dsigma['nbeam'] = numpy.shape(obs['vobsr'])
     obs['vobsr'] = obs['vobsr'].flatten()
     ind1 = numpy.where((noerr['vmodr'] > -100))[0]
-    ind2 = numpy.where((obs['vobsr'] > -100))[0]
+    ind2 = numpy.where((abs(obs['vobsr']) < 100) & (numpy.isfinite(obs['vobsr'])))[0]
     obs['vobsr'] = obs['vobsr'][ind2]
     noerr['vobsr'] = noerr['vobsr'][ind1]
     instr['vobsr'] = instr['vobsr'][ind1]
@@ -452,10 +453,10 @@ def worker_method_l2c(*args, **kwargs):
             noerr = make_obs(p, data, grid, noerr, ind1)
             obs = make_obs(p, data, grid, obs, ind2)
             noerr = make_obs(p, data, grid, noerr, ind1)
-            instr = make_obs(p, data, grid, instr, ind1)
-            wdre = make_obs(p, data, grid, wdre, ind1)
-            wd = make_obs(p, data, grid, wd, ind1)
-            dsigma = make_obs(p, data, grid, dsigma, ind1)
+            instr = make_obs(p, data, grid, instr, ind2)
+            wdre = make_obs(p, data, grid, wdre, ind2)
+            wd = make_obs(p, data, grid, wd, ind2)
+            dsigma = make_obs(p, data, grid, dsigma, ind2)
             grd = make_grid(grid, obs, p.posting, desc=desc)
             #grdnoerr = make_grid(grid, noerr, p.posting, desc=desc)
             ## TODO proof error

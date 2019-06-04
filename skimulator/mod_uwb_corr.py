@@ -125,7 +125,8 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
             pangle = degangle[isample, ibeam]
             rangle = angle_al[isample, ibeam]
             iincl = az_al[isample, ibeam]
-            dist = mod_tools.dist_sphere(plon, lon, plat, lat)
+            #dist = mod_tools.dist_sphere(plon, lon, plat, lat)
+            dist = 110*numpy.sqrt((numpy.cos(numpy.deg2rad(lat)) * (lon - plon))**2 + (lat-plat)**2)
             Idist0 = numpy.where(dist < dmax)
             #azimuthr = azimuth[Idist0].ravel()
             lonr = lon[Idist0].ravel()
