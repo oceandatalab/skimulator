@@ -109,7 +109,6 @@ def run_simulator(p, die_on_error=False):
             logger.error('modelbox should be provided if no model file is'
                          'provided')
             sys.exit(1)
-    print(modelbox)
     # - Extract data on modelbox
     # TODO: do only this step if modelbox is defined? Do it later?
     if p.file_input is not None:
@@ -206,7 +205,8 @@ def run_simulator(p, die_on_error=False):
         logger.info("WARNING: the first file is not used to build data")
         list_file.remove(list_file[0])
     # Add compulsary key # TODO proof that
-    list_compulsary_key = ['ur_obs', 'ur_true', 'radial_angle', 'ussr', 'uwd', 'dsigma']
+    list_compulsary_key = ['ur_obs', 'ur_true', 'radial_angle', 'ussr', 'uwd',
+                           'dsigma', 'ussr_est']
     for key in list_compulsary_key:
         if key not in p.list_output:
             p.list_output.append(key)
@@ -451,7 +451,7 @@ def worker_method_skim(*args, **kwargs):
             _angle = +  sgrid.angle
             if (sgrid.ipass %2) != 0:
                 _angle = sgrid.angle + numpy.pi
-            usr_comb = mod_uwb_corr.combine_usr(lon, lat, usr, p.delta_azim,
+            usr_comb, usp_comb = mod_uwb_corr.combine_usr(lon, lat, usr, p.delta_azim,
                                                 _angle, incl, wnd_dir)
             mssclose, hsclose = mod_uwb_corr.find_closest(lon, lat, lon_nadir,
                                                          lat_nadir, mss,
@@ -462,10 +462,16 @@ def worker_method_skim(*args, **kwargs):
                                                 mssclose, sgrid.radial_angle,
                                                 p.list_angle)
             output_var['uwd_est'] = uwd_est
+            output_var['ussr_est'] = []
+
             for i in range(len(output_var['ur_obs'])):
+                if i == 0:
+                    output_var['ussr_est'].append(usr_comb[:, 0])
+                else:
+                    output_var['ussr_est'].append(usr_comb[:, i-1])
                 output_var['uwd_est'][i] = output_var['uwd_est'][i] / 3 + output_var['uwd'][i] * 2 /3
+
                 corr = output_var['uwd'][i] - output_var['uwd_est'][i]
-                print(corr)
                 output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]
                                                + corr)
         if p.rain is True:

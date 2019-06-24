@@ -114,6 +114,7 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
     az_al = numpy.mod(numpy.rad2deg(az_al), 180)
     # Initialize the reconstruction of ussr
     usr_comb = numpy.full((nsample, nbeam), numpy.nan)
+    usp_comb = numpy.full((nsample, nbeam), numpy.nan)
     # Distance max to take neighbours
     dmax = 200
     for ibeam in range(nbeam):
@@ -128,7 +129,7 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
             #dist = mod_tools.dist_sphere(plon, lon, plat, lat)
             dist = 110*numpy.sqrt((numpy.cos(numpy.deg2rad(lat)) * (lon - plon))**2 + (lat-plat)**2)
             Idist0 = numpy.where(dist < dmax)
-            #azimuthr = azimuth[Idist0].ravel()
+            azimuthr = angle_al[Idist0].ravel()
             lonr = lon[Idist0].ravel()
             latr = lat[Idist0].ravel()
             usrr = usrabs[Idist0].ravel()
@@ -138,6 +139,7 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
             # for each bin, find the closest point and append radial Stokes
             # drift with ambiguity on sign
             usrazi = numpy.zeros(len(azibin))
+            thazi = numpy.zeros(len(azibin))
             for iazi in range(len(azibin)):
                 I1 = numpy.where(numpy.logical_and(ang_azi==iazi, Ifinite))
                 distazi = mod_tools.dist_sphere(plon, lonr[I1], plat, latr[I1])
@@ -145,6 +147,7 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
                 try:
                     Idist = numpy.argmin(distazi)
                     usrazi[iazi] = usrr[I1][Idist]
+                    thazi[iazi] = numpy.mod(azimuthr[I1][Idist], numpy.pi)
                 except:
                     usrazi[iazi] = numpy.nan
             try:
@@ -171,11 +174,15 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
             usfull = - usrazi * 1
             if cond.any():
                 usfull[(cond)] = usrazi[(cond)]
-            angle_usr = radazibin - rangle
+            angle_usr = thazi - rangle
             usr_comb[isample, ibeam] = (numpy.nansum(usfull
                                                      * numpy.cos(angle_usr))
                                                      * 2 * dazi / 180.)
-    return usr_comb
+            usp_comb[isample, ibeam] = (numpy.nansum(usfull
+                                                     * numpy.sin(angle_usr))
+                                                     * 2 * dazi / 180.)
+
+    return usr_comb, usp_comb
 
 
 def find_closest(lon, lat, lon_nadir, lat_nadir, mss, hs, beam_angle):
