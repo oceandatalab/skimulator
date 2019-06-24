@@ -784,20 +784,20 @@ def compute_pdf_dsigma(beam_angle):
 
 class ted_residu:
     def __init__(self,n12deg=3,nbeam=5):
-	import pkg_resources
-	coeff_path_avv6 = pkg_resources.resource_filename('skimulator',
-						     'share/AVV_6deg.npy')
-	coeff_path_avv12 = pkg_resources.resource_filename('skimulator',
-						     'share/AVV_12deg.npy')
-	coeff_path_std6 = pkg_resources.resource_filename('skimulator',
-						     'share/AVV_6deg.npy')
-	coeff_path_std12 = pkg_resources.resource_filename('skimulator',
-						     'share/AVV_6deg.npy')
+        import pkg_resources
+        coeff_path_avv6 = pkg_resources.resource_filename('skimulator',
+                                 'share/AVV_6deg.npy')
+        coeff_path_avv12 = pkg_resources.resource_filename('skimulator',
+                                 'share/AVV_12deg.npy')
+        coeff_path_std6 = pkg_resources.resource_filename('skimulator',
+                                 'share/AVV_6deg.npy')
+        coeff_path_std12 = pkg_resources.resource_filename('skimulator',
+                                 'share/AVV_6deg.npy')
 
-        self.avv6 = numpy.load('/home1/datawork/jmdeloui/SKIM_RESIDU/AVV_6deg.npy')
-        self.std6 = numpy.load('/home1/datawork/jmdeloui/SKIM_RESIDU/STD_6deg.npy')
-        self.avv12 = numpy.load('/home1/datawork/jmdeloui/SKIM_RESIDU/AVV_12deg.npy')
-        self.std12 = numpy.load('/home1/datawork/jmdeloui/SKIM_RESIDU/STD_12deg.npy')
+        self.avv6 = numpy.load(coeff_path_avv6)
+        self.std6 = numpy.load(coeff_path_std6)
+        self.avv12 = numpy.load(coeff_path_avv12)
+        self.std12 = numpy.load(coeff_path_std12)
         self.DT_ORBIT=(6083)
         self.n12deg=n12deg
         self.nbeam=5
@@ -808,7 +808,7 @@ class ted_residu:
         nx, ny = radial_angle.shape
         res = numpy.zeros([nx,ny])
         noise = numpy.random.randn(nx,ny)
-
+        '''
         res[:, 0: self.n12deg] = self.std12[0,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]
         res[:, 0: self.n12deg] += self.std12[1,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]*numpy.cos(time[:,0:self.n12deg]/365.25/2./numpy.pi)
         res[:, 0: self.n12deg] += self.std12[2,pidx[:,0:self.n12deg], oidx[:,0:self.n12deg]]*numpy.sin(time[:,0:self.n12deg]/365.25/2./numpy.pi)
@@ -825,5 +825,4 @@ class ted_residu:
         res[:, self.n12deg:] += self.avv6[1,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]*numpy.cos(time[:,self.n12deg:]/365.25/2./numpy.pi)
         res[:, self.n12deg:] += self.avv6[2,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]*numpy.sin(time[:,self.n12deg:]/365.25/2./numpy.pi)
         return(res)
-~
-
+        '''
