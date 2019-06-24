@@ -303,6 +303,9 @@ def write_l2(outfile, grd, obs, cycle, passn, firsttime):
                  u_ac_true=grd['vtrueac'], u_al_true=grd['vtrueal'],
                  u_ac_instr=grd['instrac'], u_al_instr=grd['instral'],
                  u_ac_wdrem=grd['uwdreac'], u_al_wdrem=grd['uwdreal'],
+                 u_ac_uss_obs=grd['ussobsac'], u_al_uss_obs=grd['ussobsal'],
+                 u_ac_uss_oi=grd['ussoiac'], u_al_uss_oi=grd['ussoial'],
+                 u_ac_uss_true=grd['usstrueac'], u_al_uss_true=grd['usstrueal'],
                  uwnd=grd['uwnd'], vwnd=grd['vwnd'], rain=grd['rain'],
                  mssu=grd['mssu'], mssc=grd['mssc'],
                  u_ac_wd=grd['uwdac'], u_al_wd=grd['uwdal'],
@@ -408,7 +411,7 @@ def worker_method_l2c(*args, **kwargs):
     data.load_data(p, ur_true=[], ur_obs=[], ucur=[],
                    vcur=[], time=[], lon_nadir=[], lat_nadir=[],
                    lon=[], lat=[], time_nadir=[], vindice=[],
-                   instr=[], uwd=[], uwd_est=[], dsigma=[], rain=[])
+                   instr=[], uwd=[], uwd_est=[], dsigma=[], rain=[], ussr=[], ussr_est=[])
     grid.load_swath(p, radial_angle=[], angle=[], x_al=[], x_al_nadir=[],
                     x_ac=[])
 
@@ -418,6 +421,8 @@ def worker_method_l2c(*args, **kwargs):
     wdre = {}
     wd = {}
     dsigma = {}
+    ussr = {}
+    ussr_est = {}
     test = numpy.array(data.ucur)
     nil, nbeams = numpy.shape(test)
     sbeam_incid = numpy.zeros((nil, nbeams))
@@ -428,6 +433,8 @@ def worker_method_l2c(*args, **kwargs):
     noerr['vmodr'] = numpy.array(data.ur_true).flatten()
     noerr['vobsr'] = numpy.array(data.ur_true).flatten()
     instr['vobsr'] = numpy.array(data.instr).flatten()
+    ussr['vobsr'] = numpy.array(data.ussr).flatten()
+    ussr_est['vobsr'] = numpy.array(data.ussr_est).flatten()
     wdre['vobsr'] = numpy.array(data.uwd - data.uwd_est).flatten()
     wd['vobsr'] = numpy.array(data.uwd).flatten()
     dsigma['vobsr'] = numpy.array(data.dsigma).flatten()
@@ -436,6 +443,8 @@ def worker_method_l2c(*args, **kwargs):
     instr['nsamp'], instr['nbeam'] = numpy.shape(obs['vobsr'])
     wdre['nsamp'], wdre['nbeam'] = numpy.shape(obs['vobsr'])
     wd['nsamp'], wd['nbeam'] = numpy.shape(obs['vobsr'])
+    ussr['nsamp'], ussr['nbeam'] = numpy.shape(obs['vobsr'])
+    ussr_est['nsamp'], ussr_est['nbeam'] = numpy.shape(obs['vobsr'])
     dsigma['nsamp'], dsigma['nbeam'] = numpy.shape(obs['vobsr'])
     obs['vobsr'] = obs['vobsr'].flatten()
     ind1 = numpy.where((noerr['vmodr'] > -100))[0]
@@ -446,6 +455,8 @@ def worker_method_l2c(*args, **kwargs):
     wdre['vobsr'] = wdre['vobsr'][ind1]
     wd['vobsr'] = wd['vobsr'][ind1]
     dsigma['vobsr'] = dsigma['vobsr'][ind1]
+    ussr['vobsr'] = ussr['vobsr'][ind1]
+    ussr_est['vobsr'] = ussr_est['vobsr'][ind1]
     if len(ind2) > 2 and len(data.lon_nadir) >2:
         try:
         #if True:
@@ -453,10 +464,12 @@ def worker_method_l2c(*args, **kwargs):
             noerr = make_obs(p, data, grid, noerr, ind1)
             obs = make_obs(p, data, grid, obs, ind2)
             noerr = make_obs(p, data, grid, noerr, ind1)
-            instr = make_obs(p, data, grid, instr, ind2)
-            wdre = make_obs(p, data, grid, wdre, ind2)
-            wd = make_obs(p, data, grid, wd, ind2)
-            dsigma = make_obs(p, data, grid, dsigma, ind2)
+            instr = make_obs(p, data, grid, instr, ind1)
+            wdre = make_obs(p, data, grid, wdre, ind1)
+            wd = make_obs(p, data, grid, wd, ind1)
+            dsigma = make_obs(p, data, grid, dsigma, ind1)
+            ussr = make_obs(p, data, grid, ussr, ind1)
+            ussr_est = make_obs(p, data, grid, ussr_est, ind1)
             grd = make_grid(grid, obs, p.posting, desc=desc)
             #grdnoerr = make_grid(grid, noerr, p.posting, desc=desc)
             ## TODO proof error
@@ -474,6 +487,10 @@ def worker_method_l2c(*args, **kwargs):
                 uwdreal, uwdreac = perform_oi_1(grduwdre, wdre, p.resol, desc=desc)
                 grduwd = grd.copy()
                 uwdal, uwdac = perform_oi_1(grduwd, wd, p.resol, desc=desc)
+                grdussr = grd.copy()
+                ussoial, ussoiac = perform_oi_1(grdussr, ussr, p.resol, desc=desc)
+                grdussr_est = grd.copy()
+                ussobsal, ussobsac = perform_oi_1(grdussr_est, ussr_est, p.resol, desc=desc)
             grdnoerr = grd.copy()
             noerral, noerrac = perform_oi_1(grdnoerr, noerr, p.resol, desc=desc)
             obsal, obsac = perform_oi_1(grd, obs, p.resol, desc=desc)
@@ -497,6 +514,10 @@ def worker_method_l2c(*args, **kwargs):
         grd['uwdreal'] = uwdreal
         grd['dsigmaac'] = dsigmaac
         grd['dsigmaal'] = dsigmaal
+        grd['ussoiac'] = ussoiac
+        grd['ussoial'] = ussoial
+        grd['ussobsac'] = ussobsac
+        grd['ussobsal'] = ussobsal
         #grd['vmodac'] = + grdnoerr['vobsac'][:]
         #grd['vmodal'] = + grdnoerr['vobsal'][:]
         if desc is True:
@@ -517,7 +538,7 @@ def worker_method_l2c(*args, **kwargs):
             vindice[numpy.where(vmask)] = 0
         model_data, model_step, list_file2 = read_model(p, vindice)
         list_key = {'ucur':'u_model', 'vcur':'v_model', 'uwnd': 'uwnd',
-                    'vwnd': 'vwnd','mssx':'mssu', 'mssy': 'mssc'}
+                    'vwnd': 'vwnd','mssx':'mssu', 'mssy': 'mssc', 'uuss': 'uuss', 'vuss': 'vuss'}
         if (p.rain is True) and (p.rain_file is None):
             list_key['rain'] = 'rain'
         else:
@@ -539,6 +560,10 @@ def worker_method_l2c(*args, **kwargs):
                                    + grd['v_model'] * numpy.sin(grd['angle']))
         grd['vtrueal'] = sign_uv * (-grd['u_model']*numpy.sin(grd['angle'])
                                     + grd['v_model']*numpy.cos(grd['angle']))
+        grd['usstrueac'] = sign_uv *(grd['uuss']*numpy.cos(grd['angle'])
+                                   + grd['vuss'] * numpy.sin(grd['angle']))
+        grd['usstrueal'] = sign_uv * (-grd['uuss']*numpy.sin(grd['angle'])
+                                    + grd['vuss']*numpy.cos(grd['angle']))
         _masku = numpy.ma.getmaskarray(grd['u_model'])
         _maskv = numpy.ma.getmaskarray(grd['v_model'])
         mask = ((grd['u_model'] == 0) | (grd['v_model'] == 0) | _masku | _maskv
