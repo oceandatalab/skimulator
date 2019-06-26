@@ -476,6 +476,7 @@ def compute_sigma(output_var_i, beam_angle, radial_angle, p):
         sigma0 = sigma_water
     return sigma0
 
+
 def save_SKIM(cycle, sgrid, time, outdata, p):
     file_output = '{}_c{:02d}_p{:03d}.nc'.format(p.file_output, cycle + 1,
                                                  sgrid.ipass)

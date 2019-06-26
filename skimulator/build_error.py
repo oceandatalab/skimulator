@@ -534,9 +534,10 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     coeff = numpy.load(coeff_path)[()]
     coeff_f1ur = coeff['f1UWDRglob{:d}deg'.format(int(beam_angle))]
     coeff_b1ur = coeff['b1UWDRglob{:d}deg'.format(int(beam_angle))]
-    coeff_4dm = coeff['x_4dmean_{:d}deg'.format(int(beam_angle))]
-    coeff_4dstd = coeff['x_4dstd_{:d}deg'.format(int(beam_angle))]
-    ncoeffur = len(coeff_4dm)
+    coeff_m = coeff['x_4dmean_{:d}deg'.format(int(beam_angle))]
+    coeff_std = coeff['x_4dstd_{:d}deg'.format(int(beam_angle))]
+    xlabel = coeff['xx{:d}'.format(int(beam_angle))]
+    ncoeffur = 8 #len(coeff_4dm)
     # -- Compute norm --
     # Construct matrix of input data
     cshape = numpy.shape(output_var_i['uwnd'])
@@ -544,36 +545,48 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     wndr = mod_tools.proj_radial(output_var_i['uwnd'],
                                  output_var_i['vwnd'],
                                  radial_angle)
+    wndr_min = + wndr
+    wndr_min[numpy.where(abs(wndr) >= 8.)] = 8.
     nwnd = numpy.sqrt(output_var_i['uwnd']**2 + output_var_i['vwnd']**2)
+    nwnd_min = + nwnd
+    nwnd_min[numpy.where(nwnd >= 8.)] = 8.
     if 'mssu' in output_var_i.keys():
         mss = output_var_i['mssu'] + output_var_i['mssc']
     else:
         mss = output_var_i['mssclose']
     #    noise_nwnd = numpy.random.normal(0, 10, cshape[0])
     #    wndr = wndr + noise_nwnd
-    _ind = numpy.where(mss == 0)
-    mss[_ind] = 0.001
+    _ind = numpy.where(mss <= 8e-4)
+    mss[_ind] = 8e-4
     hs = output_var_i['hs']
 
     mat_noerr = numpy.full((cshape[0], ncoeffur), numpy.nan)
     mat_noerr[:, 0] = usr
     mat_noerr[:, 1] = wndr
-    mat_noerr[:, 2] = hs
+    mat_noerr[:, 2] = numpy.sign(wndr) *  wndr_min
     mat_noerr[:, 3] = nwnd
-    mat_noerr[:, 4] = 1. / mss
-    # Normalize with coefficents
-    for i in range(ncoeffur):
-        mat_noerr[:, i] = (mat_noerr[:, i] - coeff_4dm[i]) / coeff_4dstd[i]
+    mat_noerr[:, 4] = nwnd_min
+    mat_noerr[:, 5] = hs
+    mat_noerr[:, 6] = 1. / mss
+    mat_noerr[:, 7] = 1. / (mss + numpy.log(nwnd + 0.7) * 0.009)
 
     # Compute cross product
     cross = mod_tools.cross_product(mat_noerr, ncoeffur, cshape[0])
+    ncoeffcross = len(coeff_m)
+    # Normalize with coefficents
+    for i in range(ncoeffcross):
+        cross[:, i] = (cross[:, i] - coeff_m[i]) / coeff_std[i]
 
     shape_b1 = numpy.shape(coeff_b1ur)[0]
-    Ulabel = numpy.arange(-shape_b1, shape_b1, 2) * ncoeffur / shape_b1
-    Uwd = mod_tools.reconstruct_var(ncoeffur, cshape[0], coeff_f1ur,
-                                    coeff_b1ur, cross, Ulabel)
-
+    Uwd = mod_tools.reconstruct_var(ncoeffcross, cshape[0], coeff_f1ur,
+                                    coeff_b1ur, cross, xlabel)
+    if beam_angle == 6:
+        sigma_ice = 2.5
+    else:
+        sigma_ice = 1.
+    Uwd = Uwd * (1 - sigma_ice * output_var_i['ice'] / output_var_i['sigma0'])
     Uwd[_ind] = 0.001
+
     return Uwd
 
 

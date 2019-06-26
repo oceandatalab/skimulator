@@ -51,8 +51,7 @@ makesgrid = True
 modelbox = None # [329.,347., -8.,8.]
 #------- Rotation speed of the antenna (in tr/min)
 if '2019_6a' in config:
-    rotation_speed = 3.3
-    #rotation_speed = 6.3
+    rotation_speed = 6.0
 elif '2019_6b' in config:
     rotation_speed = 6
 elif '2019_6c' in config:

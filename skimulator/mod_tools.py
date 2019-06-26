@@ -295,6 +295,17 @@ def cross_product(mat, ncoeff, cshape):
     return cross
 
 
+#def reconstruct_var(ncoeff, cshape, f1, b1, cross, xlabel):
+#    shape_f1 = numpy.shape(f1)[0]
+#    shape_b1 = numpy.shape(b1)[0]
+#    #f1 = f1.reshape(int(shape_f1//float(shape_b1)), shape_f1)
+#    proba = numpy.exp(numpy.dot(cross, f1) + b1)
+#    proba_tot = numpy.tile(numpy.nansum(proba, axis=1), (shape_b1, 1))
+#    proba = proba / numpy.transpose(proba_tot)
+#    var = numpy.sum(proba * numpy.tile(xlabel, (cshape, 1)),axis=1)
+ #   return var
+
+
 def reconstruct_var(ncoeff, cshape, f1, b1, cross, xlabel):
     shape_f1 = numpy.shape(f1)[0]
     shape_b1 = numpy.shape(b1)[0]
@@ -303,6 +314,15 @@ def reconstruct_var(ncoeff, cshape, f1, b1, cross, xlabel):
     proba_tot = numpy.tile(numpy.nansum(proba, axis=1), (shape_b1, 1))
     proba = proba / numpy.transpose(proba_tot)
     var = numpy.sum(proba * numpy.tile(xlabel, (cshape, 1)),axis=1)
+    b1 = numpy.tile(b1, (1, 1))
+    train_weight = numpy.concatenate((f1,b1),axis=0)
+    l_train = numpy.zeros((cshape, ncoeff + 1)).astype('float64')
+    l_train[:, : ncoeff] = cross
+    l_train[:, ncoeff] = 1.
+    res = numpy.dot(l_train, train_weight)
+    xx2D = numpy.tile(xlabel, (cshape, 1))
+    var = (numpy.sum(xx2D * numpy.exp(res), axis=1)
+           / numpy.sum(numpy.exp(res),axis=1))
     return var
 
 

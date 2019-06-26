@@ -251,6 +251,8 @@ def estimate_uwd(usr, output_var, hs_nadir, mssclose, radial_angle,
         output_var2['ussr'] = usr[:, ibeam]
         output_var2['uwnd'] = output_var['uwnd'][ibeam + 1]
         output_var2['vwnd'] = output_var['vwnd'][ibeam + 1]
+        output_var2['ice'] = output_var['ice'][ibeam + 1]
+        output_var2['sigma0'] = output_var['sigma0'][ibeam + 1]
         output_var2['hs'] = hs_nadir[:, ibeam]
         output_var2['mssclose'] = mssclose[:, ibeam]
         est_wd = build_error.compute_wd_ai_par
