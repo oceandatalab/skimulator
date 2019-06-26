@@ -707,11 +707,16 @@ def make_yaw_aocs(time_yaw, vac_yaw, time):
     return yaw_aocs
 
 
-def make_yaw_ted(time, cycle, angle, first_time, beam_angle):
+def make_yaw_ted(time, cycle, angle, first_time, beam_angle, instr_conf):
     import pkg_resources
     nxspline, nyspline, thedeg = (128, 64, 12)
-    fname = 'Spline_{:d}_{:d}_TED_TAS_{:d}_DEG.npy'.format(nxspline, nyspline,
+    if instr_conf == 'A':
+        fname = 'Spline_{:d}_{:d}_TED_TAS_{:d}_DEG.npy'.format(nxspline, nyspline,
                                                            beam_angle)
+    else:
+        fname = 'Spline_{:d}_{:d}_TED_CB_{:d}_DEG.npy'.format(nxspline, nyspline,
+                                                           beam_angle)
+
     coeff_path = pkg_resources.resource_filename('skimulator',
                                                  'share/{}'.format(fname))
 
