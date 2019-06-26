@@ -6,6 +6,7 @@ from os.path import expanduser
 import os
 import math
 home = expanduser("~")
+
 # ------ Name of the configuration (to build output files names) 
 #config="WW3_EQ_metop_2018_6a"
 # 6 beams, 60 azimuths, 512 pulses and cycle length of 37/2 ms
@@ -168,11 +169,15 @@ ncomp1d = 3000
 ncomp2d = 2000
 # ------- Instrument white noise error
 instr = True
-# ------- Instrument configuration choice
+# ------- Choice of instrument configuration
 instr_configuration = 'A'
 # ------- Coefficient SNR to retrieve instrumental noise from sigma, 
 #         Recommanded value for 1024 pulses: 3e-2, for 512 pulses: 3sqrt(2)e-3
 snr_coeff = 1.4142*6e-3
+# ------- Attitude error
+attitude = True
+# ------- File which provide the AOCS error:
+yaw_file = os.path.join(dir_setup, 'sample_req1.nc')
 
 # ------- Wave bias
 uwb = True

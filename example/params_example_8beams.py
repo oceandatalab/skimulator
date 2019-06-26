@@ -6,6 +6,7 @@ from os.path import expanduser
 import os
 import math
 home = expanduser("~")
+
 # ------ Name of the configuration (to build output files names) 
 # 8 beams, 45 azimuths, 1024 pulses and cycle length of 37 ms
 config = "WW3_23W_metop_2018_8a"
@@ -158,6 +159,10 @@ instr_configuration = 'A'
 snr_coeff = 6e-3
 if '2018_8b' in config:
     snr_coeff = 1.4142*6e-3
+# ------- Attitude error
+attitude = True
+# ------- File which provide the AOCS error:
+yaw_file = os.path.join(dir_setup, 'sample_req1.nc')
 
 # ------- Wave bias
 uwb = True
