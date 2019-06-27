@@ -446,6 +446,7 @@ def worker_method_skim(*args, **kwargs):
                    + numpy.transpose(numpy.array(output_var['mssc'])))
             hs = output_var['hs'][0]
             usr = numpy.transpose(numpy.array(output_var['ussr']))[:, 1:]
+            ice = numpy.transpose(numpy.array(output_var['ice']))
             p.delta_azim = 10
             incl = sgrid.incl
             _angle = +  sgrid.angle
@@ -454,7 +455,7 @@ def worker_method_skim(*args, **kwargs):
             usr_comb, usp_comb = mod_uwb_corr.combine_usr(lon, lat, usr, p.delta_azim,
                                                 _angle, incl, wnd_dir)
             mssclose, hsclose = mod_uwb_corr.find_closest(lon, lat, lon_nadir,
-                                                         lat_nadir, mss,
+                                                         lat_nadir, mss, ice,
                                                          hs, p.list_angle)
             # Temporary trick to compensate for bad usr correction
             #usr_comb = usr_comb / 3 + 2 * usr / 3
@@ -469,7 +470,7 @@ def worker_method_skim(*args, **kwargs):
                     output_var['ussr_est'].append(usr_comb[:, 0])
                 else:
                     output_var['ussr_est'].append(usr_comb[:, i-1])
-                output_var['uwd_est'][i] = output_var['uwd_est'][i] / 3 + output_var['uwd'][i] * 2 /3
+                output_var['uwd_est'][i] = output_var['uwd_est'][i] # / 3 + output_var['uwd'][i] * 2 /3
 
                 corr = output_var['uwd'][i] - output_var['uwd_est'][i]
                 output_var['ur_obs'][i][:]  = (output_var['ur_obs'][i][:]

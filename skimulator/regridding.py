@@ -429,7 +429,9 @@ def worker_method_l2c(*args, **kwargs):
     ### TODO Change this
     obs['vobsr'] = numpy.array(data.ur_obs)
     obs['rain'] = numpy.array(data.rain)
-    obs['vobsr'][obs['rain']>0.15] = numpy.nan
+    obs['dsigma'] = numpy.array(data.dsigma)
+    obs['vobsr'][obs['rain']>p.rain_threshold] = numpy.nan
+    obs['dsigma'][obs['dsigma']>0.5] = numpy.nan
     noerr['vmodr'] = numpy.array(data.ur_true).flatten()
     noerr['vobsr'] = numpy.array(data.ur_true).flatten()
     instr['vobsr'] = numpy.array(data.instr).flatten()
@@ -449,11 +451,12 @@ def worker_method_l2c(*args, **kwargs):
     obs['vobsr'] = obs['vobsr'].flatten()
     ind1 = numpy.where((noerr['vmodr'] > -100))[0]
     ind2 = numpy.where((abs(obs['vobsr']) < 100) & (numpy.isfinite(obs['vobsr'])))[0]
+    indwd = numpy.where((abs(wdre['vobsr']) < 100) & (numpy.isfinite(wdre['vobsr'])))[0]
     obs['vobsr'] = obs['vobsr'][ind2]
     noerr['vobsr'] = noerr['vobsr'][ind1]
     instr['vobsr'] = instr['vobsr'][ind1]
-    wdre['vobsr'] = wdre['vobsr'][ind1]
-    wd['vobsr'] = wd['vobsr'][ind1]
+    wdre['vobsr'] = wdre['vobsr'][indwd]
+    wd['vobsr'] = wd['vobsr'][indwd]
     dsigma['vobsr'] = dsigma['vobsr'][ind1]
     ussr['vobsr'] = ussr['vobsr'][ind1]
     ussr_est['vobsr'] = ussr_est['vobsr'][ind1]
@@ -465,8 +468,8 @@ def worker_method_l2c(*args, **kwargs):
             obs = make_obs(p, data, grid, obs, ind2)
             noerr = make_obs(p, data, grid, noerr, ind1)
             instr = make_obs(p, data, grid, instr, ind1)
-            wdre = make_obs(p, data, grid, wdre, ind1)
-            wd = make_obs(p, data, grid, wd, ind1)
+            wdre = make_obs(p, data, grid, wdre, indwd)
+            wd = make_obs(p, data, grid, wd, indwd)
             dsigma = make_obs(p, data, grid, dsigma, ind1)
             ussr = make_obs(p, data, grid, ussr, ind1)
             ussr_est = make_obs(p, data, grid, ussr_est, ind1)

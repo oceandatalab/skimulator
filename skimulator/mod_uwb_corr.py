@@ -185,22 +185,40 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
     return usr_comb, usp_comb
 
 
-def find_closest(lon, lat, lon_nadir, lat_nadir, mss, hs, beam_angle):
+def find_closest(lon, lat, lon_nadir, lat_nadir, mss, ice, hs, beam_angle):
     ''' Find closest mss at 6degree or nadir.
     '''
+    if numpy.min(abs(lon)) <1 and numpy.max(abs(lon))>359:
+        lon = numpy.mod(lon + 180, 360) - 180
+        lon_nadir = numpy.mod(lon_nadir + 180, 360) - 180
     nsample, nbeam = numpy.shape(mss[:, 1:])
     mssclose = numpy.full((nsample, nbeam), numpy.nan)
     hsclose = numpy.full((nsample, nbeam), numpy.nan)
     ind_6 = numpy.where(numpy.array(beam_angle) == 6)[0]
     mss6 = mss[:, (ind_6 + 1)].ravel()
     mss_nadir = mss[:, 0]
+    ice_nadir = ice[:, 0]
+    ice6 = ice[:, (ind_6 + 1)].ravel()
+    lon_nadir_ocean = +lon_nadir
+    lon_nadir_ocean[numpy.where((ice_nadir>0))] = numpy.nan # | ~numpy.isfinite(mss_nadir))] = numpy.nan
+    lon_nadir_ice = +lon_nadir
+    lon_nadir_ice[numpy.where((ice_nadir==0))] = numpy.nan # | ~numpy.isfinite(mss_nadir))] = numpy.nan
+    lon_6_ocean = + lon[:, (ind_6)].ravel()
+    lon_6_ocean[numpy.where((ice6 > 0))] = numpy.nan #  | ~numpy.isfinite(mss6))] = numpy.nan
+    lon_6_ice = + lon[:, (ind_6)].ravel()
+    lon_6_ice[numpy.where((ice6 == 0))] = numpy.nan #| ~numpy.isfinite(mss6))] = numpy.nan
+
     for isample in range(nsample):
         for ibeam in range(nbeam):
             if not numpy.isfinite(mss[isample, ibeam + 1]):
                 continue
             plon = lon[isample, ibeam]
             plat = lat[isample, ibeam]
-            dist_nadir = mod_tools.dist_sphere(plon, lon_nadir, plat, lat_nadir)
+            if ice[isample, ibeam + 1] > 0:
+                _lon = lon_nadir_ice
+            else:
+                _lon = lon_nadir_ocean
+            dist_nadir = mod_tools.dist_sphere(plon, _lon, plat, lat_nadir)
             #dist_nadir[numpy.where(numpy.isnan(mss_nadir))] = numpy.nan
             # TODO remove ugly try except
             try:
@@ -211,7 +229,11 @@ def find_closest(lon, lat, lon_nadir, lat_nadir, mss, hs, beam_angle):
             mss_nadir[mss_nadir==0] = numpy.nan
 
             dnadir = dist_nadir[inadir]
-            dist_6 = mod_tools.dist_sphere(plon, lon[:, (ind_6)].ravel(), plat,
+            if ice[isample, ibeam + 1] > 0:
+                _lon = lon_6_ice
+            else:
+                _lon = lon_6_ocean
+            dist_6 = mod_tools.dist_sphere(plon, _lon, plat,
                                            lat[:, (ind_6)].ravel())
             try:
                 i6 = numpy.nanargmin(dist_6)

@@ -45,7 +45,8 @@ class IncompatibleGridError(Exception):
         """"""
         self.path = path
         self.grid = 0 #skimulator.grid_check.revert_b64_gzipped_hash(grid_hash)
-        self.p = skimulator.grid_check.revert_b64_gzipped_hash(params_hash)
+        self.p = 0
+        #self.p = skimulator.grid_check.revert_b64_gzipped_hash(params_hash)
 
 
 def write_params(params, pfile):

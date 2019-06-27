@@ -407,6 +407,10 @@ def read_l2b(nfile, model_nan=0):
                     | (obs_i['uy']==model_nan)
                     | (obs_i['ur_true']==model_nan)
                     | (obs_i['ur_obs']==model_nan))
+    uwd = numpy.ma.array(fid.variables['uwd'][:]).flatten()
+    uwde = numpy.ma.array(fid.variables['uwd_est'][:]).flatten()
+    diff = uwd - uwde
+    mask_invalid = (mask_invalid | (abs(diff)>0.5))
     mask_data = ~(mask_invalid)
     time_unit = fid.variables['time'].units
     fid.close()
