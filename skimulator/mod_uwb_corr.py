@@ -239,14 +239,30 @@ def find_closest(lon, lat, lon_nadir, lat_nadir, mss, ice, hs, beam_angle):
                 i6 = numpy.nanargmin(dist_6)
             except:
                 continue
+
+
             d6 = dist_6[i6]
             if d6 > 200 and dnadir > 200:
                 continue
-            hsclose[isample, ibeam] = hs[inadir]
-            if d6 < dnadir:
-                mssclose[isample, ibeam] = mss6[i6]
+            ind_dist_nadir = numpy.where(dist_nadir < 150)
+            ind_dist_6 = numpy.where(dist_6 < 50)
+            _hs = numpy.nanmean(hs[ind_dist_nadir])
+            if abs(hs[inadir] - _hs) > 1:
+                continue
+            if abs(hs[inadir] - _hs) > 0.4:
+                hsclose[isample, ibeam] = _hs
             else:
-                mssclose[isample, ibeam] = mss_nadir[inadir]
+                hsclose[isample, ibeam] = hs[inadir]
+            _mss =  numpy.nanmean(mss6[ind_dist_6])
+            if abs(mss6[i6] - _mss) > 0.01:
+                continue
+            if abs(mss6[i6] - _mss) > 0.005:
+                mssclose[isample, ibeam] = _mss
+            else:
+                if d6 < dnadir:
+                    mssclose[isample, ibeam] = mss6[i6]
+                else:
+                    mssclose[isample, ibeam] = mss_nadir[inadir]
             if mss[isample, ibeam + 1] == 0:
                 mssclose[isample, ibeam] = 0
     return mssclose, hsclose
