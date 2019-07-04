@@ -444,6 +444,9 @@ def worker_method_skim(*args, **kwargs):
             wnd_dir = numpy.mod(numpy.arctan2(vwnd, uwnd)[:, 1:], 2*numpy.pi)
             mss = (numpy.transpose(numpy.array(output_var['mssu']))
                    + numpy.transpose(numpy.array(output_var['mssc'])))
+            mssx = numpy.transpose(numpy.array(output_var['mssx']))[:, 1:]
+            mssy = numpy.transpose(numpy.array(output_var['mssy']))[:, 1:]
+            mssxy = numpy.transpose(numpy.array(output_var['mssxy']))[:, 1:]
             hs = output_var['hs'][0]
             usr = numpy.transpose(numpy.array(output_var['ussr']))[:, 1:]
             ice = numpy.transpose(numpy.array(output_var['ice']))
@@ -452,8 +455,10 @@ def worker_method_skim(*args, **kwargs):
             _angle = +  sgrid.angle
             if (sgrid.ipass %2) != 0:
                 _angle = sgrid.angle + numpy.pi
-            usr_comb, usp_comb = mod_uwb_corr.combine_usr(lon, lat, usr, p.delta_azim,
-                                                _angle, incl, wnd_dir)
+            _combine = mod_uwb_corr.combine_usr
+            usr_comb, usp_comb, mssr_comb = _combine(lon, lat, usr, mssx, mssy,
+                                                     mssxy, p.delta_azim,
+                                                     _angle, incl, wnd_dir)
             mssclose, hsclose = mod_uwb_corr.find_closest(lon, lat, lon_nadir,
                                                          lat_nadir, mss, ice,
                                                          hs, p.list_angle)
@@ -462,7 +467,7 @@ def worker_method_skim(*args, **kwargs):
             # Temporary trick to compensate for bad usr correction
             #usr_comb = usr_comb / 3 + 2 * usr / 3
             uwd_est = mod_uwb_corr.estimate_uwd(usr_comb, output_var, hsclose,
-                                                mssclose, sgrid.radial_angle,
+                                                mssr_comb, sgrid.radial_angle,
                                                 p.list_angle)
             output_var['uwd_est'] = uwd_est
             output_var['ussr_est'] = []

@@ -86,7 +86,7 @@ def compute_erruwb(p, sgrid, ouput_var):
     return err_uwb
 
 
-def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
+def combine_usr(lon, lat, usr, mssx, mssy, mssxy, dazi, angle, incl, wnd_dir):
     '''
     PURPOSE : recombine measurements of various azimuths and ambiguity
     removal using wind direction
@@ -109,11 +109,14 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
     # Inclination of pass (along track angle)
     inclination = numpy.transpose([incl, ]* nbeam)
     angle_al = numpy.mod(inclination - angle - numpy.pi/2, 2*numpy.pi)
+    mssr = (numpy.cos(angle_al)**2 * mssx + numpy.sin(angle_al)**2 * mssy
+            + numpy.sin(2*angle_al) * mssxy)
     az_al = numpy.mod(inclination - numpy.pi, numpy.pi)
     degangle = numpy.mod(numpy.rad2deg(angle_al), 180)
     az_al = numpy.mod(numpy.rad2deg(az_al), 180)
     # Initialize the reconstruction of ussr
     usr_comb = numpy.full((nsample, nbeam), numpy.nan)
+    mssr_comb = numpy.full((nsample, nbeam), numpy.nan)
     usp_comb = numpy.full((nsample, nbeam), numpy.nan)
     # Distance max to take neighbours
     dmax = 200
@@ -133,12 +136,15 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
             lonr = lon[Idist0].ravel()
             latr = lat[Idist0].ravel()
             usrr = usrabs[Idist0].ravel()
+            mssrr = mssr[Idist0].ravel()
             distr = dist[Idist0].ravel()
             ang_azi = numpy.digitize(degangle[Idist0].ravel(), azibin) - 1
-            Ifinite = numpy.isfinite(usrr)
+            Ifinite = numpy.logical_and(numpy.isfinite(usrr),
+                                        numpy.isfinite(mssrr))
             # for each bin, find the closest point and append radial Stokes
             # drift with ambiguity on sign
             usrazi = numpy.zeros(len(azibin))
+            mssrazi = numpy.zeros(len(azibin))
             thazi = numpy.zeros(len(azibin))
             for iazi in range(len(azibin)):
                 I1 = numpy.where(numpy.logical_and(ang_azi==iazi, Ifinite))
@@ -147,42 +153,53 @@ def combine_usr(lon, lat, usr, dazi, angle, incl, wnd_dir):
                 try:
                     Idist = numpy.argmin(distazi)
                     usrazi[iazi] = usrr[I1][Idist]
+                    mssrazi[iazi] = mssrr[I1][Idist]
                     thazi[iazi] = numpy.mod(azimuthr[I1][Idist], numpy.pi)
                 except:
                     usrazi[iazi] = numpy.nan
-            try:
-                iaziat = int(numpy.where(numpy.logical_and(iincl > (azibin),
-                                         iincl < (azibin + dazi)))[0])
-                Iaziatnot = numpy.logical_not(numpy.arange(len(azibin))==iaziat)
-            except:
-                iaziat = None
-            if iaziat:
+                    mssrazi[iazi] = numpy.nan
+	    try:
+		iaziat = int(numpy.where(numpy.logical_and(iincl > (azibin),
+					 iincl < (azibin + dazi)))[0])
+		Iaziatnot = numpy.logical_not(numpy.arange(len(azibin))==iaziat)
+	    except:
+		iaziat = None
+	    if iaziat:
             # Interpolate input data in the along track direction (will be to
             # avoid as the noise cnnot be removed in that direction)
-                usrazi[iaziat] = numpy.interp(azibin[iaziat], azibin[Iaziatnot],
-                                          usrazi[Iaziatnot], period=180)
+		usrazi[iaziat] = numpy.interp(azibin[iaziat],
+					      azibin[Iaziatnot],
+					      usrazi[Iaziatnot], period=180)
+		mssrazi[iaziat] = numpy.interp(azibin[iaziat],
+					      azibin[Iaziatnot],
+					      mssrazi[Iaziatnot], period=180)
             # 3. Perform an estimate of the Stokes drift direction and magnitude
-            c = numpy.fft.fft(usrazi)/len(usrazi)
-            rd2 = -0.5 * numpy.angle(c[1]) # estimate of Us direction
-            thrbeam = numpy.mod(rd2, 2 * numpy.pi)
-            if numpy.cos(wnd_dir[isample, ibeam] - thrbeam) < 0.:
-                thrbeam = numpy.arctan2(-numpy.sin(thrbeam),
-                                        -numpy.cos(thrbeam))
-            # 4. Ambiguity removal using closeness to estimated direction
-            radazibin = numpy.deg2rad(azibin)
-            cond = numpy.where(numpy.cos(thrbeam - radazibin) > 0)[0]
-            usfull = - usrazi * 1
-            if cond.any():
-                usfull[(cond)] = usrazi[(cond)]
-            angle_usr = thazi - rangle
-            usr_comb[isample, ibeam] = (numpy.nansum(usfull
-                                                     * numpy.cos(angle_usr))
-                                                     * 2 * dazi / 180.)
-            usp_comb[isample, ibeam] = (numpy.nansum(usfull
-                                                     * numpy.sin(angle_usr))
-                                                     * 2 * dazi / 180.)
+	    angle_usr = thazi - rangle
+	    _usr_comb, _usp_comb = proj_uss(usrazi, azibin, angle_usr, dazi)
+	    usr_comb[isample, ibeam] = _usr_comb
+	    usp_comb[isample, ibeam] = _usp_comb
+            mssr_comb[isample, ibeam] = 2 * numpy.nanmean(mssr_noise)
+    return usr_comb, usp_comb, mssr_comb
 
-    return usr_comb, usp_comb
+
+def proj_uss(usrazi, azibin, angle_usr, dazi):
+    c = numpy.fft.fft(usrazi)/len(usrazi)
+    rd2 = -0.5 * numpy.angle(c[1]) # estimate of Us direction
+    thrbeam = numpy.mod(rd2, 2 * numpy.pi)
+    if numpy.cos(wnd_dir[isample, ibeam] - thrbeam) < 0.:
+	thrbeam = numpy.arctan2(-numpy.sin(thrbeam),
+				-numpy.cos(thrbeam))
+    # 4. Ambiguity removal using closeness to estimated direction
+    radazibin = numpy.deg2rad(azibin)
+    cond = numpy.where(numpy.cos(thrbeam - radazibin) > 0)[0]
+    usfull = - usrazi * 1
+    if cond.any():
+	usfull[(cond)] = usrazi[(cond)]
+    _usr_comb = (numpy.nansum(usfull * numpy.cos(angle_usr))
+			      * 2 * dazi / 180.)
+    _usp_comb = (numpy.nansum(usfull * numpy.sin(angle_usr))
+			      * 2 * dazi / 180.)
+    return _usr_comb, _usp_comb
 
 
 def find_closest(lon, lat, lon_nadir, lat_nadir, mss, ice, hs, beam_angle):
