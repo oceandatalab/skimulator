@@ -537,7 +537,7 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     coeff_m = coeff['x_4dmean_{:d}deg'.format(int(beam_angle))]
     coeff_std = coeff['x_4dstd_{:d}deg'.format(int(beam_angle))]
     xlabel = coeff['xx{:d}'.format(int(beam_angle))]
-    ncoeffur = 8 #len(coeff_4dm)
+    ncoeffur = 7 #len(coeff_4dm)
     # -- Compute norm --
     # Construct matrix of input data
     cshape = numpy.shape(output_var_i['uwnd'])
@@ -563,12 +563,12 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     mat_noerr = numpy.full((cshape[0], ncoeffur), numpy.nan)
     mat_noerr[:, 0] = usr
     mat_noerr[:, 1] = wndr
-    mat_noerr[:, 2] = numpy.sign(wndr) *  wndr_min
-    mat_noerr[:, 3] = nwnd
-    mat_noerr[:, 4] = nwnd_min
-    mat_noerr[:, 5] = hs
-    mat_noerr[:, 6] = 1. / mss
-    mat_noerr[:, 7] = 1. / (mss + numpy.log(nwnd + 0.7) * 0.009)
+    #mat_noerr[:, 2] = numpy.sign(wndr) *  wndr_min
+    mat_noerr[:, 2] = nwnd
+    mat_noerr[:, 3] = nwnd_min
+    mat_noerr[:, 4] = hs
+    mat_noerr[:, 5] = 1. / mss
+    mat_noerr[:, 6] = 1. / (mss + numpy.log(nwnd + 0.7) * 0.009)
 
     # Compute cross product
     cross = mod_tools.cross_product(mat_noerr, ncoeffur, cshape[0])
