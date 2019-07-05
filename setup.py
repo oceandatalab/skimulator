@@ -106,6 +106,7 @@ pkg_data = {__package_name__: ['share/coeff.npy',
                                'share/Spline_128_64_TED_TAS_12_DEG.npy',
                                'share/Spline_128_64_TED_CB_12_DEG.npy',
                                'share/Spline_128_64_TED_CB_6_DEG.npy',
+                               'share/noise_pdf_mss1d.npy',
                                ]}
 if os.path.exists(version_file):
     pkg_data[__package_name__].append('share/VERSION.txt')

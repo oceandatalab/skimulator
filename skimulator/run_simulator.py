@@ -55,6 +55,7 @@ import time
 import datetime
 import logging
 import traceback
+import pkg_resources
 import skimulator.build_swath as build_swath
 import skimulator.rw_data as rw_data
 import skimulator.build_error as build_error
@@ -317,8 +318,9 @@ def worker_method_skim(*args, **kwargs):
         rain_dic, rain_size = build_error.load_rain(p.rain_file)
     else:
         p.rain = False
-
-
+    mss_path =  pkg_resources.resource_filename('skimulator',
+                                                'share/noise_pdf_mss1d.npy')
+    mssr_noise = numpy.load(mss_path)[()]
     #  Loop on all cycles
     for cycle in range(0, ncycle+1):
         # if ifile > (p.nstep*p.timestep + 1):
@@ -457,26 +459,31 @@ def worker_method_skim(*args, **kwargs):
                 _angle = sgrid.angle + numpy.pi
             _combine = mod_uwb_corr.combine_usr
             usr_comb, usp_comb, mssr_comb = _combine(lon, lat, usr, mssx, mssy,
-                                                     mssxy, p.delta_azim,
+                                                     mssxy, mssr_noise,
+                                                     p.delta_azim,
                                                      _angle, incl, wnd_dir)
-            mssclose, hsclose = mod_uwb_corr.find_closest(lon, lat, lon_nadir,
-                                                         lat_nadir, mss, ice,
-                                                         hs, p.list_angle)
+            _closest = mod_uwb_corr.find_closest
+            mssclose, hsclose = _closest(lon, lat, lon_nadir, lat_nadir, mss,
+                                         mssr_comb, ice, hs, p.list_angle)
+            print(numpy.shape(mssr_comb), numpy.shape(mssclose), numpy.shape(mss))
+            #
             #hsclose = numpy.transpose(numpy.array(output_var['hs']))[:, 1:]
             #mssclose = + mss[:, 1:]
             # Temporary trick to compensate for bad usr correction
             #usr_comb = usr_comb / 3 + 2 * usr / 3
             uwd_est = mod_uwb_corr.estimate_uwd(usr_comb, output_var, hsclose,
-                                                mssr_comb, sgrid.radial_angle,
+                                                mssclose, sgrid.radial_angle,
                                                 p.list_angle)
             output_var['uwd_est'] = uwd_est
             output_var['ussr_est'] = []
-
+            output_var['mssr_est'] = []
             for i in range(len(output_var['ur_obs'])):
                 if i == 0:
                     output_var['ussr_est'].append(usr_comb[:, 0])
+                    output_var['mssr_est'].append(mssclose[:, 0])
                 else:
                     output_var['ussr_est'].append(usr_comb[:, i-1])
+                    output_var['mssr_est'].append(mssclose[:, i-1])
                 output_var['uwd_est'][i] = output_var['uwd_est'][i] # / 3 + output_var['uwd'][i] * 2 /3
 
                 corr = output_var['uwd'][i] - output_var['uwd_est'][i]

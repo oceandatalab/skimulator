@@ -86,7 +86,8 @@ def compute_erruwb(p, sgrid, ouput_var):
     return err_uwb
 
 
-def combine_usr(lon, lat, usr, mssx, mssy, mssxy, dazi, angle, incl, wnd_dir):
+def combine_usr(lon, lat, usr, mssx, mssy, mssxy, mssnoise, dazi, angle, incl,
+                wnd_dir):
     '''
     PURPOSE : recombine measurements of various azimuths and ambiguity
     removal using wind direction
@@ -111,6 +112,9 @@ def combine_usr(lon, lat, usr, mssx, mssy, mssxy, dazi, angle, incl, wnd_dir):
     angle_al = numpy.mod(inclination - angle - numpy.pi/2, 2*numpy.pi)
     mssr = (numpy.cos(angle_al)**2 * mssx + numpy.sin(angle_al)**2 * mssy
             + numpy.sin(2*angle_al) * mssxy)
+    mssr_noise = numpy.random.choice(mssnoise['bins'], numpy.shape(mssr),
+                                     p=mssnoise['hist'])
+    mssr = mssr# + mssr_noise
     az_al = numpy.mod(inclination - numpy.pi, numpy.pi)
     degangle = numpy.mod(numpy.rad2deg(angle_al), 180)
     az_al = numpy.mod(numpy.rad2deg(az_al), 180)
@@ -158,51 +162,51 @@ def combine_usr(lon, lat, usr, mssx, mssy, mssxy, dazi, angle, incl, wnd_dir):
                 except:
                     usrazi[iazi] = numpy.nan
                     mssrazi[iazi] = numpy.nan
-	    try:
-		iaziat = int(numpy.where(numpy.logical_and(iincl > (azibin),
-					 iincl < (azibin + dazi)))[0])
-		Iaziatnot = numpy.logical_not(numpy.arange(len(azibin))==iaziat)
-	    except:
-		iaziat = None
-	    if iaziat:
+            try:
+                iaziat = int(numpy.where(numpy.logical_and(iincl > (azibin),
+                                         iincl < (azibin + dazi)))[0])
+                Iaziatnot = numpy.logical_not(numpy.arange(len(azibin))==iaziat)
+            except:
+                iaziat = None
+            if iaziat:
             # Interpolate input data in the along track direction (will be to
             # avoid as the noise cnnot be removed in that direction)
-		usrazi[iaziat] = numpy.interp(azibin[iaziat],
-					      azibin[Iaziatnot],
-					      usrazi[Iaziatnot], period=180)
-		mssrazi[iaziat] = numpy.interp(azibin[iaziat],
-					      azibin[Iaziatnot],
-					      mssrazi[Iaziatnot], period=180)
+                usrazi[iaziat] = numpy.interp(azibin[iaziat],
+                                              azibin[Iaziatnot],
+                                              usrazi[Iaziatnot], period=180)
+                mssrazi[iaziat] = numpy.interp(azibin[iaziat],
+                                               azibin[Iaziatnot],
+                                               mssrazi[Iaziatnot], period=180)
             # 3. Perform an estimate of the Stokes drift direction and magnitude
-	    angle_usr = thazi - rangle
-	    _usr_comb, _usp_comb = proj_uss(usrazi, azibin, angle_usr, dazi)
-	    usr_comb[isample, ibeam] = _usr_comb
-	    usp_comb[isample, ibeam] = _usp_comb
-            mssr_comb[isample, ibeam] = 2 * numpy.nanmean(mssr_noise)
+            angle_usr = thazi - rangle
+            _usr_comb, _usp_comb = proj_uss(usrazi, azibin, angle_usr, dazi,
+                                            wnd_dir[isample, ibeam])
+            usr_comb[isample, ibeam] = _usr_comb
+            usp_comb[isample, ibeam] = _usp_comb
+            mssr_comb[isample, ibeam] = numpy.nanmean(mssrazi)
+            #mssr_comb[isample, ibeam] = (numpy.nansum(mssrazi * numpy.sin(angle_usr)) * 2 * dazi / 180.)
     return usr_comb, usp_comb, mssr_comb
 
 
-def proj_uss(usrazi, azibin, angle_usr, dazi):
+def proj_uss(usrazi, azibin, angle_usr, dazi, wnd_dir):
     c = numpy.fft.fft(usrazi)/len(usrazi)
     rd2 = -0.5 * numpy.angle(c[1]) # estimate of Us direction
     thrbeam = numpy.mod(rd2, 2 * numpy.pi)
-    if numpy.cos(wnd_dir[isample, ibeam] - thrbeam) < 0.:
-	thrbeam = numpy.arctan2(-numpy.sin(thrbeam),
-				-numpy.cos(thrbeam))
+    if numpy.cos(wnd_dir - thrbeam) < 0.:
+        thrbeam = numpy.arctan2(-numpy.sin(thrbeam), -numpy.cos(thrbeam))
     # 4. Ambiguity removal using closeness to estimated direction
     radazibin = numpy.deg2rad(azibin)
     cond = numpy.where(numpy.cos(thrbeam - radazibin) > 0)[0]
     usfull = - usrazi * 1
     if cond.any():
-	usfull[(cond)] = usrazi[(cond)]
-    _usr_comb = (numpy.nansum(usfull * numpy.cos(angle_usr))
-			      * 2 * dazi / 180.)
-    _usp_comb = (numpy.nansum(usfull * numpy.sin(angle_usr))
-			      * 2 * dazi / 180.)
+        usfull[(cond)] = usrazi[(cond)]
+    _usr_comb = (numpy.nansum(usfull * numpy.cos(angle_usr)) * 2 * dazi / 180.)
+    _usp_comb = (numpy.nansum(usfull * numpy.sin(angle_usr)) * 2 * dazi / 180.)
     return _usr_comb, _usp_comb
 
 
-def find_closest(lon, lat, lon_nadir, lat_nadir, mss, ice, hs, beam_angle):
+def find_closest(lon, lat, lon_nadir, lat_nadir, mss, mss_est, ice, hs,
+                 beam_angle):
     ''' Find closest mss at 6degree or nadir.
     '''
     if numpy.min(abs(lon)) <1 and numpy.max(abs(lon))>359:
@@ -215,6 +219,8 @@ def find_closest(lon, lat, lon_nadir, lat_nadir, mss, ice, hs, beam_angle):
     mss6 = mss[:, (ind_6 + 1)].ravel()
     mss_nadir = mss[:, 0]
     ice_nadir = ice[:, 0]
+    mss_extr = + mss[:, 1:]
+    mss_est[numpy.where(ice>0)] = mss_extr[numpy.where(ice>0)]
     ice6 = ice[:, (ind_6 + 1)].ravel()
     lon_nadir_ocean = +lon_nadir
     lon_nadir_ocean[numpy.where((ice_nadir>0))] = numpy.nan # | ~numpy.isfinite(mss_nadir))] = numpy.nan
@@ -259,27 +265,27 @@ def find_closest(lon, lat, lon_nadir, lat_nadir, mss, ice, hs, beam_angle):
 
 
             d6 = dist_6[i6]
-            if d6 > 200 and dnadir > 200:
-                continue
+            if d6 > 15 and dnadir > 15:
+                mssclose[isample, ibeam] = mss_est[isample, ibeam]
             ind_dist_nadir = numpy.where(dist_nadir < 150)
             ind_dist_6 = numpy.where(dist_6 < 50)
             _hs = numpy.nanmean(hs[ind_dist_nadir])
             if abs(hs[inadir] - _hs) > 1:
                 continue
-            if abs(hs[inadir] - _hs) > 0.4:
-                hsclose[isample, ibeam] = _hs
-            else:
-                hsclose[isample, ibeam] = hs[inadir]
+            #if abs(hs[inadir] - _hs) > 0.4:
+            #    hsclose[isample, ibeam] = _hs
+            #else:
+            hsclose[isample, ibeam] = hs[inadir]
             _mss =  numpy.nanmean(mss6[ind_dist_6])
             if abs(mss6[i6] - _mss) > 0.01:
                 continue
-            if abs(mss6[i6] - _mss) > 0.005:
-                mssclose[isample, ibeam] = _mss
+            #if abs(mss6[i6] - _mss) > 0.005:
+            #    mssclose[isample, ibeam] = _mss
+            #else:
+            if d6 < dnadir:
+                mssclose[isample, ibeam] = mss6[i6]
             else:
-                if d6 < dnadir:
-                    mssclose[isample, ibeam] = mss6[i6]
-                else:
-                    mssclose[isample, ibeam] = mss_nadir[inadir]
+                mssclose[isample, ibeam] = mss_nadir[inadir]
             if mss[isample, ibeam + 1] == 0:
                 mssclose[isample, ibeam] = 0
     return mssclose, hsclose
