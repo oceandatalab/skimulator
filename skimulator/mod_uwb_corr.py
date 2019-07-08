@@ -123,7 +123,7 @@ def combine_usr(lon, lat, usr, mssx, mssy, mssxy, mssnoise, dazi, angle, incl,
     mssr_comb = numpy.full((nsample, nbeam), numpy.nan)
     usp_comb = numpy.full((nsample, nbeam), numpy.nan)
     # Distance max to take neighbours
-    dmax = 200
+    dmax = 40
     for ibeam in range(nbeam):
         for isample in range(nsample):
             if not numpy.isfinite(usrabs[isample, ibeam]):
@@ -297,6 +297,8 @@ def estimate_uwd(usr, output_var, hs_nadir, mssclose, radial_angle,
     nsample, nbeam = numpy.shape(usr)
     uwdr_est = []
     uwdr_est.append(numpy.full((nsample), numpy.nan))
+    ussr_est2 = []
+    ussr_est2.append(numpy.full((nsample), numpy.nan))
     for ibeam in range(nbeam):
         from matplotlib import pyplot
         '''
@@ -317,6 +319,7 @@ def estimate_uwd(usr, output_var, hs_nadir, mssclose, radial_angle,
         output_var2['hs'] = hs_nadir[:, ibeam]
         output_var2['mssclose'] = mssclose[:, ibeam]
         est_wd = build_error.compute_wd_ai_par
-        uwdr_est.append(est_wd(output_var2, radial_angle[:, ibeam],
-                                    beam_angle[ibeam]))
-    return uwdr_est
+        res, usr2 = est_wd(output_var2, radial_angle[:, ibeam],beam_angle[ibeam])
+        uwdr_est.append(res)
+        ussr_est2.append(usr2)
+    return uwdr_est, ussr_est2

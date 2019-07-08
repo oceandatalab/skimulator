@@ -486,7 +486,7 @@ def compute_beam_noise_skim(p, output_var_i, radial_angle, beam_angle,
                                                      output_var_i['vuss'],
                                                      radial_angle)
         # compute_wd_old_par(output_var_i, radial_angle, beam_angle)
-        output_var_i['uwd'] = compute_wd_ai_par(output_var_i, radial_angle,
+        output_var_i['uwd'], __ = compute_wd_ai_par(output_var_i, radial_angle,
                                                 beam_angle)
         #output_var_i['ur_obs'] +=  output_var_i['uwb']
     return None
@@ -545,6 +545,12 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     wndr = mod_tools.proj_radial(output_var_i['uwnd'],
                                  output_var_i['vwnd'],
                                  radial_angle)
+    usr_max = Usr_95(wndr)
+    usr_min = Usr_5(wndr)
+    diff_max = (usr_max - usr)
+    diff_min = (usr_min - usr)
+    usr[numpy.where(diff_max < 0)] = usr_max[numpy.where(diff_max < 0)]
+    usr[numpy.where(diff_min > 0)] = usr_min[numpy.where(diff_min > 0)]
     wndr_min = + wndr
     wndr_min[numpy.where(abs(wndr) >= 8.)] = 8.
     nwnd = numpy.sqrt(output_var_i['uwnd']**2 + output_var_i['vwnd']**2)
@@ -554,6 +560,13 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
         mss = output_var_i['mssu'] + output_var_i['mssc']
     else:
         mss = output_var_i['mssclose']
+    mss_max = mss_95(nwnd)
+    mss_min = mss_5(nwnd)
+    diff_max = (mss_max - mss)
+    diff_min = (mss_min - mss)
+    mss[numpy.where(diff_max < 0)] = mss_max[numpy.where(diff_max < 0)]
+    mss[numpy.where(diff_min > 0)] = mss_min[numpy.where(diff_min > 0)]
+
     #    noise_nwnd = numpy.random.normal(0, 10, cshape[0])
     #    wndr = wndr + noise_nwnd
     _ind = numpy.where(mss <= 8e-4)
@@ -587,7 +600,7 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
     Uwd = Uwd * (1 - sigma_ice * output_var_i['ice'] / output_var_i['sigma0'])
     Uwd[_ind] = 0.001
 
-    return Uwd
+    return Uwd, usr
 
 
 def compute_wd_ai_par_old(output_var_i, radial_angle, beam_angle):
@@ -844,3 +857,42 @@ class ted_residu:
         res[:, self.n12deg:] += self.avv6[2,pidx[:,self.n12deg:],oidx[:,self.n12deg:]]*numpy.sin(time[:,self.n12deg:]/365.25/2./numpy.pi)
         return(res)
         '''
+
+
+def Usr_95(wndr):
+    # wndr : radial wind speed [m/s]
+    # provides 95th percentile of USR (max tolerable)
+    wndr = wndr - 0.75 # middle point to lower bound
+    mawndr = numpy.maximum(wndr, -8)
+    miwndr = numpy.minimum(wndr, 8)
+    res = 0.0200072*wndr - 0.0073556*miwndr - 0.00290607*mawndr + 0.03929183
+    return res
+
+
+def Usr_5(wndr):
+    # wndr : radial wind speed [m/s]
+    # provides 95th percentile of USR (min tolerable)
+    wndr = wndr - 0.75 # middle point to lower bound
+    mawndr = numpy.maximum(wndr, -8)
+    miwndr = numpy.minimum(wndr, 8)
+    res = 0.01896863*wndr - 0.00267442*miwndr - 0.00657048*mawndr - 0.02238212
+    return res
+
+
+def mss_5(wnd):
+    # wnd : wind speed [m/s]
+    # provides 5th percentile of mss (min tolerable)
+    wnd = wnd - 0.5 # middle point to lower bound
+    mawnd = numpy.maximum(wnd, 5)
+    miwnd = numpy.minimum(wnd, 20)
+    res = 0.00152612277*wnd - 4.73687795e-06*mawnd + 2.14390064e-04*wnd**2 - 2.28370767e-04*wnd*mawnd
+    return res
+
+def mss_95(wnd):
+    # wnd : wind speed [m/s]
+    # provides 95th percentile of mss (max tolerable)
+    mawnd = numpy.maximum(wnd, 5)
+    miwnd = numpy.minimum(wnd, 20)
+    wnd = wnd - 0.5 # middle point to lower bound
+    res = 2.71004327e-03 * wnd + 1.27761483e-03*mawnd - 1.68132538e-03*miwnd - 4.400380528e-5*wnd**2 - 1.35712627e-05
+    return res
