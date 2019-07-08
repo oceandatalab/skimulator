@@ -547,8 +547,8 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
                                  radial_angle)
     usr_max = Usr_95(wndr)
     usr_min = Usr_5(wndr)
-    diff_max = (usr_max - usr)
-    diff_min = (usr_min - usr)
+    diff_max = usr_max - usr
+    diff_min = usr_min - usr
     usr[numpy.where(diff_max < 0)] = usr_max[numpy.where(diff_max < 0)]
     usr[numpy.where(diff_min > 0)] = usr_min[numpy.where(diff_min > 0)]
     wndr_min = + wndr
