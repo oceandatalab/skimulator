@@ -102,7 +102,9 @@ def combine_usr(lon, lat, usr, mssx, mssy, mssxy, mssnoise, dazi, angle, incl,
     #Define ensemble of angle where observations are required
     azibin = numpy.arange(0, 180, dazi)
     # Ambiguity from SKIM measurment
-    usrabs = numpy.abs(usr)
+    # TOREMOVE
+    usrabs = + numpy.abs(usr)
+    #usrabs = + usr # numpy.abs(usr)
     nsample, nbeam = numpy.shape(usrabs)
     # From rad to deg and considering pi ambiguity,
     # Radial angle is refered to the East
@@ -114,7 +116,7 @@ def combine_usr(lon, lat, usr, mssx, mssy, mssxy, mssnoise, dazi, angle, incl,
             + numpy.sin(2*angle_al) * mssxy)
     mssr_noise = numpy.random.choice(mssnoise['bins'], numpy.shape(mssr),
                                      p=mssnoise['hist'])
-    mssr = mssr# + mssr_noise
+    mssr = mssr + mssr_noise
     az_al = numpy.mod(inclination - numpy.pi, numpy.pi)
     degangle = numpy.mod(numpy.rad2deg(angle_al), 180)
     az_al = numpy.mod(numpy.rad2deg(az_al), 180)
@@ -123,7 +125,7 @@ def combine_usr(lon, lat, usr, mssx, mssy, mssxy, mssnoise, dazi, angle, incl,
     mssr_comb = numpy.full((nsample, nbeam), numpy.nan)
     usp_comb = numpy.full((nsample, nbeam), numpy.nan)
     # Distance max to take neighbours
-    dmax = 40
+    dmax = 50
     for ibeam in range(nbeam):
         for isample in range(nsample):
             if not numpy.isfinite(usrabs[isample, ibeam]):
@@ -147,9 +149,9 @@ def combine_usr(lon, lat, usr, mssx, mssy, mssxy, mssnoise, dazi, angle, incl,
                                         numpy.isfinite(mssrr))
             # for each bin, find the closest point and append radial Stokes
             # drift with ambiguity on sign
-            usrazi = numpy.zeros(len(azibin))
-            mssrazi = numpy.zeros(len(azibin))
-            thazi = numpy.zeros(len(azibin))
+            usrazi = numpy.full(len(azibin), numpy.nan)
+            mssrazi = numpy.full(len(azibin), numpy.nan)
+            thazi = numpy.full(len(azibin), numpy.nan)
             for iazi in range(len(azibin)):
                 I1 = numpy.where(numpy.logical_and(ang_azi==iazi, Ifinite))
                 distazi = mod_tools.dist_sphere(plon, lonr[I1], plat, latr[I1])
@@ -198,6 +200,8 @@ def proj_uss(usrazi, azibin, angle_usr, dazi, wnd_dir):
     radazibin = numpy.deg2rad(azibin)
     cond = numpy.where(numpy.cos(thrbeam - radazibin) > 0)[0]
     usfull = - usrazi * 1
+    #TOREMOVE
+    #usfull = usrazi
     if cond.any():
         usfull[(cond)] = usrazi[(cond)]
     _usr_comb = (numpy.nansum(usfull * numpy.cos(angle_usr)) * 2 * dazi / 180.)
@@ -220,7 +224,8 @@ def find_closest(lon, lat, lon_nadir, lat_nadir, mss, mss_est, ice, hs,
     mss_nadir = mss[:, 0]
     ice_nadir = ice[:, 0]
     mss_extr = + mss[:, 1:]
-    mss_est[numpy.where(ice>0)] = mss_extr[numpy.where(ice>0)]
+    ice_extr = + ice[:, 1:]
+    mss_est[numpy.where(ice_extr>0)] = mss_extr[numpy.where(ice_extr>0)]
     ice6 = ice[:, (ind_6 + 1)].ravel()
     lon_nadir_ocean = +lon_nadir
     lon_nadir_ocean[numpy.where((ice_nadir>0))] = numpy.nan # | ~numpy.isfinite(mss_nadir))] = numpy.nan
