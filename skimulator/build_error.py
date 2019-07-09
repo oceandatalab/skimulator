@@ -560,6 +560,7 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
         mss = output_var_i['mssu'] + output_var_i['mssc']
     else:
         mss = output_var_i['mssclose']
+        # usr = (usr_max + usr_min) / 2
     mss_max = mss_95(nwnd)
     mss_min = mss_5(nwnd)
     diff_max = (mss_max - mss)
@@ -599,6 +600,7 @@ def compute_wd_ai_par(output_var_i, radial_angle, beam_angle):
         sigma_ice = 1.
     Uwd = Uwd * (1 - sigma_ice * output_var_i['ice'] / output_var_i['sigma0'])
     Uwd[_ind] = 0.001
+    Uwd[numpy.where(output_var_i['ice']==1)] = 0.001
 
     return Uwd, usr
 

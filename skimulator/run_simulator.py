@@ -452,7 +452,7 @@ def worker_method_skim(*args, **kwargs):
             hs = output_var['hs'][0]
             usr = numpy.transpose(numpy.array(output_var['ussr']))[:, 1:]
             ice = numpy.transpose(numpy.array(output_var['ice']))
-            p.delta_azim = 20
+            p.delta_azim = 15
             incl = sgrid.incl
             _angle = +  sgrid.angle
             if (sgrid.ipass %2) != 0:
@@ -469,7 +469,7 @@ def worker_method_skim(*args, **kwargs):
             #hsclose = numpy.transpose(numpy.array(output_var['hs']))[:, 1:]
             #mssclose = + mss[:, 1:]
             # Temporary trick to compensate for bad usr correction
-            #usr_comb = usr_comb / 3 + 2 * usr / 3
+            # usr_comb = + usr
             uwd_est, usr_est2 = mod_uwb_corr.estimate_uwd(usr_comb, output_var, hsclose,
                                                 mssclose, sgrid.radial_angle,
                                                 p.list_angle)
