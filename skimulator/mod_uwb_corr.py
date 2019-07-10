@@ -125,7 +125,7 @@ def combine_usr(lon, lat, usr, mssx, mssy, mssxy, mssnoise, dazi, angle, incl,
     mssr_comb = numpy.full((nsample, nbeam), numpy.nan)
     usp_comb = numpy.full((nsample, nbeam), numpy.nan)
     # Distance max to take neighbours
-    dmax = 50
+    dmax = 200
     for ibeam in range(nbeam):
         for isample in range(nsample):
             if not numpy.isfinite(usrabs[isample, ibeam]):

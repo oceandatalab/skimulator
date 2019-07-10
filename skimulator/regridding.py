@@ -411,7 +411,7 @@ def worker_method_l2c(*args, **kwargs):
     data.load_data(p, ur_true=[], ur_obs=[], ucur=[],
                    vcur=[], time=[], lon_nadir=[], lat_nadir=[],
                    lon=[], lat=[], time_nadir=[], vindice=[],
-                   instr=[], uwd=[], uwd_est=[], dsigma=[], rain=[], ussr=[], ussr_est=[])
+                   instr=[], uwd=[], uwd_est=[], dsigma=[], rain=[], ussr=[], ussr_est=[], uwnd=[], vwnd=[])
     grid.load_swath(p, radial_angle=[], angle=[], x_al=[], x_al_nadir=[],
                     x_ac=[])
 
@@ -427,6 +427,7 @@ def worker_method_l2c(*args, **kwargs):
     nil, nbeams = numpy.shape(test)
     sbeam_incid = numpy.zeros((nil, nbeams))
     ### TODO Change this
+    nwnd = numpy.sqrt(numpy.array(data.uwnd)**2 + numpy.array(data.vwnd)**2)
     obs['vobsr'] = numpy.array(data.ur_obs)
     obs['rain'] = numpy.array(data.rain)
     obs['dsigma'] = numpy.array(data.dsigma)
@@ -438,6 +439,8 @@ def worker_method_l2c(*args, **kwargs):
     ussr['vobsr'] = numpy.array(data.ussr).flatten()
     ussr_est['vobsr'] = numpy.array(data.ussr_est).flatten()
     wdre['vobsr'] = numpy.array(data.uwd - data.uwd_est).flatten()
+    wdre['vobsr'][abs(wdre['vobsr'])>1] = numpy.nan
+    wdre['vobsr'][nwnd.flatten() < 4] = numpy.nan
     wd['vobsr'] = numpy.array(data.uwd).flatten()
     dsigma['vobsr'] = numpy.array(data.dsigma).flatten()
     obs['nsamp'], obs['nbeam'] = numpy.shape(obs['vobsr'])
@@ -449,7 +452,7 @@ def worker_method_l2c(*args, **kwargs):
     ussr_est['nsamp'], ussr_est['nbeam'] = numpy.shape(obs['vobsr'])
     dsigma['nsamp'], dsigma['nbeam'] = numpy.shape(obs['vobsr'])
     obs['vobsr'] = obs['vobsr'].flatten()
-    ind1 = numpy.where((noerr['vmodr'] > -100))[0]
+    ind1 = numpy.where((noerr['vmodr'] > -100) & (abs(wdre['vobsr']) < 100) & (numpy.isfinite(wdre['vobsr'])))[0]
     ind2 = numpy.where((abs(obs['vobsr']) < 100) & (numpy.isfinite(obs['vobsr'])))[0]
     indwd = numpy.where((abs(wdre['vobsr']) < 100) & (numpy.isfinite(wdre['vobsr'])))[0]
     obs['vobsr'] = obs['vobsr'][ind2]
@@ -541,7 +544,7 @@ def worker_method_l2c(*args, **kwargs):
             vindice[numpy.where(vmask)] = 0
         model_data, model_step, list_file2 = read_model(p, vindice)
         list_key = {'ucur':'u_model', 'vcur':'v_model', 'uwnd': 'uwnd',
-                    'vwnd': 'vwnd','mssx':'mssu', 'mssy': 'mssc', 'uuss': 'uuss', 'vuss': 'vuss'}
+                    'vwnd': 'vwnd','mssx':'mssu', 'mssy': 'mssc', 'uuss': 'uuss', 'vuss': 'vuss', 'ice': 'ice'}
         if (p.rain is True) and (p.rain_file is None):
             list_key['rain'] = 'rain'
         else:
