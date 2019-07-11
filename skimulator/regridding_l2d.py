@@ -206,7 +206,7 @@ def offline_interpolation(p):
                                                              p.config_l2d))
     listfile = glob.glob(os.path.join(p.outdatadir, '{}*.nc'.format(pattern)))
     str_format = '%Y-%m-%dT%H:%M:%SZ'
-    list_key = {'ucur':'ux_true', 'vcur':'uy_true'}
+    list_key = {'ucur':'ux_true', 'vcur':'uy_true', 'uwnd': 'uwnd', 'vwnd':'vwnd',}
     list_input = {}
     dimtime = 'time'
     dimlon = 'lon'
@@ -219,10 +219,16 @@ def offline_interpolation(p):
                 "uy_model": "Error-free meridional velocity",
                 "ux_true": "True zonal velocity",
                 "uy_true": "True meridional velocity",
+                "uwnd": "Eastward wind",
+                "vwnd": "Northward wind",
+                "uuss": "Eastward Stockes drift",
+                "vuss": "Northward Stockes drift",
                 }
     unit = {"ux_noerr": "m/s", "ux_obs": "m/s",
             "uy_noerr": "m/s", "uy_obs": "m/s",
-            "ux_true": "m/s", "uy_true": "m/s"
+            "ux_true": "m/s", "uy_true": "m/s",
+            "uwnd": "m/s", "vwnd": "m/s",
+            "uuss": "m/s", "vuss": "m/s",
             }
     for key in list_key:
         list_input[key] = p.list_input_var_l2d[key]
@@ -392,6 +398,19 @@ def read_l2b(nfile, model_nan=0):
         obs_i['ur_true'] = numpy.ma.array(fid.variables['ur_true'][:]).flatten()
     if 'ur_obs' in fid.variables.keys():
         obs_i['ur_obs'] = numpy.ma.array(fid.variables['ur_obs'][:]).flatten()
+    if 'ussr' in fid.variables.keys():
+        obs_i['ussr'] = numpy.ma.array(fid.variables['ussr'][:]).flatten()
+    if 'ussr_est' in fid.variables.keys():
+        obs_i['ussr_est'] = numpy.ma.array(fid.variables['ussr_est'][:]).flatten()
+    if 'instr' in fid.variables.keys():
+        obs_i['instr'] = numpy.ma.array(fid.variables['instr'][:]).flatten()
+    if 'uwnd' in fid.variables.keys():
+        vwnd = numpy.ma.array(fid.variables['vwnd'][:]).flatten()
+        uwnd = numpy.ma.array(fid.variables['uwnd'][:]).flatten()
+    if 'uwd' in fid.variables.keys():
+        obs_i['wdre'] = (numpy.ma.array(fid.variables['uwd'][:]).flatten()
+                         - numpy.ma.array(fid.variables['uwd_est'][:]).flatten())
+    nwnd = numpy.sqrt(uwnd**2 + vwnd**2)
     obs_i['lon'] = numpy.ma.array(fid.variables['lon'][:]).flatten()
     #obs_i['lon'] = numpy.mod(obs_i['lon'] -180, 360) + 180
     obs_i['lon'] = numpy.mod(obs_i['lon'] + 360, 360)
@@ -406,7 +425,8 @@ def read_l2b(nfile, model_nan=0):
     mask_invalid = (mask_invalid | (obs_i['ux']==model_nan)
                     | (obs_i['uy']==model_nan)
                     | (obs_i['ur_true']==model_nan)
-                    | (obs_i['ur_obs']==model_nan))
+                    | (obs_i['ur_obs']==model_nan)
+                    | (nwnd < 4))
     uwd = numpy.ma.array(fid.variables['uwd'][:]).flatten()
     uwde = numpy.ma.array(fid.variables['uwd_est'][:]).flatten()
     diff = uwd - uwde
@@ -499,6 +519,10 @@ def par_make_oi(grd, _proc_count, jobs, die_on_error, progress_bar):
     grd['uy_noerr'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
     grd['ux_obs'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
     grd['uy_obs'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
+    grd['ux_uss'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
+    grd['uy_uss'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
+    #grd['ux_'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
+    #grd['uy_uwd'] = numpy.full((grd['ny'], grd['nx']), numpy.nan)
     for k in range(0, len(jobs_res)):
         for res in jobs_res[k]:
             j, i, ux_noerr, uy_noerr, ux_obs, uy_obs = res
