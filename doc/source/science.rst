@@ -716,6 +716,8 @@ Example of Params.txt for SKIM-like data
 
 .. _params-file:
 
+.. code-block::
+
 # ------ Name of the configuration (to build output files names)
 config = [yourconfig]
 # ------ Directory that contains orbit file:
@@ -741,6 +743,9 @@ proc_number = [number of processor (integer)]
 progress_bar = True or False
 
 .. _params-skimswath:
+
+
+.. code-block::
 
 # -----------------------#
 # SKIM swath parameters
@@ -773,6 +778,8 @@ shift_lon = 0
 shift_time = None
 
 .. _params-model:
+
+.. code-block::
 
 # -----------------------#
 # Model input parameters
@@ -821,6 +828,8 @@ model_nan = -32767.
 
 .. _params-output:
 
+.. code-block::
+
 # -----------------------#
 # SKIM output files
 # -----------------------#
@@ -839,6 +848,8 @@ list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
                'vindice', 'ur_obs', 'uwnd', 'sigma0']
 
 .. _params-error:
+
+.. code-block::
 
 # -----------------------#
 # SKIM error parameters
@@ -863,8 +874,6 @@ instr_configuration = 'A' or 'B'
 attitude = True or False
 # ------- File which provide the AOCS error:
 yaw_file = os.path.join(dir_setup, 'sample_req1.nc')
-
-
 # -- Geophysical error
 ## ----------------------
 # ------ Consider ice in sigma0 computation
@@ -879,6 +888,8 @@ rain_threshold = 0.15
 uwb = True or False
 
 .. _params-l2c:
+
+.. code-block::
 
 # -----------------------#
 # L2C computation
@@ -895,6 +906,8 @@ ac_threshold = 20
 list_input_var_l2c = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 1]}
 
 .. _params-l2d:
+
+.. code-block::
 
 # -----------------------#
 # L2D computation
