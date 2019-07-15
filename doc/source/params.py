@@ -117,6 +117,7 @@ file_output = os.path.join(outdatadir, config)
 #        (either 'linear' or 'nearest', use 'nearest' for large region
 #        as it is faster and use less memory.)
 interpolation = 'nearest' or 'linear'
+# ------ List of output variables:
 list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
                'radial_angle', 'vwnd', 'mssx', 'mssy', 'mssxy', 'uwb',
                'ssh_true', 'ssh', 'ice', 'mssd',
@@ -139,11 +140,12 @@ ncomp1d = 3000
 ncomp2d = 2000
 # ------- Instrument white noise error
 instr = True or False
-# ------- Coefficient SNR to retrieve instrumental noise from sigma, 
-#         Recommanded value for 1024 pulses: 3e-2, for 512 pulses: 3sqrt(2)e-3
-snr_coeff = 6e-3
-if '2018_8b' in config:
-    snr_coeff = 1.4142*6e-3
+# ------- Choice of instrument configuration
+instr_configuration = 'A' or 'B'
+# ------- Attitude error
+attitude = True or False
+# ------- File which provide the AOCS error:
+yaw_file = os.path.join(dir_setup, 'sample_req1.nc')
 
 # ------- Wave bias
 uwb = True or False
@@ -153,13 +155,18 @@ uwb = True or False
 ## ----------------------
 # ------ Consider ice in sigma0 computation
 ice = True or False
-#### Not implemented yet
 # ------ Rain error (True to compute it):
-wet_tropo = False or True
+rain = True or False
+# ------ Rain file containing scenarii (python file):
+rain_file = os.path.join(dir_setup, [yourrainscenarii])
+# ------ Threshold to flag data:
+rain_threshold = 0.15
 
 # -----------------------#
 # L2C computation
 # -----------------------#
+# config name for L2c:
+config_l2c = '[yourl2cconfig]'
 # Length resolution to select neighbors (in km):
 resol = 40
 # Grid resolution for l2c (alongtrack, acrosstrack) grid (in km):
@@ -172,10 +179,12 @@ list_input_var_l2c = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 1]}
 # -----------------------#
 # L2D computation
 # -----------------------#
-# Length resolution to select neighbors (in km):
-resol_spatial_l2d = 50
-# Temporal resolution to select neighbors (in days):
-resol_temporal_l2d = 8
+# config name for L2d:
+config_l2d = ''
+# Length resolution to select neighbors (multiplication factor):
+resol_spatial_l2d = 1
+# Temporal resolution to select neighbors (multiplication factor):
+resol_temporal_l2d = 1
 # Grid resolution for l2d (lat, lon) grid (in degrees):
 posting_l2d = (0.1, 0.1)
 # Time domain: (start_time, end_time, dtime) in days:
