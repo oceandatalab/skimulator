@@ -207,8 +207,8 @@ for 6º beam and :math:`\sigma^0_{ice}=1` for 12º beam).
 .. math::
    \sigma^0 = (1 - C_{ice}) * \sigma^0_{water} +  C_{ice} * `\sigma^0_{ice}
 
-Finally, the instrumental error is a random number proportional to
-:math:`\sigma^0`
+Finally, the distribution of the instrumental error is a function of the azimuth following curves provided by the instruments simulator and a stretching proportional to
+:math:`\sigma^0` is applied. A random number is picked from this distribution. 
 
 
 .. _Fig4:
@@ -219,42 +219,55 @@ Finally, the instrumental error is a random number proportional to
    FIG. 4: Model interpolated currents and the corresponding instrumental error.
 
 
-Wave bias
----------
+Wave Doppler
+------------
 The geophysical doppler includes also part of the currents due to the Stokes
-drift. This component is later referred as the current wave bias :math:`Uwb`.
-To compute the wave bias, the Stoke drift and the wind are necessary:
-The relation between the wave bias and the Stoke drift is parametrized using a
-radial and perpendicular G parameter.
+drift. This component is later referred as the current wave Doppler :math:`Uwd`.
+To compute the wave doppler, a parametrisation has been learned. It depends on the radial Stokes drift (:math:`ussr`), the norm and the radial wind (:math `nwnd`, :math`wndr` ), the mean square slope (:math:`mss`) and the wave height (:math:`hs`). These parameters are either  interpolated from the model (true value) or we simulate their estimation from a wave spectrum. Note that the along track spectrum is supposed to be very noisy and thus an azimuthal interpolation is performed to assess along track signal.
 
-Compute the wind stress on the surface of the ocean:
+The radial Stokes drift is estimated by averaging all the projected Stokes on the azimuth in a radius of 70 km. As there is a 180 degree ambiguity, the wind direction is considered to determine the :math:`ussr` sign. 
+The wave height is retrieved from the altimeter, thus the nearest point at nadir is considered. 
+The mean square slopes is either computed using the nearest point at 6º / nadir or by averaging all available noisy components in a 70 km radius. Note that a random noise has been applied to the :math:`mss` signal.
+ 
+ 
+The parametrisation has been learned.
+ 
+The 'true' wave doppler is computed using the previous parameters interpolated from the model inputs.  
+The 'estimated' wave doppler is computed using the 'estimated' parameters as explained in the previous paragraph.
+The error on the wave doppler is the difference between the 'estimated' and the 'true' doppler.  
 
-.. math::
-   nwr = \sqrt((u_{wind} - u_{cur})^2 + (v_{wind} - v_{cur})^2)
-
-Compute radial (:math:`G_r`) and perpendicular (:math:`G_p`) parameter
-
-.. math::
-    G_r = 25 * (0.82 * \log(0.2 + \frac{7}{nwr})) * (1-tanh((beam - 25)/10))\\
-    G_p = 0
-
-Compute the wave bias
-
-.. math::
-    Uwb = G_r * ur_{uss} + G_p * up_{uss}
-
-This wave bias can be corrected assuming that we can compute it using
-neighbors in different azimuthal direction.This corrected component is called
-the remaining wave bias.
-Near the coast, not all azimuth are
-available and thus the drift remaining bias is higher than in the open ocean.
+The estimation of the Stokes drift and the mean square slope is degraded near the coast where all the azimuth are not available, and in areas where there is an important gradient. 
+This is also the case in marginal ice zone, where points where there is ice are detected an handled separately.
 
 .. _Fig5:
 
 .. figure:: ../images/Fig5.png
-   :alt: Model current geophysical noise
+   :alt: Model current geophysical signal
 
-   FIG. 5: Model interpolated currents and the corresponding wave remaining bias.
+   FIG. 5: Model interpolated currents and the corresponding wave remaining doppler.
+
+Sigma0 gradient in footprint
+----------------------------
+This gradient is statistically computed by stretching pdf of gradient of sigma0 as a function of sigma0 derived from Saral-Altika altimeter (in band Ka).
+
+The pdf of Sarah-Altika has been provided by CNES. 
+
+The gradient of sigma0 is then converted into a horizontal velocity.
+
+Rain flagging
+-------------
+For each region, an ensemble of scenes is provided to statistically simulate rain patterns consistent with the weather in the area. These scenes have been derived from GPM observation at 5 km resolution. 
+As the rain patterns are not correlated from on day to another, for each pass, a scene is randomly picked and interpolated on the swath as a function of the latitude. 
+A rain flagging is applied by masking all points higher than a given threshold.
+
+
+Note that there is also the possibility to derive the rain from model files if they are provided in the list of variables to be interpolated. Then this variable will be used for rain flagging. 
+
+Atmospheric gradient
+--------------------
+A change in water content in the atmosphere have an impact on sigma0. The corresponding sigma0 gradient is computed directly from the gradient of PIA from the scenes previously used for rain flagging (derived from GPM data). 
+The sigma0 gradient is then converted into a horizontal velocity 
+
 
 Total error
 -----------
@@ -286,7 +299,7 @@ The software
 ============
 The software is written in Python, and uses Numpy, Scipy and netCDF4 python
 libraries. Pyresample is also required for L2C computation and faster
-interpolation.
+L2B interpolation.
 All the parameters that can be modified by the user are read in a
 params file (e.g. params.py) specified by the user. These parameters are
 written in :ref:`yellow <params>` later on and are linked to their location in
@@ -310,7 +323,7 @@ The software is divided in 6 modules:
 
 * :mod:`regriddingi_l2d.py` contains reconstruction algorithms for L2d products.
 
-* :mod:`mod_uwb_corr.py` contains function to correct the wave bias using neighbors
+* :mod:`mod_uwb_corr.py` contains function to estimate wave doppler and associated parameters 
 
 
 Inputs
@@ -319,10 +332,10 @@ You can provide to the simulator a list of model outputs in netcdf. You need
 to have at least the meridional and zonal currents to compute error-free radial
 L2B velocities and SSH if you want to simulate nadir data. Wind and MSS
 are necessary to compute instrumental noise (proportional to :math:`sigma^0`),
-Stokes drift and Wind are needed to compute wave bias. Ice concentration should
-also be provided to improve the computation of sigma0 in polar areas.
+Stokes drift, MSS, wave height and Wind are needed to compute true and estimated wave doppler. Ice concentration should
+also be provided for realistic estimation of sigma0 in polar areas.
 Any other variables provided to the skimulator will be interpolated on the
-SKIM points.
+SKIM points. If rain is provided in these files, it will be interpolated and used for rain flagging
 
 A list of files (in .txt format) is provided using :ref:`file_input <params-file>`
 in the parameter file.
@@ -403,6 +416,8 @@ instrumental noise and wave bias:
 +-------+---------------------------+-----------------------------------+
 | vwnd  | Meridional wind           | Wave bias, Instrumental noise     |
 +-------+---------------------------+-----------------------------------+
+| rain  | rain quantity in mm/h     | Rain flagging if no scene avail.  |         
++-------+---------------------------+-----------------------------------+
 
 
 
@@ -423,11 +438,12 @@ Below is an example of :ref:`list_input_var  <params-model>` for WW3 model
                     'vuss': ['vuss', 'uss', 0],
                     'ice': ['ice', 'ice', 0],
                     'mssd': ['mssd', 'msd', 0],
-                    'mssx': ['mssx', 'mss', 0],
-                    'mssy':['mssy', 'mss', 0],
+                    'mssx': ['mssc', 'mss', 0],
+                    'mssy':['mssu', 'mss', 0],
                     'ssh': ['wlv', 'wlv', 0],
                     'uwnd': ['uwnd', 'wnd', 0],
-                    'vwnd': ['vwnd', 'wnd', 0]}
+                    'vwnd': ['vwnd', 'wnd', 0],
+                    'rain': ['rain', 'rain', 0],}
 
 Below is an example of :ref:`list_input_var  <params-model>` for a model with
 an Arakawa grid (type C):
@@ -528,54 +544,62 @@ The :ref:`list_output  <params-output>` key  concerns the list of variables that
 store in the netcdf files. The most common key are summarized in the table
 below, you can add any other key that you want to interpolate on the SKIM grid:
 
-+------------+--------------------------------+-------------------------------+
-|Key         | Long name                      | Required for ...              |
-+============+================================+===============================+
-| ur_true    | Radial error free velocity     |                               |
-+------------+--------------------------------+-------------------------------+
-| ur_obs     | Radial velocity with errors    |                               |
-+------------+--------------------------------+-------------------------------+
-| ucur       | Meridional true current        | Radial velocity, Wave bias    |
-+------------+--------------------------------+-------------------------------+
-| vcur       | Zonal true current             | Radial velocity, Wave bias    |
-+------------+--------------------------------+-------------------------------+
-| uuss       | Meridional Stokes drift        | ur_obs, Wave bias             |
-+------------+--------------------------------+-------------------------------+
-| vuss       | Zonal Stokes drift             | ur_obs, Wave bias             |
-+------------+--------------------------------+-------------------------------+
-| instr      | Instrumental error             | instrumental error, ur_obs    |
-+------------+--------------------------------+-------------------------------+
-|radial_angle| Azimuthal angle                | all                           |
-+------------+--------------------------------+-------------------------------+
-| uwnd       | Meridional wind                | wave bias, ur_obs, instr      |
-+------------+--------------------------------+-------------------------------+
-| vwnd       | Zonal wind                     | wave bias, ur_obs, instr      |
-+------------+--------------------------------+-------------------------------+
-| mssx       | Meridional MSS                 | instr, ur_obs                 |
-+------------+--------------------------------+-------------------------------+
-| mssy       | Zonal MSS                      | instr, ur_obs                 |
-+------------+--------------------------------+-------------------------------+
-| mssxy      | Mixed MSS                      | instr, ur_obs                 |
-+------------+--------------------------------+-------------------------------+
-| uwb        | Wave bias                      | wave bias, ur_obs, uwb_corr   |
-+------------+--------------------------------+-------------------------------+
-| uwb_corr   | Remaining wave bias            | wave bias, ur_obs             |
-+------------+--------------------------------+-------------------------------+
-| sigma0     | NRCS                           | instr, ur_obs                 |
-+------------+--------------------------------+-------------------------------+
-| ssh_obs    | Sea Surface Height with errors | ssh_obs, nadir                |
-+------------+--------------------------------+-------------------------------+
-| ssh_true   | Error free Sea Surface Height  | ssh_obs,                      |
-+------------+--------------------------------+-------------------------------+
-
-
++------------+----------------------------------+-----------------------------+
+|Key         | Long name                        | Required for ...            |
++============+==================================+=============================+
+| ur_true    | Radial error free velocity       | ur_obs                      |
++------------+----------------------------------+-----------------------------+
+| ur_obs     | Radial velocity with errors      |                             |
++------------+----------------------------------+-----------------------------+
+| ucur       | Meridional true current          | ur_true, ur_obs, sigma0,    |
++------------+----------------------------------+-----------------------------+
+| vcur       | Zonal true current               | ur_true, ur_obs, sigma0,    |
++------------+----------------------------------+-----------------------------+
+| uuss       | Meridional Stokes drift          | ur_obs, uwd, ussr, ussr_est |
++------------+----------------------------------+-----------------------------+
+| vuss       | Zonal Stokes drift               | ur_obs, uwd, ussr, ussr_est |
++------------+----------------------------------+-----------------------------+
+| instr      | Instrumental error               | ur_obs,                     |
++------------+----------------------------------+-----------------------------+
+|radial_angle| Azimuthal angle                  | all                         |
++------------+----------------------------------+-----------------------------+
+| uwnd       | Meridional wind                  | uwd, uwd_est, ur_obs, instr |
++------------+----------------------------------+-----------------------------+
+| vwnd       | Zonal wind                       | uwd, uwd_est, ur_obs, instr |
++------------+----------------------------------+-----------------------------+
+| mssx       | Meridional MSS                   | instr, ur_obs               |
++------------+----------------------------------+-----------------------------+
+| mssy       | Zonal MSS                        | instr, ur_obs               |
++------------+----------------------------------+-----------------------------+
+| mssxy      | Mixed MSS                        | instr, ur_obs               |
++------------+----------------------------------+-----------------------------+
+| uwd        | True wave doppler                | ur_obs                      |
++------------+----------------------------------+-----------------------------+
+| uwd_est    | Estimated wave doppler           | ur_obs                      |
++------------+----------------------------------+-----------------------------+
+| sigma0     | NRCS                             | instr, uwd, uwd_est         |
++------------+----------------------------------+-----------------------------+
+| ssh_obs    | Sea Surface Height with errors   | ssh_obs, nadir              |
++------------+----------------------------------+-----------------------------+
+| ssh_true   | Error free Sea Surface Height    | ssh_obs                     |
++------------+----------------------------------+-----------------------------+
+| ussr       | True radial stokes drift.        | uwd                         |
++------------+----------------------------------+-----------------------------+
+| ussr_est   | Reconstructed radial stokes drift| uwd_est                     |
++------------+----------------------------------+-----------------------------+                
+| dsigma0    | Azimuthal sigma0 gradient.       | ur_obs                      |
++------------+----------------------------------+-----------------------------+
+| dsigm-atm  | sigma0 gradient due to atmosphere| ur_obs                      |
++------------+----------------------------------+-----------------------------+
+ 
 To compute each error, set the corresponding parameter to True
 (:ref:`instr <params-error>`, :ref:`ice <params-error>`,
-:ref:`uwb <params-error>`, :ref:`nadir <params-error>`).
+:ref:`uwb <params-error>`, :ref:`nadir <params-error>`,
+ :ref:`rain <params-error>`, :ref:`attitude <params-error>`).
 If :ref:`nadir <params-error>` is True, then :ref:`ncomp1d  <params-error>`
 should be specified to compute random error realisations. 
-If :ref:`instr <params-error>` is True, the :ref:`snr_coeff <params-error>`
-coefficient (to retrieve instrumental noise from sigma) should be specified.
+If :ref:`rain <params-error>` is True, the :ref:`rain_file <params-error>` that contains the path to the set of scenes and the :ref:`rain_threshold <params-error>` to flag rain above this threshold should be specified.
+
 
 
 All the computed errors are saved in the output netcdf file. The observed SSH
@@ -590,7 +614,7 @@ to set (:ref:`nadir <params-error>`) to True to compute this error.
 L2C 2d currents
 ---------------
 L2b radial current can be projected on a along swath and across swath grid
-using the skiml2c command with the same parameter file as the one used for
+using the :code:`skimul2c` command with the same parameter file as the one used for
 the L2b current production. It uses the L2b produced previously as an input.
 The along track and across track grid resolution is specified in
 :ref:`posting <params-l2c>`. By default, the spatial resolution of the grid is
@@ -602,20 +626,22 @@ with the distance to the pixel.
 As data around nadir are particularly noisy (all radial velocity are
 parallels), one can mask them by specifying the distance in km from nadir
 where data are to be masked :ref:`ac_threshold <params-l2c>`.
-The list of variables to be interpolated on the l2d grid is set in
+The list of variables to be interpolated on the l2c grid is set in
 :ref:`list_input_var_l2c <params-l2c>`.
+
+A :ref:`l2c_config` variable can be specified to label a l2c configuration, this variable will be appended in the file name (:code:`[config]_l2c[l2c_config]_c[ncycle]_p[npass].nc`)
 
 The L2c outputs contains along track, across track, meridional and zonal
 current reconstructed from the error-free and radial velocity with errors.
 True along track, across track meridional and zonal velocity interpolated
 from the model inputs are also stored for diagnosis purposes.
-
+All variables specified in the :ref:`list_input_var_l2c <params-l2c>` will be stored in the l2c Netcdf file.
 
 L2D 2d currents
 ---------------
 L2b radial current can be projected on a longitudinal and latitudinal grid
-using the skimul2c command with the same parameter file as the one used for
-the L2b current production. It uses the L2b produced with skimul2b as an input.
+using the :code:`skimul2d` command with the same parameter file as the one used for
+the L2b current production. It uses the L2b produced with :code:`skimul2b` as an input.
 The along track and across track grid resolution is specified in
 :ref:`posting_l2d <params-l2d>`. By default, the spatial resolution of the grid
 is 0.1º x 0.1º.
@@ -623,7 +649,7 @@ The L2d reconstruction uses spatio-temporal neighbors to project and
 interpolate the current.
 The length resolution to select neighbors can be set in
 :ref:`resol_spatial_l2d <params-l2d>` in space and
-:ref:`resol_temporal_l2d <params-l2d>` in time.
+:ref:`resol_temporal_l2d <params-l2d>` in time. These numbers are scaling factors to increase or decrease default values.
 Coefficient for the OI are decreasing exponentially
 with the distance and time to the pixel.
 The time domain to compute L2d can be set in
