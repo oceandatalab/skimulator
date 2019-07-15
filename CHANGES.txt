@@ -6,25 +6,86 @@ Changelog for skimulator
 2019/07/10
 - Handle ice and ocean areas separately
 
+- Add configuration B for TED analysis
+
+- Implement new version of Wave Doppler parametrisation
+
+- Improve estimation of radial Stokes and mss (separation of ocean and ice,
+ use 12º beam for mss computation)
+
+- Add band of validity for ussr
+
+- Improve l2c and l2d computation by filtering out low wind areas
+
 2.9
 ---
 2019/06/14
+- Read rain files if they are provided in gridded netcdf at the same time steps
+at the OGM files.
+
+- Add wind interpolation in l2c / l2d computation
+
+- Add atmospheric dsigma error
+
+- Add azimuthal dsigma error
+
+- Add oi of all the noises separately for l2c computation
+
+- Update diagnostics codes with all the new implemented errors
+
+- Add remaining attitude noise
 
 2.8
 ---
 2019/05/15
+- Implement Wave doppler inversion
+
+- Correct azimuthal noise for high latitude and coastal areas
+
+- Adapt oi to avoid holes in error free reconstruction
+
+- Add second configuration for instrumental error computation
+
+- Assume the radial Stokes reconstruction will be improved by 2/3
 
 2.7
 ---
 2019/04/31
+- Add fit from TAS instrumental noise
+
+- Implement wave doppler parametrisation from learning algorithms
+
+- Add json parameter file for diagnostics routine
+
+- Fix import issues in python 3.5, numpy.random handling for mac os
+
+- Implement Fit TED
+
 
 2.6
 ---
-2019/03/31
+2019/03/08
+- Adapt spatial and temporal filtering length with latitude for l2d computation
+
+- Implement rain statistical scene for regional run
+
+- Improve format (long name, units)
+
+- Fix bugs in l2c (mask construction, )
 
 2.5
 ---
-2019/02/28
+2019/02/11
+- L2c reconstruction parallelized
+
+- Fix bugs in l2c computation (import issues, list of variables, mask l2c on
+ coast using model)
+
+- Add l2d computation from l2b input files, with offline interpolation function
+
+- Fix for model data that are not correctly masked
+
+- Add python scripts for l2b / l2d diagnostics
 
 2.4
 ---
