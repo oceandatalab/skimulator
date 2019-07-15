@@ -268,6 +268,11 @@ Atmospheric gradient
 A change in water content in the atmosphere have an impact on sigma0. The corresponding sigma0 gradient is computed directly from the gradient of PIA from the scenes previously used for rain flagging (derived from GPM data). 
 The sigma0 gradient is then converted into a horizontal velocity 
 
+Attitude
+--------
+AOCS remaining error is simulated using a spectrum provided by the technical instrumental team, thermal elastic dilatation are parametrised using tables provided by instrumental simulation. Both of these error are converted into velocities. 
+Their correction is performed offline and the remaining error can be read into a file and added to the error budget. 
+
 
 Total error
 -----------
