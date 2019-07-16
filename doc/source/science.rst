@@ -716,7 +716,7 @@ Example of Params.txt for SKIM-like data
 
 .. _params-file:
 
-.. code-block::
+.. code-block:: python
 
 # ------ Name of the configuration (to build output files names)
 config = [yourconfig]
@@ -745,7 +745,7 @@ progress_bar = True or False
 .. _params-skimswath:
 
 
-.. code-block::
+.. code-block:: python
 
 # -----------------------#
 # SKIM swath parameters
@@ -779,7 +779,7 @@ shift_time = None
 
 .. _params-model:
 
-.. code-block::
+.. code-block:: python
 
 # -----------------------#
 # Model input parameters
@@ -828,7 +828,8 @@ model_nan = -32767.
 
 .. _params-output:
 
-.. code-block::
+.. code-block:: python
+
 
 # -----------------------#
 # SKIM output files
@@ -849,7 +850,7 @@ list_output = ['ssh_obs', 'ur_true', 'ucur', 'vcur', 'uuss', 'vuss', 'instr',
 
 .. _params-error:
 
-.. code-block::
+.. code-block:: python
 
 # -----------------------#
 # SKIM error parameters
@@ -889,7 +890,7 @@ uwb = True or False
 
 .. _params-l2c:
 
-.. code-block::
+.. code-block:: python
 
 # -----------------------#
 # L2C computation
@@ -907,7 +908,7 @@ list_input_var_l2c = {'ucur': ['ucur', 'cur', 0], 'vcur': ['vcur', 'cur', 1]}
 
 .. _params-l2d:
 
-.. code-block::
+.. code-block:: python
 
 # -----------------------#
 # L2D computation
